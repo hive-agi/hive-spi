@@ -1,0 +1,5 @@
+{:project-id "hive-spi"
+ :parent "hive"
+ :description "Service Provider Interface contracts for hive-workflows (HWF2). Pure protocol stubs (ISP ports) — no impls, no deps. Authority for IPlanCompiler/IPlanGraph/ITaskBoard/IHeadlessDispatcher/IWorkflowStore/IEffectHandler/IIntrospectable (D1 SAFE SCAFFOLD slice)."
+ :language :clojure
+ :tags ["spi" "protocols" "contracts" "hive-workflows" "hwf2" "ports"]}

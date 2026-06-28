@@ -1,0 +1,25 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.1"}
+
+        ;; hive-dsl — defadt (closed sum types) for WorkflowEvent ADT.
+        ;; Coordinates mirrored from sibling consumer hive-mcp/deps.edn
+        ;; (and hive-claude/hive-test/hive-system/hive-event-protocols all
+        ;; agree on the same git/tag+sha).
+        io.github.hive-agi/hive-dsl
+        {:git/tag "v0.5.1" :git/sha "335869e"}
+
+        ;; metosin/malli — schema for the WorkflowAST node map.
+        ;; Version mirrored from hive-mcp/hive-knowledge/hive-agent/hive-di
+        ;; (all sibling hive-* libs converge on 0.20.1).
+        metosin/malli {:mvn/version "0.20.1"}}
+
+ :aliases
+ {:dev  {:extra-paths ["dev" "test"]
+         :extra-deps  {org.clojure/test.check {:mvn/version "1.1.1"}}}
+
+  :test {:extra-paths ["test"]
+         :extra-deps  {org.clojure/test.check {:mvn/version "1.1.1"}
+                       io.github.cognitect-labs/test-runner
+                       {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+         :main-opts ["-m" "cognitect.test-runner"]
+         :exec-fn cognitect.test-runner.api/test}}}
