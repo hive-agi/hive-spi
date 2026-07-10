@@ -13,11 +13,11 @@
    agree across ALL layers, biconditionally. This is the operational contract.
 
    BOUNDARY (non-canonical inputs) is characterized explicitly. After the
-   :hive/result XOR fix (both-keys -> invalid, MALLI-P4 D1b) the ONLY remaining
-   malli/spec divergence is unqualified-keyword errors, where the RELEASED
-   hive-dsl spec (::err-result uses keyword?) is looser than malli
-   (:qualified-keyword). That is boarded fix D5; `spec-err-result-loose-D5-guard`
-   is a tripwire that flips when hive-dsl tightens ::err-result -> ::error-category."
+   :hive/result XOR fix (both-keys -> invalid, MALLI-P4 D1b) AND the D5
+   tightening (hive-dsl v0.5.2: ::err-result requires a qualified-keyword
+   category), malli and spec agree on EVERY input — the last divergence
+   (unqualified-keyword errors) is closed. `spec-err-result-qualified-D5-converged`
+   pins the closed state."
   (:require [clojure.test :refer [deftest testing is]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
@@ -137,29 +137,24 @@
                        (and e (not o) (qualified-keyword? (:error x))))]
       (= (reg/validate :hive/result x) (boolean expected)))))
 
-(defspec boundary-malli-spec-agree-except-unqualified-kw 400
-  ;; malli :hive/result == spec ::result EVERYWHERE except the boarded D5 case
-  ;; (unqualified-keyword error), where the released spec is loose and malli strict.
+(defspec boundary-malli-spec-agree-fully 400
+  ;; MALLI-P4-D5 converged (hive-dsl v0.5.2): malli :hive/result == spec ::result
+  ;; on EVERY input, including the formerly-divergent unqualified-keyword error.
   (prop/for-all [x adversarial-result-gen]
-    (let [d5? (and (r/err? x) (not (r/ok? x))
-                   (keyword? (:error x)) (not (qualified-keyword? (:error x))))]
-      (if d5?
-        (and (not (reg/validate :hive/result x)) (s/valid? ::rspec/result x))
-        (= (reg/validate :hive/result x) (s/valid? ::rspec/result x))))))
+    (= (reg/validate :hive/result x) (s/valid? ::rspec/result x))))
 
 ;; ---------------------------------------------------------------------------
-;; 4. BOUNDARY: the ONE remaining divergence (boarded D5 tripwire)
+;; 4. BOUNDARY: the formerly-divergent D5 case, now converged
 ;; ---------------------------------------------------------------------------
 
-(deftest spec-err-result-loose-D5-guard
-  (testing "BOARDED D5: released hive-dsl spec ::err-result uses keyword? (loose);
-            malli :hive/err uses :qualified-keyword (canonical, matches taxonomy).
-            They diverge ONLY on unqualified-keyword errors. When hive-dsl tightens
-            ::err-result -> ::error-category this test flips and must be updated."
+(deftest spec-err-result-qualified-D5-converged
+  (testing "D5 converged (hive-dsl v0.5.2): spec ::err-result requires a
+            qualified-keyword category, matching malli :hive/err. Neither
+            accepts an unqualified-keyword error."
     (let [x {:error :unqualified}]                 ; unqualified-keyword category
-      (is (r/err? x)                          "membership: err (key present)")
-      (is (s/valid? ::rspec/err-result x)     "released spec ACCEPTS unqualified (loose) — flips on D5")
-      (is (not (reg/validate :hive/err x))    "malli REJECTS unqualified (canonical qualified-kw)"))
+      (is (r/err? x)                            "membership: err (key present)")
+      (is (not (s/valid? ::rspec/err-result x)) "tightened spec REJECTS unqualified")
+      (is (not (reg/validate :hive/err x))      "malli REJECTS unqualified (canonical qualified-kw)"))
     (testing "string errors: both validity layers already agree (reject)"
       (let [x {:error "not-a-keyword"}]
         (is (not (s/valid? ::rspec/err-result x)))
