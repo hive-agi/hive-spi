@@ -209,9 +209,7 @@
 ;;; ===========================================================================
 ;;; IWorkflowStore
 ;;; ---------------------------------------------------------------------------
-;;; Persistence facade for authored workflow ASTs. Backed by KG-memory in M8
-;;; so authored ASTs survive partial-carto heap-aborts. M2 may ship an
-;;; in-memory impl first.
+;;; Persistence facade for authored workflow ASTs.
 ;;; ===========================================================================
 
 (defprotocol IWorkflowStore

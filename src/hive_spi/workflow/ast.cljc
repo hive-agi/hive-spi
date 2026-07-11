@@ -126,7 +126,6 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Each returns a node map. Children may be passed as a vector (preferred),
 ;;; or omitted for leaves. `args` and `meta-` are optional maps.
-;;; Carto over these defns answers questions like "which workflows gate?".
 ;;; ===========================================================================
 
 (defn seq*

@@ -1,7 +1,5 @@
 (ns hive-spi.schema.gen-test
-  "Tests the malli-owned generation lever (hive-spi.schema.gen) — the
-   shape->test.check primitive for MALLI-P4 'malli owns generation' and the
-   carto RBT-B2 T2 bridge."
+  "Tests the malli-owned generation lever (hive-spi.schema.gen)."
   (:require [clojure.test :refer [deftest testing is]]
             [clojure.test.check.properties :as prop]
             [clojure.test.check.clojure-test :refer [defspec]]
