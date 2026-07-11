@@ -96,3 +96,26 @@
     (is (= '(typed.clojure/U (typed.clojure/Val :malli.core/invalid)
                              (typed.clojure/Vec typed.clojure/Str))
            (typed/schema->parser-type [:* :string])))))
+
+(deftest numeric-refinement-widening
+  (testing "comparator schemas widen to t/Num (bounds not expressible)"
+    (is (= 'typed.clojure/Num (typed/schema->type [:> 0])))
+    (is (= 'typed.clojure/Num (typed/schema->type [:< 1])))
+    (is (= 'typed.clojure/Num (typed/schema->type [:>= 0])))
+    (is (= 'typed.clojure/Num (typed/schema->type [:<= 1]))))
+  (testing ":min/:max props on :int drop to the base integer type"
+    (is (= 'typed.clojure/AnyInteger (typed/schema->type [:int {:min 1}])))
+    (is (= 'typed.clojure/AnyInteger (typed/schema->type [:int {:min 1 :max 10}]))))
+  (testing ":and narrows to first member (int refined by a bound -> AnyInteger)"
+    (is (= 'typed.clojure/AnyInteger (typed/schema->type [:and :int [:> 0]]))))
+  (testing "integer-guaranteeing predicates -> AnyInteger"
+    (is (= 'typed.clojure/AnyInteger (typed/schema->type 'pos-int?)))
+    (is (= 'typed.clojure/AnyInteger (typed/schema->type 'nat-int?)))
+    (is (= 'typed.clojure/AnyInteger (typed/schema->type 'neg-int?))))
+  (testing "non-integer numeric predicates -> t/Num"
+    (is (= 'typed.clojure/Num (typed/schema->type 'pos?)))
+    (is (= 'typed.clojure/Num (typed/schema->type 'zero?)))
+    (is (= 'typed.clojure/Num (typed/schema->type 'number?))))
+  (testing ":float -> (t/U Double Float); :double -> Double"
+    (is (= '(typed.clojure/U Double Float) (typed/schema->type :float)))
+    (is (= 'Double (typed/schema->type :double)))))

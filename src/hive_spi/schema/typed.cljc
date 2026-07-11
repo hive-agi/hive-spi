@@ -56,7 +56,11 @@
     (:any any?)                                                    Any
     (:string string?)                                             'typed.clojure/Str
     (:int integer? int?)                                          'typed.clojure/AnyInteger
+    (pos-int? neg-int? nat-int?)                                  'typed.clojure/AnyInteger
     (:double double?)                                             'Double
+    (:float float?)                                               (list 'typed.clojure/U 'Double 'Float)
+    (:> :< :>= :<= number? pos? neg? zero?
+     rational? decimal? ratio?)                                   'typed.clojure/Num
     (:boolean boolean?)                                           'typed.clojure/Bool
     (:keyword keyword? :qualified-keyword qualified-keyword?
      simple-keyword?)                                             'typed.clojure/Kw

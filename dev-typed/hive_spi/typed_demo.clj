@@ -21,3 +21,7 @@
 (ta/defalias-schema IntId [:=> [:cat :int] :int])
 (t/ann id-int IntId)
 (defn id-int [x] x)
+
+(ta/defalias-schema PosInt [:int {:min 1}])
+(t/ann inc-pos [PosInt :-> t/AnyInteger])
+(defn inc-pos [x] (inc x))
