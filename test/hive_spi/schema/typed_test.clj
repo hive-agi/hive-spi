@@ -67,3 +67,32 @@
     (let [types (typed/registered-types)]
       (is (= (count (reg/registered)) (count types)))
       (is (empty? (keep (fn [[k t]] (when (nil? t) k)) types))))))
+
+(deftest function-schemas
+  (testing ":=> -> [ArgT.. :-> RetT] vector"
+    (is (= '[typed.clojure/Str typed.clojure/AnyInteger :-> typed.clojure/Bool]
+           (typed/schema->type [:=> [:cat :string :int] :boolean]))))
+  (testing ":function multi-arity -> t/IFn of arity vectors"
+    (is (= '(typed.clojure/IFn [typed.clojure/AnyInteger :-> typed.clojure/AnyInteger]
+                               [typed.clojure/AnyInteger typed.clojure/AnyInteger :-> typed.clojure/AnyInteger])
+           (typed/schema->type [:function
+                                [:=> [:cat :int] :int]
+                                [:=> [:cat :int :int] :int]])))))
+
+(deftest parser-type-mode
+  (testing "parser-type wraps in (t/U (t/Val :malli.core/invalid) inner)"
+    (is (= '(typed.clojure/U (typed.clojure/Val :malli.core/invalid) typed.clojure/Str)
+           (typed/schema->parser-type :string))))
+  (testing ":orn tags branches only in parser mode"
+    (is (= '(typed.clojure/U typed.clojure/AnyInteger typed.clojure/Str)
+           (typed/schema->type [:orn [:i :int] [:s :string]])))
+    (is (= '(typed.clojure/U
+             (typed.clojure/Val :malli.core/invalid)
+             (typed.clojure/U (quote [(typed.clojure/Val :i) typed.clojure/AnyInteger])
+                              (quote [(typed.clojure/Val :s) typed.clojure/Str])))
+           (typed/schema->parser-type [:orn [:i :int] [:s :string]]))))
+  (testing ":* is Seqable (validator) but Vec (parser)"
+    (is (= '(typed.clojure/Seqable typed.clojure/Str) (typed/schema->type [:* :string])))
+    (is (= '(typed.clojure/U (typed.clojure/Val :malli.core/invalid)
+                             (typed.clojure/Vec typed.clojure/Str))
+           (typed/schema->parser-type [:* :string])))))

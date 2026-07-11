@@ -16,3 +16,8 @@
 
 (t/ann make-err [ErrorCategory :-> HiveResult])
 (defn make-err [category] {:error category})
+
+;; A :=> function schema aliased to a Typed Clojure fn-type, then checked.
+(ta/defalias-schema IntId [:=> [:cat :int] :int])
+(t/ann id-int IntId)
+(defn id-int [x] x)
