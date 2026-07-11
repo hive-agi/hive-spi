@@ -49,3 +49,17 @@
     (let [op (der/compile-op :test/carrier)]
       (is ((:validate op) {:v {:ok 1}}))
       (is (not ((:validate op) {:v {:nope 1}}))))))
+
+(deftest bundle-includes-typed-clojure-type
+  (testing ":type is the Typed Clojure validator-type of the schema"
+    (let [op (der/compile-op args-schema)]
+      (is (contains? op :type))
+      (is (= '(typed.clojure/HMap
+               :mandatory {:query typed.clojure/Str}
+               :optional {:limit typed.clojure/AnyInteger :scope typed.clojure/Kw})
+             (:type op)))))
+  (testing ":type resolves registry refs (Result sum) like the other artifacts"
+    (is (= '(typed.clojure/U
+             (typed.clojure/HMap :mandatory {:ok typed.clojure/Any})
+             (typed.clojure/HMap :mandatory {:error typed.clojure/Kw}))
+           (:type (der/compile-op :hive/result))))))

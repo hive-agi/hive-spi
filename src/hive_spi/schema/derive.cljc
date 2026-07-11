@@ -7,6 +7,7 @@
      :validate         x -> boolean
      :explain          x -> malli explanation | nil
      :coerce           x -> coerced x; THROWS ex-info {:error :schema/invalid}
+     :type             Typed Clojure validator-type (as data)
      :coerce->result   x -> hive-dsl Result: {:ok coerced} | {:error :parse/schema-violation ..}
 
    Coercion applies malli json + string transformers (JSON scalars -> EDN:
@@ -17,7 +18,8 @@
             [malli.transform :as mt]
             [malli.error :as me]
             [hive-spi.schema.registry :as reg]
-            [hive-dsl.result :as r]))
+            [hive-dsl.result :as r]
+            [hive-spi.schema.typed :as typed]))
 
 ;; SPDX-License-Identifier: AGPL-3.0-or-later
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -58,6 +60,7 @@
      :validate       validate
      :explain        (fn [x] (m/explain s x))
      :coerce         coerce
+     :type           (typed/schema->type s)
      :coerce->result (fn [x]
                        (let [d (decode x)]
                          (if (validate d)
