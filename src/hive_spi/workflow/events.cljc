@@ -1,12 +1,9 @@
 (ns hive-spi.workflow.events
-  "Closed `:workflow/*` progress taxonomy + lifecycle FSM (HWF2 D1).
-
-   Realises the canonical-design decision (hive memory 20260627145530-2c4394a8)
-   and the progress-taxonomy convention (hive memory 20260627145506-080ff6af).
+  "Closed `:workflow/*` progress taxonomy + lifecycle FSM.
 
    This is the SINGLE source of greppable :workflow/* literal namespaced
-   keywords. Sinks and bridges (see hwf2-progress-taxonomy) refine these into
-   :headless/* / hivemind shapes downstream — they never re-collapse here.
+   keywords. Downstream sinks and bridges refine these into their own shapes;
+   they never re-collapse here.
 
    The taxonomy is a hive-dsl `defadt` closed sum: every constructed event
    carries {:adt/type :WorkflowEvent :adt/variant :workflow/...} on top of a
@@ -14,7 +11,7 @@
    filtering at any sink."
   (:require [hive-dsl.adt :refer [defadt]]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;;; ===========================================================================
@@ -36,8 +33,8 @@
 ;;; ===========================================================================
 
 (defadt WorkflowEvent
-  "Closed taxonomy of workflow progress events. Eight variants — exhaustive
-   over the EvalAlgebra fold. Do NOT extend in place: open a design decision."
+  "Closed taxonomy of workflow progress events. Eight variants covering the
+   full workflow lifecycle. Do NOT extend in place."
   [:workflow/started          {:run-id   string?
                                :node-id  vector?
                                :op       keyword?

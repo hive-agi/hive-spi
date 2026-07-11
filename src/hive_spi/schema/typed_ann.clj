@@ -5,7 +5,7 @@
   (:require [typed.clojure :as t]
             [hive-spi.schema.typed :as typed]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 (defmacro defalias-schema

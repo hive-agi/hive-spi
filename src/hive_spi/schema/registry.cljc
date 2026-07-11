@@ -17,7 +17,7 @@
      :hive/err                   {:error category ...}
      :hive/result                Result sum: ok | err
 
-   Canonical ownership (MALLI-P4 spec<->malli convergence, one truth per concept):
+   Canonical ownership (one truth per concept):
      - malli (here)                 owns Result DATA-SHAPE + coercion (der/compile-op).
      - hive-dsl.result.spec         owns fn/macro BEHAVIORAL contracts (fdef/instrument!).
      - hive-dsl.result.taxonomy     owns the error-CATEGORY set (single source; both
@@ -37,7 +37,7 @@
             [malli.registry :as mr]
             [hive-dsl.result.taxonomy :as tax]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;; ---------------------------------------------------------------------------

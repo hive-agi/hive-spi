@@ -4,7 +4,7 @@
             [hive-spi.schema.registry]
             [hive-spi.schema.typed-ann :as ta]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 (ta/defalias-schema HiveResult :hive/result)

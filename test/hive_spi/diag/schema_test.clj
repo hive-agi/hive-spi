@@ -7,7 +7,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [hive-spi.diag.schema :as s]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 (deftest valid?-and-explain

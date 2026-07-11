@@ -1,15 +1,12 @@
 (ns hive-spi.workflow.ast
-  "Workflow IR — pure static EDN node-map carrier + malli schema (HWF2 D1).
+  "Workflow IR — pure static EDN node-map carrier + malli schema.
 
-   Realises the canonical-design decision (hive memory 20260627145530-2c4394a8):
+   Carrier = plain EDN node map {:wf/op :wf/args :wf/children :wf/id
+   :wf/meta} (NOT a record — LLM-emittable).
 
-     `Carrier = plain EDN node map {:wf/op :wf/args :wf/children :wf/id
-     :wf/meta} (NOT a record — LLM-emittable).`
-
-   Pedro decision 2026-06-27: the AST is PURE STATIC EDN. Inputs resolve at
-   RUN time via ctx :env. There is NO author-time symbolic-binding pass —
-   :wf/args may carry literal data or :wf.ref/* lookup keys but never raw
-   un-bound symbols.
+   The AST is PURE STATIC EDN. Inputs resolve at RUN time via ctx :env.
+   There is NO author-time symbolic-binding pass — :wf/args may carry
+   literal data or :wf.ref/* lookup keys but never raw un-bound symbols.
 
    This namespace provides:
      * `WorkflowAST` — recursive malli schema for the carrier.
@@ -19,14 +16,11 @@
        :wf/id (vector of [child-index ...] from root).
      * `->edn` / `edn->ast` round-trip helpers (an AST node IS EDN, so
        these are reflexive identity over well-formed nodes after id
-       reassignment).
-
-   No implementations of EvalAlgebra / DescribeAlgebra live here — those
-   are M2 work in hive-workflows."
+       reassignment)."
   (:refer-clojure :exclude [seq])
   (:require [malli.core :as m]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;;; ===========================================================================
@@ -52,8 +46,7 @@
 ;;; Malli schema — WorkflowAST
 ;;; ---------------------------------------------------------------------------
 ;;; Recursive via [:schema {:registry {::node ...}}]. Authoring tools use
-;;; `valid?` and `explain` to FAIL-LOUD on malformed ASTs (per the
-;;; effect-vocabulary convention — silent Noop is the headline footgun).
+;;; `valid?` and `explain` to FAIL-LOUD on malformed ASTs.
 ;;; ===========================================================================
 
 (def WorkflowAST
@@ -142,9 +135,8 @@
   ([args children meta-] (->node :wf.op/par args children meta-)))
 
 (defn gate*
-  "Conditional gate. `args` must include `:when` (a predicate kw — named-only
-   in M2; SCI-allowed predicate spine is deferred to M10). Children typically
-   `[then-branch else-branch]`."
+  "Conditional gate. `args` must include `:when` (a predicate keyword).
+   Children typically `[then-branch else-branch]`."
   ([args children] (gate* args children {}))
   ([args children meta-] (->node :wf.op/gate args children meta-)))
 
@@ -162,8 +154,8 @@
 
 (defn call*
   "World-touching leaf. `args` must include `:verb` (the namespaced verb id
-   to dispatch). Routed by hive-workflows.vocab into the OCP home
-   determined by the verb's :tags."
+   to dispatch). Downstream implementations route the verb to its handler
+   by the verb's :tags."
   ([args] (call* args [] {}))
   ([args children] (call* args children {}))
   ([args children meta-] (->node :wf.op/call args children meta-)))

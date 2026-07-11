@@ -1,16 +1,10 @@
 (ns hive-spi.workflow.ports-test
   "Contract-scaffold tests for hive-spi.workflow.ports.
 
-   This is the D1 SAFE SCAFFOLD placeholder: per-protocol `satisfies?`-style
-   smoke tests prove that
+   Per-protocol `satisfies?`-style smoke tests prove that
      (a) the protocols exist and load,
-     (b) the method-name surface matches what the canonical design decision
-         (hive memory 20260627145530-2c4394a8) specifies,
-     (c) a do-nothing impl satisfies the protocol and can be probed.
-
-   Full behavioural contract tests land in later milestones (M2..M8) once
-   reference impls exist. Adding behavioural assertions here now would
-   couple D1 to design questions still open with Pedro."
+     (b) the method-name surface matches the expected contract, and
+     (c) a do-nothing impl satisfies the protocol and can be probed."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-spi.workflow.ports :as p]))
 
@@ -166,8 +160,8 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest deferred-ports-not-exposed
-  (testing "D1 must NOT define the gated/deferred symbols (sanity guard)"
+  (testing "the deferred protocol symbols are not defined here (sanity guard)"
     (doseq [sym '[IWorkflowEngine IDispatchStrategy WorkflowStrategyEntry
                   WorkflowEvent INotify]]
       (is (nil? (ns-resolve 'hive-spi.workflow.ports sym))
-          (str sym " is gated on an open question and MUST NOT live in D1.")))))
+          (str sym " is deferred and MUST NOT be defined here.")))))

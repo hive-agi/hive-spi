@@ -1,13 +1,7 @@
 (ns hive-spi.workflow.engine
-  "Workflow-execution ports: IWorkflowEngine + IWorkflowPersistence (HWF2 D1b).
+  "Workflow-execution ports: IWorkflowEngine + IWorkflowPersistence.
 
-   Relocated from hive-mcp.protocols.workflow so hive-workflows can implement
-   them without depending on hive-mcp (HWF2-M9: hive-workflows' deps are ONLY
-   hive-spi + hive-dsl + hive-events).
-
-   Pure protocol stubs — NO implementations. NoopWorkflowEngine and the active-
-   engine slot stay in hive-mcp.protocols.workflow, which re-exports the vars
-   below as plain `def` aliases.
+   Pure protocol stubs — NO implementations.
 
    INVARIANT — never re-`defprotocol` these names downstream. A second
    `defprotocol` mints a DISTINCT protocol; records implementing the original
@@ -16,14 +10,13 @@
   ;; Intentionally NO :require. SPI is a pure-contract leaf.
   )
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;;; ===========================================================================
 ;;; IWorkflowEngine
 ;;; ---------------------------------------------------------------------------
-;;; The execution port. hive-mcp.workflows.fsm-engine satisfies it today; the
-;;; HWF2-M7 CombinatorWorkflowEngine (hive-workflows) will satisfy it next.
+;;; The execution port for workflow engines.
 ;;; ===========================================================================
 
 (defprotocol IWorkflowEngine
@@ -48,7 +41,7 @@
     "Cancel a running workflow."))
 
 ;;; ===========================================================================
-;;; IWorkflowPersistence — optional sibling extension
+;;; IWorkflowPersistence — optional extension
 ;;; ===========================================================================
 
 (defprotocol IWorkflowPersistence

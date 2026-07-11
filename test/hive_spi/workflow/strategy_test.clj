@@ -1,10 +1,9 @@
 (ns hive-spi.workflow.strategy-test
-  "Contract tests for hive-spi.workflow.strategy (HWF2 D1b).
+  "Contract tests for hive-spi.workflow.strategy.
 
-   The load-bearing assertion is `adt-case-through-a-def-alias`: hive-mcp
-   re-exports WorkflowStrategyEntry as a plain `def`, and
-   hive-mcp.workflows.strategy-registry/register-by-key! dispatches on it with
-   `adt-case`. If that stops working the :method seam breaks silently."
+   The load-bearing assertion is `adt-case-through-a-def-alias`: a downstream
+   consumer may re-export WorkflowStrategyEntry as a plain `def` and dispatch on
+   it with `adt-case`. If that stops working the :method seam breaks silently."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-dsl.adt :refer [adt-case]]
             [hive-spi.workflow.strategy :as s]))
@@ -31,11 +30,11 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest workflow-strategy-entry-adt
-  (testing "defadt interns the four vars hive-mcp must re-export"
+  (testing "defadt interns the four vars a downstream consumer re-exports"
     (doseq [sym '[WorkflowStrategyEntry workflow-strategy-entry
                   ->workflow-strategy-entry workflow-strategy-entry?]]
       (is (some? (ns-resolve 'hive-spi.workflow.strategy sym))
-          (str sym " must exist — hive-mcp.workflows.strategy aliases it"))))
+          (str sym " must exist — a downstream consumer aliases it"))))
   (testing "the closed sum has exactly one variant"
     (is (= #{:wf/strategy} (:variants s/WorkflowStrategyEntry))))
   (testing "a constructed entry carries the ADT envelope and passes the predicate"
@@ -50,10 +49,10 @@
     (is (not (s/workflow-strategy-entry? {:method :dag-wave})))))
 
 ;; ---------------------------------------------------------------------------
-;; The re-export contract strategy-registry/register-by-key! depends on
+;; The re-export contract a downstream registry depends on
 ;; ---------------------------------------------------------------------------
 
-;; Exactly what hive-mcp.workflows.strategy does. Symbol name MUST match:
+;; Exactly what a downstream re-export does. Symbol name MUST match:
 ;; adt-case resolves its ADT argument by symbol name.
 (def WorkflowStrategyEntry s/WorkflowStrategyEntry)
 (def workflow-strategy-entry? s/workflow-strategy-entry?)

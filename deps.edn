@@ -2,13 +2,10 @@
  :deps {org.clojure/clojure {:mvn/version "1.12.1"}
 
         ;; hive-dsl — defadt (closed sum types) for WorkflowEvent ADT +
-        ;; Result spec. Pinned ahead of the fleet (siblings at v0.5.1) for the
-        ;; MALLI-P4-D5 spec<->malli convergence; see hive memory.
+        ;; Result spec.
         io.github.hive-agi/hive-dsl {:mvn/version "0.5.2"}
 
         ;; metosin/malli — schema for the WorkflowAST node map.
-        ;; Version mirrored from hive-mcp/hive-knowledge/hive-agent/hive-di
-        ;; (all sibling hive-* libs converge on 0.20.1).
         metosin/malli {:mvn/version "0.20.1"}}
 
  :aliases

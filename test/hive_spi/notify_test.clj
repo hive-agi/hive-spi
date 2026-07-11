@@ -1,7 +1,6 @@
 (ns hive-spi.notify-test
-  "Contract-scaffold tests for hive-spi.notify/INotify — protocol surface
-   + satisfies?-probe on a stub backend. Behavioural tests land in
-   hive-notify (M6) once concrete backends ship."
+  "Contract tests for hive-spi.notify/INotify — protocol surface
+   + satisfies?-probe on a stub backend."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-spi.notify :as n]))
 

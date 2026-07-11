@@ -2,7 +2,7 @@
   "Projects FSM transitions into WorkflowEvent variants and subagent transcript
    turns into chat frames; folds an SSOT model; pushes wire frames to a sink.")
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;;; ===========================================================================

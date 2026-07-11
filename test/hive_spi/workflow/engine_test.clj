@@ -1,11 +1,10 @@
 (ns hive-spi.workflow.engine-test
-  "Contract tests for hive-spi.workflow.engine (HWF2 D1b).
+  "Contract tests for hive-spi.workflow.engine.
 
-   Proves (a) the two ports exist with the exact method surface relocated from
-   hive-mcp.protocols.workflow, (b) a stub impl satisfies them, (c) the
-   `def`-alias re-export contract that hive-mcp.protocols.workflow relies on
-   actually holds — a record defined against an ALIASED protocol var still
-   satisfies the original, and a second `defprotocol` does NOT."
+   Proves (a) the two ports exist with the expected method surface, (b) a stub
+   impl satisfies them, (c) the `def`-alias re-export contract holds — a record
+   defined against an ALIASED protocol var still satisfies the original, and a
+   second `defprotocol` does NOT."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-spi.workflow.engine :as e]))
 
@@ -36,7 +35,7 @@
   (cancel-workflow   [_ id _] {:success? true :workflow-id id}))
 
 (deftest workflow-engine-contract
-  (testing "IWorkflowEngine exposes exactly the relocated method surface"
+  (testing "IWorkflowEngine exposes exactly the expected method surface"
     (assert-protocol #'e/IWorkflowEngine
                      '#{load-workflow validate-workflow execute-step
                         execute-workflow get-status cancel-workflow}))
@@ -72,7 +71,7 @@
     (is (e/persistent-engine? (->StubPersistentEngine)))))
 
 ;; ---------------------------------------------------------------------------
-;; The re-export contract that hive-mcp.protocols.workflow depends on
+;; The re-export contract that downstream consumers depend on
 ;; ---------------------------------------------------------------------------
 
 (def AliasedEngine e/IWorkflowEngine)
@@ -98,7 +97,7 @@
     (is (identical? AliasedEngine e/IWorkflowEngine))))
 
 (deftest second-defprotocol-is-a-distinct-protocol
-  (testing "re-`defprotocol`-ing the name mints a DIFFERENT protocol (the trap D1b must avoid)"
+  (testing "re-`defprotocol`-ing the name mints a DIFFERENT protocol (the trap the re-export contract must avoid)"
     (let [trap-ns (create-ns 'hive-spi.workflow.engine-test.trap)]
       (try
         (binding [*ns* trap-ns]

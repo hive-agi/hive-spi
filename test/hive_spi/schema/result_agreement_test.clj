@@ -1,8 +1,8 @@
 (ns hive-spi.schema.result-agreement-test
-  "MALLI-P4: executable spec<->malli convergence contract for the Result taxonomy.
+  "Executable spec<->malli convergence contract for the Result taxonomy.
 
    Pins the exact relationship between the validation layers so they cannot
-   silently drift (the 'two validation systems' split, 2026-07-10):
+   silently drift:
 
      - membership predicates  hive-dsl.result/{ok?,err?}   key presence; total, loose
      - malli shape schemas    hive-spi.schema.registry      :hive/{ok,err,result}
@@ -12,12 +12,11 @@
    CANONICAL Results (produced by r/ok / r/err with qualified-keyword categories)
    agree across ALL layers, biconditionally. This is the operational contract.
 
-   BOUNDARY (non-canonical inputs) is characterized explicitly. After the
-   :hive/result XOR fix (both-keys -> invalid, MALLI-P4 D1b) AND the D5
-   tightening (hive-dsl v0.5.2: ::err-result requires a qualified-keyword
-   category), malli and spec agree on EVERY input — the last divergence
-   (unqualified-keyword errors) is closed. `spec-err-result-qualified-D5-converged`
-   pins the closed state."
+   BOUNDARY (non-canonical inputs) is characterized explicitly. With the
+   :hive/result XOR fix (both-keys -> invalid) and ::err-result requiring a
+   qualified-keyword category, malli and spec agree on EVERY input — the last
+   divergence (unqualified-keyword errors) is closed.
+   `spec-err-result-qualified-D5-converged` pins the closed state."
   (:require [clojure.test :refer [deftest testing is]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
@@ -83,7 +82,7 @@
          (s/valid? ::rspec/known-error-category c))))
 
 (deftest known-error-category-schema-is-generatable
-  (testing "MALLI-P4 D1: :hive/known-error-category carries :gen/elements; a bare
+  (testing ":hive/known-error-category carries :gen/elements; a bare
             :fn predicate alone throws malli such-that-failure"
     (let [xs (mg/sample (reg/schema :hive/known-error-category) {:size 30})]
       (is (seq xs))
@@ -94,7 +93,7 @@
 ;; ---------------------------------------------------------------------------
 
 (deftest both-keys-rejected-by-malli-and-spec
-  (testing "MALLI-P4 D1b: {:ok _ :error _} is not a Result (XOR). Converged this session."
+  (testing "{:ok _ :error _} is not a Result (XOR)."
     (let [x {:ok 1 :error :io/timeout}]
       (is (not (reg/validate :hive/result x)) "malli :hive/result rejects both-keys")
       (is (not (s/valid? ::rspec/result x))   "spec ::result rejects both-keys")
@@ -138,8 +137,8 @@
       (= (reg/validate :hive/result x) (boolean expected)))))
 
 (defspec boundary-malli-spec-agree-fully 400
-  ;; MALLI-P4-D5 converged (hive-dsl v0.5.2): malli :hive/result == spec ::result
-  ;; on EVERY input, including the formerly-divergent unqualified-keyword error.
+  ;; malli :hive/result agrees with spec ::result on EVERY input, including the
+  ;; formerly-divergent unqualified-keyword error.
   (prop/for-all [x adversarial-result-gen]
     (= (reg/validate :hive/result x) (s/valid? ::rspec/result x))))
 

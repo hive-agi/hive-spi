@@ -1,39 +1,26 @@
 (ns hive-spi.workflow.ports
-  "Service Provider Interface (SPI) ports for the hive-workflows rebuild (HWF2).
+  "Service Provider Interface (SPI) ports for workflow authoring and execution.
 
    Pure protocol stubs — NO implementations live here. Each protocol method
    docstring states its CONTRACT (argument shapes + return shape + failure
-   semantics). Implementations live in hive-workflows.*, hive-mcp.*, or
-   downstream addons and are wired via `satisfies?`-probed registries.
-
-   D1 SAFE SCAFFOLD slice — only the seven ports unblocked by the canonical
-   design decision (hive memory 20260627145530-2c4394a8).
-
-   DEFERRED (NOT defined here, gated on open questions with Pedro):
-   * WorkflowEvent ADT (defadt taxonomy)
-   * WorkflowAST malli schema
-   * INotify (home TBD: hive-notify vs hive-spi)
-   * IWorkflowEngine / IDispatchStrategy / WorkflowStrategyEntry —
-     stay in hive-mcp.protocols.workflow until M9 repo-split."
+   semantics). Implementations live in downstream consumers and are wired via
+   `satisfies?`-probed registries."
 
   ;; Intentionally NO :require. SPI is a pure-contract leaf.
   )
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;;; ===========================================================================
 ;;; IPlanCompiler
 ;;; ---------------------------------------------------------------------------
-;;; Front-end #2 of HWF2 (after defworkflow code and LLM AST-EDN): lowers a
-;;; Plan-EDN map into the wf-IR node-map carrier. Compute-waves Kahn over the
-;;; :depends-on DAG yields (seq (par ...) (par ...)).
+;;; Lowers a Plan-EDN map into the wf-IR node-map carrier. Compute-waves Kahn
+;;; over the :depends-on DAG yields (seq (par ...) (par ...)).
 ;;; ===========================================================================
 
 (defprotocol IPlanCompiler
-  "Compile a Plan-EDN front-end into the wf-IR node-map tree.
-
-   Implementations live in hive-workflows.frontend.plan (M7)."
+  "Compile a Plan-EDN front-end into the wf-IR node-map tree."
 
   (compile-plan
     [this plan-edn opts]
@@ -111,10 +98,9 @@
 ;;; ===========================================================================
 ;;; ITaskBoard
 ;;; ---------------------------------------------------------------------------
-;;; Headless task/kanban surface that methods (forge-belt, dag-wave) reach
-;;; into. Lives behind a protocol so that the in-repo kanban tool, an
-;;; external GitHub Projects backend, or an in-memory test double can all
-;;; back the same workflow method.
+;;; Headless task/kanban surface that workflow methods reach into. Lives behind
+;;; a protocol so that an in-process kanban tool, an external GitHub Projects
+;;; backend, or an in-memory test double can all back the same workflow method.
 ;;; ===========================================================================
 
 (defprotocol ITaskBoard
@@ -164,9 +150,9 @@
 ;;; ===========================================================================
 ;;; IHeadlessDispatcher
 ;;; ---------------------------------------------------------------------------
-;;; Mirrors hive-mcp.addons.headless/IHeadlessBackend in shape but lives in
-;;; the SPI so non-addons callers (workflow methods, MCP run verb) can
-;;; depend on the contract without a reverse dep on hive-mcp.
+;;; Contract for spawning and dispatching on a headless agent backend, so that
+;;; callers can depend on the contract without depending on any particular
+;;; backend implementation.
 ;;; ===========================================================================
 
 (defprotocol IHeadlessDispatcher
@@ -247,19 +233,18 @@
 ;;; ===========================================================================
 ;;; IEffectHandler
 ;;; ---------------------------------------------------------------------------
-;;; Self-describing verb seam. hive.events.fx remains the live runtime
-;;; registry; IEffectHandler is the AUTHORING facet so that hive-workflows.vocab
-;;; can register-verb! and describe verbs uniformly regardless of which OCP
-;;; home (:fx / :method / :plan-field / :saa-port / :forge-ext) they route to.
-;;; See convention `hwf2-fx-vocabulary` (memory 20260627145505-4eae0f7d).
+;;; Self-describing verb seam. This is the AUTHORING facet so that a downstream
+;;; vocabulary registry can register and describe verbs uniformly regardless of
+;;; which OCP home (:fx / :method / :plan-field / :saa-port / :forge-ext) they
+;;; route to.
 ;;; ===========================================================================
 
 (defprotocol IEffectHandler
-  "Self-describing effect/method verb. Authoring-side counterpart of
-   hive.events.fx — does NOT replace it.
+  "Self-describing effect/method verb. Authoring-side counterpart of the
+   runtime effect registry — does NOT replace it.
 
-   Implementations are typically VerbSpec records constructed by
-   hive-workflows.vocab and routed by :tags into the existing OCP homes."
+   Implementations are typically VerbSpec records constructed by a downstream
+   vocabulary registry and routed by :tags into the existing OCP homes."
 
   (verb-id
     [this]
@@ -270,8 +255,9 @@
   (verb-tags
     [this]
     "Return a set of routing tags. Recognised: #{:fx :method :plan-field
-     :saa-port :forge-ext}. Used by hive-workflows.vocab/register-verb! to
-     route into hive.events.fx, strategy-registry, plan.field-registry, etc.")
+     :saa-port :forge-ext}. Used by a downstream vocabulary registry to route
+     into the runtime effect registry, strategy-registry, plan.field-registry,
+     etc.")
 
   (handle-effect
     [this ctx args]
@@ -280,8 +266,8 @@
        ctx  — runtime context (resources, sinks, current :wf/id, etc.)
        args — verb-specific argument map (validated by argv-schema).
      Returns: verb-specific result map. For :fx verbs this typically returns
-              an updated ctx (mirrors hive.events.fx semantics). For :method
-              verbs this returns the dispatch outcome.
+              an updated ctx (mirrors runtime effect-registry semantics). For
+              :method verbs this returns the dispatch outcome.
      Throws: ex-info {:error :verb/failed :verb-id ... :reason ...}.")
 
   (argv-schema
@@ -294,9 +280,8 @@
 ;;; IIntrospectable
 ;;; ---------------------------------------------------------------------------
 ;;; Sibling protocol probed via `satisfies?` so adding describability to an
-;;; existing strategy/verb does NOT change its primary protocol (ISP). The
-;;; MCP `workflow describe` verb and the DescribeAlgebra static fold both
-;;; consult this when present.
+;;; existing strategy/verb does NOT change its primary protocol (ISP).
+;;; Consumers consult this when present.
 ;;; ===========================================================================
 
 (defprotocol IIntrospectable

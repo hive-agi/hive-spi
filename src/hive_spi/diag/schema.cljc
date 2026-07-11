@@ -12,7 +12,7 @@
    rendering (MiB/GiB) is the caller's concern; `human-bytes` is provided."
   (:require [malli.core :as m]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;; ---------------------------------------------------------------------------

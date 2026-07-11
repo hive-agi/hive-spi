@@ -1,20 +1,15 @@
 (ns hive-spi.workflow.strategy
-  "Dispatch-strategy port + the closed contribution ADT for the :method seam
-   (HWF2 D1b).
+  "Dispatch-strategy port + the closed contribution ADT for the :method seam.
 
-   Relocated from hive-mcp.workflows.strategy so an addon (hive-workflows) can
-   BUILD WorkflowStrategyEntry values and IMPLEMENT IDispatchStrategy without
-   depending on hive-mcp. That is what lets the addon contribute through the
-   IAddon `(hooks)` seam — `hive-mcp.workflows.strategy-registry/register-by-key!`
-   — instead of reaching into the host with `requiring-resolve`.
+   Implementations can BUILD WorkflowStrategyEntry values and IMPLEMENT
+   IDispatchStrategy to contribute a strategy through a registry, without
+   depending on the host.
 
    A plan's :method field selects an IDispatchStrategy from the strategy
    registry. A strategy turns a normalized plan into running work — a wave of
    lings, an SAA cycle, a forge belt.
 
-   Pure contract. NoopDispatchStrategy (an impl, and the only thing here that
-   needed hive-dsl.result) stays in hive-mcp.workflows.strategy, which re-exports
-   every var below as a plain `def` alias.
+   Pure contract.
 
    INVARIANTS
    * Never re-`defprotocol` IDispatchStrategy downstream — a second protocol is
@@ -22,11 +17,11 @@
    * Never re-`defadt` WorkflowStrategyEntry downstream — hive-dsl.adt keys its
      registry on the BARE type name (:WorkflowStrategyEntry), so a duplicate
      definition is last-loaded-wins across the whole JVM.
-   * The downstream alias MUST keep the symbol spelled `WorkflowStrategyEntry`:
+   * A downstream alias MUST keep the symbol spelled `WorkflowStrategyEntry`:
      `adt-case` resolves its ADT argument by symbol name."
   (:require [hive-dsl.adt :refer [defadt]]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;;; ===========================================================================
@@ -48,7 +43,6 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Interns: WorkflowStrategyEntry, workflow-strategy-entry (ctor),
 ;;;          ->workflow-strategy-entry (coercer), workflow-strategy-entry? (pred).
-;;; All four must be re-exported by hive-mcp.workflows.strategy.
 ;;; ===========================================================================
 
 (defadt WorkflowStrategyEntry

@@ -1,13 +1,13 @@
 (ns hive-spi.diag.ports-test
-  "Contract-scaffold tests for the six hive-spi.diag.ports protocols — each
-   protocol's method surface (exact method-name set, so an accidental add/rename
-   is caught) plus a satisfies?-probe on a single stub record that implements all
-   six. Behavioural composition is exercised in hive-mcp.diag.clinic-test against
-   fake ports; the concrete adapters are tested in hive-mcp.diag.*."
+  "Contract tests for the six hive-spi.diag.ports protocols — each protocol's
+   method surface (exact method-name set, so an accidental add/rename is caught)
+   plus a satisfies?-probe on a single stub record that implements all six.
+   Behavioural composition and the concrete adapters are exercised by downstream
+   consumers."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-spi.diag.ports :as p]))
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 (defn- protocol-method-names [pvar]

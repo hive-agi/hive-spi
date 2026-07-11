@@ -1,21 +1,17 @@
 (ns hive-spi.notify
-  "INotify — pluggable notification backend SPI (HWF2 D1).
+  "INotify — pluggable notification backend SPI.
 
-   Realises the canonical-design decision (hive memory 20260627145530-2c4394a8)
-   and Pedro's 2026-06-27 resolution `INotify lives in hive-spi.notify`.
+   Concrete backends (desktop / sound / cli / widget) live in downstream
+   implementations and register into a fanout via `notify-fanout!`. A
+   workflow event consumer projects :workflow/* events onto the notification
+   shape and calls `notify!`.
 
-   This is the SPI seat for the hive-notify rebuild. Concrete backends
-   (desktop / sound / cli / widget) live in hive-notify and register into a
-   fanout via `notify-fanout!`. The NotifySink (progress-taxonomy convention,
-   hive memory 20260627145506-080ff6af) is the workflow event consumer that
-   projects :workflow/* into INotify calls.
-
-   Pure protocol stub — NO implementations live here."
+   Pure protocol contract — no implementations live here."
 
   ;; Intentionally NO :require — SPI is a pure-contract leaf.
   )
 
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 
 ;;; ===========================================================================
@@ -23,7 +19,7 @@
 ;;; ---------------------------------------------------------------------------
 ;;; Notification shape (the `notification` map passed to `notify!`):
 ;;;   {:event-type keyword — typically a :workflow/* variant kw, but any
-;;;                          namespaced kw acceptable (NotifySink projects).
+;;;                          namespaced kw acceptable (the consumer projects).
 ;;;    :summary    string  — short one-line title (e.g. window-manager title).
 ;;;    :body       string  — longer human/LLM-readable body; may be markdown.
 ;;;    :urgency    #{:low :normal :critical} — freedesktop-style urgency.
@@ -31,23 +27,22 @@
 ;;;                                                 colour / icon choice).}
 ;;;
 ;;; Backends MUST NOT throw from `notify!` — degrade gracefully (the cli
-;;; backend in particular is "never-throw" per the canonical design). Failure
-;;; to deliver is reported via the return value, not exceptions.
+;;; backend in particular is "never-throw"). Failure to deliver is reported
+;;; via the return value, not exceptions.
 ;;; ===========================================================================
 
 (defprotocol INotify
   "Pluggable notification backend.
 
-   Implementations live in hive-notify.backends.* (M6) and register into
-   hive-notify.registry via a fanout helper. The NotifySink consumer in
-   hive-workflows.progress projects WorkflowEvent maps onto the
+   Implementations register into a fanout registry via a fanout helper.
+   A workflow event consumer projects WorkflowEvent maps onto the
    notification shape documented above and calls `notify!`."
 
   (notify-id
     [this]
     "Return the keyword identifying this backend.
      Recognised: #{:desktop :sound :cli :widget}. Must be stable and used as
-     the dispatch key in the hive-notify registry.")
+     the dispatch key in the notification registry.")
 
   (backend-available?
     [this]
