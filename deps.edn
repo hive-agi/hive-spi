@@ -4,8 +4,7 @@
         ;; hive-dsl — defadt (closed sum types) for WorkflowEvent ADT +
         ;; Result spec. Pinned ahead of the fleet (siblings at v0.5.1) for the
         ;; MALLI-P4-D5 spec<->malli convergence; see hive memory.
-        io.github.hive-agi/hive-dsl
-        {:git/tag "v0.5.2" :git/sha "8d9760c"}
+        io.github.hive-agi/hive-dsl {:mvn/version "0.5.2"}
 
         ;; metosin/malli — schema for the WorkflowAST node map.
         ;; Version mirrored from hive-mcp/hive-knowledge/hive-agent/hive-di
@@ -24,4 +23,10 @@
          :exec-fn cognitect.test-runner.api/test}
 
   :typed {:extra-paths ["dev-typed"]
-          :extra-deps {org.typedclojure/typed.clj.checker {:mvn/version "1.4.0"}}}}}
+          :extra-deps {org.typedclojure/typed.clj.checker {:mvn/version "1.4.0"}}}
+
+  ;; Clojars publishing. version = the repo's VERSION file (see build.clj).
+  :build
+  {:deps {io.github.clojure/tools.build {:mvn/version "0.10.9"}
+          slipset/deps-deploy {:mvn/version "0.2.2"}}
+   :ns-default build}}}
