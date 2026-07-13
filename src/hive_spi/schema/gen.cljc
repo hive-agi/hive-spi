@@ -4,9 +4,13 @@
    Wraps malli.generator so registered schemas drive test.check generation.
    Requiring this ns pulls malli.generator (+ test.check); require it only where
    you generate (tests, property oracles). derive and the core deps do not
-   force it."
+   force it.
+
+   Loading this ns registers the :generator and :cases projections into the
+   derivation lever: every subsequent compile-op bundle carries the test facet."
   (:require [malli.generator :as mg]
-            [hive-spi.schema.registry :as reg]))
+            [hive-spi.schema.registry :as reg]
+            [hive-spi.schema.derive :as derive]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -30,3 +34,16 @@
    :size to grow the sample). Handy for smoke-fuzzing an op's arg-schema."
   ([?schema] (mg/sample (reg/schema ?schema)))
   ([?schema opts] (mg/sample (reg/schema ?schema) opts)))
+
+(defn seeded-cases
+  "{label input} — a reproducible, sorted sample of `n` values conforming to
+   `?schema`. Same seed yields the same cases."
+  [?schema seed n]
+  (into (sorted-map)
+        (map-indexed (fn [i v] [(keyword (str "case-" i)) v]))
+        (sample ?schema {:size n :seed seed})))
+
+(derive/register-projection! :generator generator)
+
+(derive/register-projection! :cases
+  (fn [s] (fn [seed n] (seeded-cases s seed n))))

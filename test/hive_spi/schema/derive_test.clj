@@ -2,7 +2,8 @@
   (:require [clojure.test :refer [deftest testing is]]
             [hive-spi.schema.registry :as reg]
             [hive-spi.schema.derive :as der]
-            [hive-dsl.result :as r]))
+            [hive-dsl.result :as r]
+            [hive-spi.schema.gen]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -63,3 +64,26 @@
              (typed.clojure/HMap :mandatory {:ok typed.clojure/Any})
              (typed.clojure/HMap :mandatory {:error typed.clojure/Kw}))
            (:type (der/compile-op :hive/result))))))
+
+(deftest projection-seam-is-open
+  (testing "a registered projection lands in every subsequent bundle (OCP)"
+    (der/register-projection! ::answer (constantly 42))
+    (try
+      (is (= 42 (get (der/compile-op args-schema) ::answer)))
+      (finally (der/deregister-projection! ::answer))))
+  (testing "deregistering removes it from subsequent bundles"
+    (is (not (contains? (der/compile-op args-schema) ::answer)))))
+
+(deftest bundle-includes-test-projection
+  (testing "loading hive-spi.schema.gen extends the bundle with the test facet"
+    (let [op (der/compile-op args-schema)]
+      (is (contains? op :generator))
+      (is (fn? (:cases op))))))
+
+(deftest bundle-projections-cohere-with-the-validator
+  (testing "for EVERY registered schema, the projected generator emits only values the projected validator accepts"
+    (doseq [[k _] (reg/registered)]
+      (let [{:keys [validate cases]} (der/compile-op k)]
+        (doseq [[label v] (cases 7 12)]
+          (is (validate v)
+              (str k " " label ": generated value fails its own validator")))))))

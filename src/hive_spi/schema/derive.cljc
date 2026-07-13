@@ -7,8 +7,13 @@
      :validate         x -> boolean
      :explain          x -> malli explanation | nil
      :coerce           x -> coerced x; THROWS ex-info {:error :schema/invalid}
-     :type             Typed Clojure validator-type (as data)
      :coerce->result   x -> hive-dsl Result: {:ok coerced} | {:error :parse/schema-violation ..}
+
+   plus one entry per registered PROJECTION (compiled-schema -> artifact),
+   open for extension via register-projection! without touching compile-op:
+     :type             Typed Clojure validator-type (as data)   [default]
+     :generator        test.check generator                     [hive-spi.schema.gen]
+     :cases            (fn [seed n] {label input}) reproducible [hive-spi.schema.gen]
 
    Coercion applies malli json + string transformers (JSON scalars -> EDN:
    \"30\"->30, \"kw\"->:kw). All artifacts resolve :hive/* named refs through
@@ -42,8 +47,30 @@
           (seq rest-defs) (assoc :definitions rest-defs)))
       js)))
 
+(defonce projections*
+  (atom {:type typed/schema->type}))
+
+(defn register-projection!
+  "Extend every subsequent compile-op bundle: `f` (compiled-schema -> artifact)
+   lands under `k`. Re-registering a key replaces its projection."
+  [k f]
+  (swap! projections* assoc k f)
+  k)
+
+(defn deregister-projection!
+  "Remove projection `k` from subsequent compile-op bundles."
+  [k]
+  (swap! projections* dissoc k)
+  k)
+
+(defn projections
+  "Current {k (compiled-schema -> artifact)} projection map."
+  []
+  @projections*)
+
 (defn compile-op
-  "Derive the single-source op bundle from one malli schema. See ns docstring."
+  "Derive the single-source op bundle from one malli schema: the core artifacts
+   below plus one entry per registered projection. See ns docstring."
   [?schema]
   (let [s        (reg/schema ?schema)
         validate (m/validator s)
@@ -55,15 +82,17 @@
                        (throw (ex-info "Schema coercion failed"
                                        {:error :schema/invalid
                                         :explanation (me/humanize (m/explain s d))})))))]
-    {:schema         s
-     :input-schema   (input-schema s)
-     :validate       validate
-     :explain        (fn [x] (m/explain s x))
-     :coerce         coerce
-     :type           (typed/schema->type s)
-     :coerce->result (fn [x]
-                       (let [d (decode x)]
-                         (if (validate d)
-                           (r/ok d)
-                           (r/err :parse/schema-violation
-                                  {:explanation (me/humanize (m/explain s d))}))))}))
+    (reduce-kv
+     (fn [bundle k project] (assoc bundle k (project s)))
+     {:schema         s
+      :input-schema   (input-schema s)
+      :validate       validate
+      :explain        (fn [x] (m/explain s x))
+      :coerce         coerce
+      :coerce->result (fn [x]
+                        (let [d (decode x)]
+                          (if (validate d)
+                            (r/ok d)
+                            (r/err :parse/schema-violation
+                                   {:explanation (me/humanize (m/explain s d))}))))}
+     @projections*)))

@@ -6,7 +6,8 @@
             [hive-spi.schema.gen :as g]
             [hive-spi.schema.registry :as reg]
             [hive-dsl.result :as r]
-            [hive-dsl.result.taxonomy :as tax]))
+            [hive-dsl.result.taxonomy :as tax]
+            [hive-spi.schema.derive :as der]))
 
 (defspec generator-yields-registry-valid-results 200
   (prop/for-all [x (g/generator :hive/result)]
@@ -38,3 +39,16 @@
     (let [x (g/generate [:map [:a :int] [:b :string]] {:seed 7})]
       (is (integer? (:a x)))
       (is (string? (:b x))))))
+
+(deftest seeded-cases-are-deterministic
+  (testing "same seed + n -> identical labelled cases (repro oracles)"
+    (is (= (g/seeded-cases :hive/result 42 8)
+           (g/seeded-cases :hive/result 42 8))))
+  (testing "labels are :case-0..:case-(n-1), sorted"
+    (is (= [:case-0 :case-1 :case-2]
+           (keys (g/seeded-cases :hive/err 0 3))))))
+
+(deftest loading-gen-registers-the-test-projection
+  (testing "requiring this ns wires :generator/:cases into the derivation lever"
+    (is (contains? (der/projections) :generator))
+    (is (contains? (der/projections) :cases))))
