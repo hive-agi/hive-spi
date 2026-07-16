@@ -253,3 +253,29 @@
        probe round-trip. Return true if the store is alive at the end of
        the wait, false on timeout. MUST NOT throw — the resilience layer
        wants a clean boolean, never an exception.")))
+
+;;; ============================================================================
+;;; Decay-protection registry — synthesis afterlife seam
+;;; ============================================================================
+;;; A backend's cleanup-expired! consults `protected-ids` before deleting so
+;;; that entries a live synthesis references outlive their own :expires. The
+;;; provider is owned by the host (which alone can read the KG); the SPI leaf
+;;; only holds the seam so backends need no host dependency.
+
+(defonce ^:private -protection-provider (atom nil))
+
+(defn register-protection-provider!
+  "Install the host's afterlife provider — a 0-arg fn returning a coll of
+   memory-entry ids that must survive expiry-reaping. Idempotent (last writer
+   wins). Pass nil to clear. Returns the installed fn."
+  [f]
+  (reset! -protection-provider f))
+
+(defn protected-ids
+  "Set of memory-entry ids currently under synthesis afterlife: expired
+   entries in this set MUST NOT be reaped by cleanup-expired!. Never throws —
+   no provider, or any provider failure, yields #{} so the reaper still runs."
+  []
+  (if-let [f @-protection-provider]
+    (try (set (f)) (catch Throwable _ #{}))
+    #{}))
