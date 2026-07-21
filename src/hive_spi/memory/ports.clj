@@ -1,7 +1,7 @@
 (ns hive-spi.memory.ports
   "Memory-store SPI — the IMemoryStore protocol family as pure contracts.
 
-   Storage backends (Milvus, Chroma, Qdrant, Proximum, in-memory) extend
+   Storage backends (Milvus, Chroma, Qdrant, in-memory, …) extend
    these protocols; a host (hive-mcp) consumes them through a registry.
    They live in this SPI leaf so a backend can implement the contract
    WITHOUT compile-depending on any host — the memory-storage DIP seam.
