@@ -1,9 +1,9 @@
-{:paths ["src"]
+{:paths ["src" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.12.1"}
 
         ;; hive-dsl — defadt (closed sum types) for WorkflowEvent ADT +
         ;; Result spec.
-        io.github.hive-agi/hive-dsl {:mvn/version "0.5.2"}
+        io.github.hive-agi/hive-dsl {:mvn/version "0.5.4"}
 
         ;; metosin/malli — schema for the WorkflowAST node map.
         metosin/malli {:mvn/version "0.20.1"}}
