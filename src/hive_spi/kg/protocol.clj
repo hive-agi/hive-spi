@@ -24,10 +24,19 @@
     "DESTRUCTIVE — delete the on-disk database. confirm must be :i-mean-it or throw."))
 
 (defprotocol ITemporalKGStore
-  "Optional extension for temporal queries."
+  "Optional extension for temporal queries.
+
+   The `*-db` methods return a backend-native database value, which only that
+   backend's own query fn can consume. The `query-*` methods are the closed
+   surface: they run a Datalog query against that value without the caller ever
+   holding it."
   (history-db [this] "DB containing all historical facts.")
   (as-of-db [this tx-or-time] "DB as of a point in time.")
-  (since-db [this tx-or-time] "Facts added since a point in time."))
+  (since-db [this tx-or-time] "Facts added since a point in time.")
+  (query-history [this q] [this q inputs]
+    "Datalog query against the full history DB.")
+  (query-as-of [this tx-or-time q] [this tx-or-time q inputs]
+    "Datalog query against the DB as of a point in time."))
 
 (defn kg-store? [x] (satisfies? IKGStore x))
 (defn persistent-store? [x] (satisfies? IPersistentKGStore x))
