@@ -66,8 +66,16 @@
     (is (true? (mreg/store-set?)))))
 
 (deftest an-empty-registry-has-no-default-store-test
-  (is (false? (mreg/store-set?)))
-  (is (nil? (mreg/get-store))))
+  (is (false? (mreg/store-set?)) "store-set? never throws")
+  (is (thrown? clojure.lang.ExceptionInfo (mreg/get-store))
+      "reaching for an unregistered default is a wiring bug, not a nil")
+  (is (thrown? clojure.lang.ExceptionInfo (mreg/get-store :never-registered))))
+
+(deftest the-absent-store-error-names-what-is-available-test
+  (mreg/register-store! :a (fake-store))
+  (let [data (try (mreg/get-store :missing) (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+    (is (= :missing (:store-key data)))
+    (is (= [:a] (:available data)) "the message points at what IS registered")))
 
 (deftest a-non-store-is-rejected-test
   (is (thrown? AssertionError (mreg/register-store! :bad {:not "a store"})))

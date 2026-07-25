@@ -30,9 +30,20 @@
 
 (defn get-store
   "The store under KEY, or the :default store when called with no argument.
-   Nil when absent."
-  ([] (get-store :default))
-  ([key] (slot/reg-get store-slot key)))
+
+   Throws ex-info naming the available keys when the store is absent — a
+   caller reaching for a store it never registered has a wiring bug, and a
+   nil here surfaces as a NullPointerException far from the cause."
+  ([]
+   (or (slot/reg-get store-slot :default)
+       (throw (ex-info "No default memory store registered."
+                       {:registry-keys (vec (keys (registered-stores)))
+                        :hint "Call set-store! or register-store! :default first."}))))
+  ([key]
+   (or (slot/reg-get store-slot key)
+       (throw (ex-info (str "Unknown memory store key: " key)
+                       {:store-key key
+                        :available (vec (keys (registered-stores)))})))))
 
 (defn set-store!
   "Install STORE as the :default store. Returns STORE."
@@ -40,9 +51,9 @@
   (register-store! :default store))
 
 (defn store-set?
-  "True iff a :default store is installed."
+  "True iff a :default store is installed. Never throws."
   []
-  (some? (get-store :default)))
+  (some? (slot/reg-get store-slot :default)))
 
 (defn reset-registry!
   "Remove every registered store. Returns nil."
@@ -51,10 +62,10 @@
 
 (defn reset-active-store!
   "Reset the :default store's own state via `ports/reset-store!`, then drop
-   it from the registry. Returns nil."
+   it from the registry. No-op when none is installed. Returns nil."
   []
-  (when-let [store (get-store :default)]
-    (ports/reset-store! store))
+  (when (store-set?)
+    (ports/reset-store! (get-store :default)))
   (unregister-store! :default))
 
 (defn connect-active-store!
@@ -66,10 +77,10 @@
   "The :default store's health check, or nil when no store is installed."
   []
   (when (store-set?)
-    (ports/health-check (get-store))))
+    (ports/health-check (get-store :default))))
 
 (defn active-store-status
   "The :default store's status, or nil when no store is installed."
   []
   (when (store-set?)
-    (ports/store-status (get-store))))
+    (ports/store-status (get-store :default))))
