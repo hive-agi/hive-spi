@@ -89,13 +89,14 @@
     (mreg/unregister-store! :a)
     (is (= #{:b} (set (keys (mreg/registered-stores)))))))
 
-(deftest reset-active-store-resets-then-unregisters-test
+(deftest reset-active-store-disconnects-then-unregisters-test
   (let [s (fake-store)]
     (mreg/set-store! s)
+    (ports/connect! s {})
     (ports/add-entry! s {:id "1"})
-    (is (= 1 (:entries (ports/store-status s))))
     (mreg/reset-active-store!)
-    (is (= 0 (:entries (ports/store-status s))) "the store's own state was reset")
+    (is (false? (ports/connected? s)) "the store was disconnected")
+    (is (= 1 (:entries (ports/store-status s))) "its data was left intact")
     (is (false? (mreg/store-set?)) "and it is no longer the default")))
 
 (deftest active-store-helpers-are-nil-without-a-store-test

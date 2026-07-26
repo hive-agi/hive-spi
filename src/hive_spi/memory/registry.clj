@@ -61,11 +61,13 @@
   (slot/reg-clear! store-slot))
 
 (defn reset-active-store!
-  "Reset the :default store's own state via `ports/reset-store!`, then drop
-   it from the registry. No-op when none is installed. Returns nil."
+  "Disconnect the :default store, then drop it from the registry. No-op when
+   none is installed. Returns nil. Never deletes the store's data."
   []
   (when (store-set?)
-    (ports/reset-store! (get-store :default)))
+    (try
+      (ports/disconnect! (get-store :default))
+      (catch Exception _)))
   (unregister-store! :default))
 
 (defn connect-active-store!
