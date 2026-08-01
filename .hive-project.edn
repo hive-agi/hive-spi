@@ -2,4 +2,4 @@
  :parent "hive"
  :description "Service Provider Interface contracts: stable, pure protocol definitions with no implementations and no dependencies. Defines the ports IPlanCompiler/IPlanGraph/ITaskBoard/IHeadlessDispatcher/IWorkflowStore/IEffectHandler/IIntrospectable."
  :language :clojure
- :tags ["spi" "protocols" "contracts" "ports"]}
+ :tags ["spi" "protocols" "contracts" "ports"] :carto {:source-roots ["dev" "dev-typed" "resources" "src" "test"]}}
