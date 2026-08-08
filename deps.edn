@@ -27,7 +27,7 @@
   :typed {:extra-paths ["dev-typed"]
           :extra-deps {org.typedclojure/typed.clj.checker {:mvn/version "1.4.0"}}}
 
-  ;; Clojars publishing. version = the repo's VERSION file (see build.clj).
+  ;; Clojars publishing. version = the repo's VERSION file.
   :build
   {:deps {io.github.hive-agi/hive-build {:mvn/version "0.1.0"}}
    :ns-default hive-build.api}}}
