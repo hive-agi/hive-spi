@@ -38,3 +38,33 @@
     (reg/register! :test/wrapped [:map [:v :hive/result]])
     (is (reg/validate :test/wrapped {:v {:ok 1}}))
     (is (not (reg/validate :test/wrapped {:v {:nope 1}})))))
+
+(deftest registration-is-idempotent-not-layered
+  (testing "re-registering a bundle neither grows the registry nor deepens lookup"
+    (let [before (count (reg/registered))]
+      (dotimes [_ 200]
+        (reg/register-all! {::probe-leaf [:int {:min 1}]
+                            ::probe-ref  [:vector ::probe-leaf]}))
+      (is (= 2 (- (count (reg/registered)) before))
+          "200 registrations of 2 keys add exactly 2 keys")
+      (is (reg/validate ::probe-ref [1 2 3])
+          "a ref through a repeatedly-registered key still resolves")
+      (is (not (reg/validate ::probe-ref [0])))
+      (reg/deregister-all! [::probe-leaf ::probe-ref])))
+  (testing "the composite registry is built ONCE, not per registration"
+    (let [r reg/registry]
+      (reg/register-all! {::probe-after [:int]})
+      (is (identical? r reg/registry)
+          "a per-call composite layer here is what makes lookup depth grow
+           until malli.core/schema overflows the stack on reload")
+      (is (reg/validate ::probe-after 1)
+          "a key registered AFTER the registry value was built still resolves —
+           the mutable registry is read through, not snapshotted")
+      (reg/deregister-all! [::probe-after])))
+  (testing "re-registering a key with a DIFFERENT schema replaces it"
+    (reg/register! ::probe-swap [:int])
+    (is (reg/validate ::probe-swap 1))
+    (reg/register! ::probe-swap :string)
+    (is (not (reg/validate ::probe-swap 1)))
+    (is (reg/validate ::probe-swap "x"))
+    (reg/deregister-all! [::probe-swap])))
