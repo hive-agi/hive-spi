@@ -6,8 +6,9 @@
 ;; Absent, and why:
 ;;   hive-spi.crypto.hash-jvm      by design — the java.security boundary
 ;;   hive-spi.time.clock-jvm       by design — the java.time boundary
-;;                                 (DateTimeFormatter / ZonedDateTime); the
-;;                                 port falls through to clock-portable here.
+;;                                 (DateTimeFormatter / ZonedDateTime)
+;;   hive-spi.log.timbre           by design — the optional timbre adapter;
+;;                                 each falls through to a portable sibling.
 ;;   hive-spi.schema.capability    malli.transform -> Float/parseFloat;
 ;;   hive-spi.schema.derive        ClojureWasm has no java.lang.Float.
 ;;   hive-spi.schema.help
@@ -31,6 +32,8 @@
   hive-spi.kg.protocol
   hive-spi.lifecycle.ports
   hive-spi.lifecycle.registry
+  hive-spi.log.console
+  hive-spi.log.ports
   hive-spi.memory.ids
   hive-spi.memory.ports
   hive-spi.memory.registry
