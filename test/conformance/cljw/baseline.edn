@@ -1,0 +1,46 @@
+;; Namespaces that MUST load on cljw. Measured 2026-08-18 against
+;; ClojureWasm v1.10.9 by process EXIT CODE (a printed marker lies — cljw
+;; echoes the failing source line back). run.sh fails when one of these
+;; stops loading, and reports any namespace that starts loading.
+;;
+;; Absent, and why:
+;;   hive-spi.crypto.hash-jvm      by design — the java.security boundary
+;;                                 implementation of the digest port, never
+;;                                 required on a host without it.
+;;   hive-spi.memory.ids           java.time.format.DateTimeFormatter is
+;;                                 missing (LocalDateTime/now works).
+;;   hive-spi.schema.capability    malli.transform -> Float/parseFloat;
+;;   hive-spi.schema.derive        ClojureWasm has no java.lang.Float.
+;;   hive-spi.schema.help
+;;   hive-spi.schema.gen           test.check — a dev-tier dep off this
+;;   hive-spi.schema.typed-ann     typed.clojure — classpath, not surface.
+{:must-load
+ [hive-spi.addon.headless
+  hive-spi.cider.ports
+  hive-spi.cider.registry
+  hive-spi.crypto.hash
+  hive-spi.crypto.ports
+  hive-spi.diag.ports
+  hive-spi.diag.schema
+  hive-spi.editor.elisp
+  hive-spi.editor.ports
+  hive-spi.editor.registry
+  hive-spi.editor.services
+  hive-spi.embeddings.ports
+  hive-spi.kg.conn-init
+  hive-spi.kg.factory
+  hive-spi.kg.protocol
+  hive-spi.lifecycle.ports
+  hive-spi.lifecycle.registry
+  hive-spi.memory.ports
+  hive-spi.memory.registry
+  hive-spi.notify
+  hive-spi.provider
+  hive-spi.schema.registry
+  hive-spi.schema.typed
+  hive-spi.slot
+  hive-spi.wire.edn
+  hive-spi.workflow.engine
+  hive-spi.workflow.events
+  hive-spi.workflow.strategy
+  ]}

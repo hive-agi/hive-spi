@@ -1,0 +1,10 @@
+;; Classpath for the cljw load matrix. cljw resolves :git/url + :local/root
+;; only, so every vendor dep is pinned by git sha at the revision the matrix
+;; was measured against, and the first-party siblings arrive as source.
+{:paths []
+ :deps {metosin/malli     {:git/url "https://github.com/metosin/malli.git"
+                           :git/sha "a74e3b45efa30b3bcdb2e997f337c71614eba3c5"}
+        borkdude/dynaload {:git/url "https://github.com/borkdude/dynaload.git"
+                           :git/sha "3c1242125307b983db0f6abb289d52a684a7f710"}
+        io.github.hive-agi/hive-dsl {:local/root "../../../../hive-dsl"}
+        io.github.hive-agi/hive-spi {:local/root "../../.."}}}
