@@ -5,17 +5,16 @@
 ;;
 ;; Absent, and why:
 ;;   hive-spi.crypto.hash-jvm      by design — the java.security boundary
-;;                                 implementation of the digest port, never
-;;                                 required on a host without it.
-;;   hive-spi.memory.ids           java.time.format.DateTimeFormatter is
-;;                                 missing (LocalDateTime/now works).
+;;   hive-spi.time.clock-jvm       by design — the java.time boundary
+;;                                 (DateTimeFormatter / ZonedDateTime); the
+;;                                 port falls through to clock-portable here.
 ;;   hive-spi.schema.capability    malli.transform -> Float/parseFloat;
 ;;   hive-spi.schema.derive        ClojureWasm has no java.lang.Float.
 ;;   hive-spi.schema.help
 ;;   hive-spi.schema.gen           test.check — a dev-tier dep off this
 ;;   hive-spi.schema.typed-ann     typed.clojure — classpath, not surface.
 {:must-load
- [hive-spi.addon.headless
+  [hive-spi.addon.headless
   hive-spi.cider.ports
   hive-spi.cider.registry
   hive-spi.crypto.hash
@@ -32,6 +31,7 @@
   hive-spi.kg.protocol
   hive-spi.lifecycle.ports
   hive-spi.lifecycle.registry
+  hive-spi.memory.ids
   hive-spi.memory.ports
   hive-spi.memory.registry
   hive-spi.notify
@@ -39,6 +39,8 @@
   hive-spi.schema.registry
   hive-spi.schema.typed
   hive-spi.slot
+  hive-spi.time.clock-portable
+  hive-spi.time.ports
   hive-spi.wire.edn
   hive-spi.workflow.engine
   hive-spi.workflow.events

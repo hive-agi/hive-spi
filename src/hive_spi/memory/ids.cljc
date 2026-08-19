@@ -2,7 +2,8 @@
   "Identity helpers every memory store implementation shares: content
    hashing, entry-id generation, timestamps."
   (:require [clojure.string]
-            [hive-spi.crypto.hash :as hash]))
+            [hive-spi.crypto.hash :as hash]
+            [hive-spi.time.ports :as time]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -21,14 +22,14 @@
     (hash/sha256 normalized)))
 
 (defn generate-id
-  "A unique entry id of the form yyyyMMddHHmmss-<8 hex digits>."
+  "A unique entry id of the form yyyyMMddHHmmss-<8 hex digits>.
+
+   The wall-clock stamp comes from the active `hive-spi.time.ports` IClock."
   []
-  (let [ts (java.time.LocalDateTime/now)
-        fmt (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss")
-        random-hex (format "%08x" (rand-int Integer/MAX_VALUE))]
-    (str (.format ts fmt) "-" random-hex)))
+  (str (time/entry-stamp) "-" (format "%08x" (rand-int 0x7fffffff))))
 
 (defn iso-timestamp
-  "The current instant as an ISO-8601 string in the system zone."
+  "The current instant as an ISO-8601 string, in the system zone where the
+   active `hive-spi.time.ports` IClock knows one."
   []
-  (str (java.time.ZonedDateTime/now (java.time.ZoneId/systemDefault))))
+  (time/iso-timestamp))
