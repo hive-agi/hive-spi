@@ -1,7 +1,8 @@
 (ns hive-spi.memory.ids
   "Identity helpers every memory store implementation shares: content
    hashing, entry-id generation, timestamps."
-  (:require [clojure.string]))
+  (:require [clojure.string]
+            [hive-spi.crypto.hash :as hash]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -9,16 +10,15 @@
   "SHA-256 of CONTENT after normalising whitespace.
 
    Non-string content is `pr-str`ed first. Normalisation trims, collapses
-   runs of spaces/tabs to one space, and collapses blank lines."
+   runs of spaces/tabs to one space, and collapses blank lines. The digest
+   itself comes from the active `hive-spi.crypto.hash` IHasher."
   [content]
   (let [content-str (if (string? content) content (pr-str content))
         normalized (-> content-str
                        clojure.string/trim
                        (clojure.string/replace #"[ \t]+" " ")
-                       (clojure.string/replace #"\n+" "\n"))
-        md (java.security.MessageDigest/getInstance "SHA-256")
-        hash-bytes (.digest md (.getBytes normalized "UTF-8"))]
-    (apply str (map #(format "%02x" %) hash-bytes))))
+                       (clojure.string/replace #"\n+" "\n"))]
+    (hash/sha256 normalized)))
 
 (defn generate-id
   "A unique entry id of the form yyyyMMddHHmmss-<8 hex digits>."
