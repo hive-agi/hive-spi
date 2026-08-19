@@ -1,7 +1,13 @@
 ;; Namespaces that MUST load on cljw. Measured 2026-08-18 against
-;; ClojureWasm v1.10.9 by process EXIT CODE (a printed marker lies — cljw
-;; echoes the failing source line back). run.sh fails when one of these
-;; stops loading, and reports any namespace that starts loading.
+;; ClojureWasm v1.10.9 (ReleaseSafe, wasm) by process EXIT CODE (a printed
+;; marker lies — cljw echoes the failing source line back). run.sh fails when
+;; one of these stops loading, and reports any namespace that starts loading.
+;;
+;; Build mode is recorded because --version does NOT distinguish builds: two
+;; binaries of the same source version, one ReleaseSafe and one ReleaseFast
+;; carrying other work, both self-report "ClojureWasm v1.10.9". run.sh prints
+;; the full version line, so compare it against this one before reading a
+;; disagreement as a regression.
 ;;
 ;; Absent, and why:
 ;;   hive-spi.crypto.hash-jvm      by design — the java.security boundary
