@@ -1,0 +1,19 @@
+;; The freeze policy for hive-spi. Read by `clojure -T:build freeze-check`
+;; (hive-build.api/freeze-check), which runs BEFORE bump/deploy in release.yml.
+;;
+;; hive-spi is the fleet's second-widest hub: fan-in 14. Its cost to the fleet
+;; is fan-in x release count, so cadence is not hygiene here — it is the larger
+;; half of the number.
+{:policy/version 1
+
+ :cadence {:mode :scheduled
+           ;; Quarterly. A consumer that pinned in January should still be on a
+           ;; supported pin in March without doing anything.
+           :min-days-between-releases 90
+           ;; Write the reason in the commit; the marker alone is not an excuse.
+           :exception-marker "release-exception:"}
+
+ :compatibility {;; New protocol, new schema, new fn: always fine.
+                 ;; Removing or narrowing a published name: not between releases.
+                 :additive-only? true
+                 :break-marker "BREAKING-CHANGE:"}}

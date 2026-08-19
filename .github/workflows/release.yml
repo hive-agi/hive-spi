@@ -1,15 +1,15 @@
 name: release
 
-# Patch-bump and publish only when the push actually changes the library.
-# README / CI / test-only commits do not mint a version, because a published
-# pom is immutable on both Clojars and the private registry.
+# CADENCE, not release-on-merge. hive-spi carries fan-in 14; its cost to the
+# fleet is fan-in x releases, and publishing on every src push made the second
+# factor the dominant one (10 releases in 90 days). Merges now accumulate; a
+# release is an act someone takes, on the schedule ./freeze-policy.edn declares.
+# The quarterly cron is the floor, not a promise — freeze-check still refuses a
+# run that lands inside the window without a declared exception.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'resources/**'
-      - 'deps.edn'
+  schedule:
+    # 04:00 UTC on the first day of Jan / Apr / Jul / Oct.
+    - cron: '0 4 1 1,4,7,10 *'
   workflow_dispatch:
 
 concurrency:
@@ -29,6 +29,12 @@ jobs:
       - uses: DeLaGuardo/setup-clojure@13.0
         with:
           cli: latest
+
+      # The freeze gate. Runs BEFORE bump, because a published pom is
+      # immutable: refusing here costs a red run, refusing after deploy is
+      # impossible. Reads ./freeze-policy.edn.
+      - name: Freeze check
+        run: clojure -T:build freeze-check
 
       - name: Bump patch version
         run: clojure -T:build bump :level :patch
