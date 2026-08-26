@@ -3,4 +3,5 @@
 ;; the classpath into .clj-kondo/imports/io.github.hive-agi/<lib>/ and the repo
 ;; lints through THAT copy, so a hook added to the export is invisible here.
 ;; See [[20260821212413-74f930de]].
-{:config-paths ["../resources/clj-kondo.exports/io.github.hive-agi/hive-spi"]}
+{:config-paths ["../resources/clj-kondo.exports/io.github.hive-agi/hive-spi"]
+ :lint-as {clojure.test.check.clojure-test/defspec clojure.core/def}}
