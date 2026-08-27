@@ -29,6 +29,14 @@
 
 ;; MIT License - Copyright (c) 2026 Pedro Gomes Branquinho (BuddhiLW)
 
+(def decide-ext-key
+  "The host extension key the guard publishes its decision seam under.
+
+   One definition, two projections: the addon registers its `decide` fn under
+   this key, and the host's tool-dispatch gate looks it up by this key. They
+   live in different artifacts and must not each carry their own literal."
+  :guard/decide)
+
 (defprotocol IGuardRuleSource
   "A source of GuardRules (see hive-spi.guard.rule/GuardRule)."
 
