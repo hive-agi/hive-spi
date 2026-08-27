@@ -1,5 +1,5 @@
 {:lib      io.github.hive-agi/hive-spi
- :minor    1
+ :minor    2
  :license  {:name "MIT" :url "https://opensource.org/licenses/MIT"}
  :scm-url  "https://github.com/hive-agi/hive-spi"
  :src-dirs ["src" "resources"] :publish  :clojars}

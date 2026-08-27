@@ -11,6 +11,13 @@ on:
     # 04:00 UTC on the first day of Jan / Apr / Jul / Oct.
     - cron: '0 4 1 1,4,7,10 *'
   workflow_dispatch:
+    inputs:
+      level:
+        description: 'Version bump level'
+        required: false
+        default: 'patch'
+        type: choice
+        options: [patch, minor, major]
 
 concurrency:
   group: release-${{ github.ref }}
@@ -36,8 +43,10 @@ jobs:
       - name: Freeze check
         run: clojure -T:build freeze-check
 
-      - name: Bump patch version
-        run: clojure -T:build bump :level :patch
+      - name: Bump version
+        # The scheduled run has no inputs and falls back to :patch, so the
+        # quarterly cadence is unchanged.
+        run: clojure -T:build bump :level :${{ inputs.level || 'patch' }}
 
       - name: Commit and tag
         run: |
