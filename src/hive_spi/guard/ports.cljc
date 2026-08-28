@@ -37,6 +37,20 @@
    live in different artifacts and must not each carry their own literal."
   :guard/decide)
 
+(def register-projection-ext-key
+  "The host extension key the guard publishes its PROJECTION REGISTRAR under.
+
+   Same lever as `decide-ext-key`, in the other direction: the guard addon
+   registers a (fn [projection] -> harness-id) here, and every vendor library
+   looks it up to contribute its own `IGuardProjection` without naming the
+   registry's namespace. A vendor lib is thus a plain IAddon that contributes
+   a projection, the way an addon already contributes commands — adding a
+   harness changes no host code.
+
+   One definition, N vendors: the key lives here so no artifact carries its
+   own literal."
+  :guard/register-projection)
+
 (defprotocol IGuardRuleSource
   "A source of GuardRules (see hive-spi.guard.rule/GuardRule)."
 

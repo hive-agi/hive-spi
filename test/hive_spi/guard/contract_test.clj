@@ -24,7 +24,8 @@
             [hive-spi.guard.decision :as d]
             [hive-spi.guard.event :as e]
             [hive-spi.guard.rule :as r]
-            [malli.generator :as mg]))
+            [malli.generator :as mg]
+            [hive-spi.guard.ports :as p]))
 
 ;;; ===========================================================================
 ;;; Event — a closed phase set with per-phase obligations
@@ -291,3 +292,15 @@
     (is (r/candidate? rule {:guard/phase :session-start :guard/harness :opencode}))
     (is (r/candidate? rule {:guard/phase :subagent-start :guard/harness :hive-agent}))
     (is (not (r/candidate? rule {:guard/phase :stop :guard/harness :hive-agent})))))
+
+;;; ===========================================================================
+;;; Seam keys — the JOIN between artifacts that never see each other
+;;; ===========================================================================
+
+(deftest the-seam-keys-are-named-once-here
+  (testing "a host and a vendor lib meet only at these keywords, so pinning
+            them is pinning the contract they cannot otherwise check"
+    (is (= :guard/decide p/decide-ext-key))
+    (is (= :guard/register-projection p/register-projection-ext-key))
+    (is (every? qualified-keyword? [p/decide-ext-key p/register-projection-ext-key]))
+    (is (apply distinct? [p/decide-ext-key p/register-projection-ext-key]))))
