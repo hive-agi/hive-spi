@@ -301,6 +301,23 @@
   (testing "a host and a vendor lib meet only at these keywords, so pinning
             them is pinning the contract they cannot otherwise check"
     (is (= :guard/decide p/decide-ext-key))
-    (is (= :guard/register-projection p/register-projection-ext-key))
-    (is (every? qualified-keyword? [p/decide-ext-key p/register-projection-ext-key]))
-    (is (apply distinct? [p/decide-ext-key p/register-projection-ext-key]))))
+    (is (qualified-keyword? p/decide-ext-key))
+    (is (= "guard-projection" p/projection-ext-ns)))
+
+  (testing "a vendor's hook key is DERIVED from its harness-id, so adding a
+            harness adds no literal anywhere"
+    (is (= :guard-projection/claude-code (p/projection-ext-key :claude-code)))
+    (is (= :guard-projection/mcp (p/projection-ext-key :mcp)))
+    (is (every? #(p/projection-ext-key? (p/projection-ext-key %))
+                [:claude-code :mcp :eca :hive-agent])))
+
+  (testing "the key namespace is distinct from the decide seam, or a sweep for
+            projections would pick the decision fn up as one"
+    (is (not (p/projection-ext-key? p/decide-ext-key)))
+    (is (not-any? p/projection-ext-key? [:multi/x :saa/x :wf/x :op-schema/x nil "s"])))
+
+  (testing "round trip: the guard recovers the harness from the key alone"
+    (doseq [h [:claude-code :mcp :eca :hive-agent]]
+      (is (= h (p/harness-of (p/projection-ext-key h)))))
+    (is (nil? (p/harness-of p/decide-ext-key)))
+    (is (nil? (p/harness-of nil)))))

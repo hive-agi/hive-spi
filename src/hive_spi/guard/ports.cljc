@@ -37,19 +37,36 @@
    live in different artifacts and must not each carry their own literal."
   :guard/decide)
 
-(def register-projection-ext-key
-  "The host extension key the guard publishes its PROJECTION REGISTRAR under.
+(def projection-ext-ns
+  "The hook-key NAMESPACE a vendor publishes its `IGuardProjection` under.
 
-   Same lever as `decide-ext-key`, in the other direction: the guard addon
-   registers a (fn [projection] -> harness-id) here, and every vendor library
-   looks it up to contribute its own `IGuardProjection` without naming the
-   registry's namespace. A vendor lib is thus a plain IAddon that contributes
-   a projection, the way an addon already contributes commands — adding a
-   harness changes no host code.
+   A vendor library is a plain IAddon whose `hooks` map carries one entry,
+   `{(projection-ext-key <harness>) #'its-projection}`. The host's addon
+   lifecycle files that key in its extension registry like any other hook; the
+   guard sweeps the registry for this namespace and adopts what it finds.
 
-   One definition, N vendors: the key lives here so no artifact carries its
-   own literal."
-  :guard/register-projection)
+   PULL, not push: publishing is inert data, so the guard reads it whenever it
+   is ready and neither side has to mount first.
+
+   One definition, N vendors — no artifact carries its own literal."
+  "guard-projection")
+
+(defn projection-ext-key
+  "The hook key `harness-id` publishes its `IGuardProjection` under.
+   `:claude-code` -> `:guard-projection/claude-code`. Pure; never throws."
+  [harness-id]
+  (keyword projection-ext-ns (name harness-id)))
+
+(defn projection-ext-key?
+  "True when `k` is a projection hook key. Pure; never throws."
+  [k]
+  (and (keyword? k) (= projection-ext-ns (namespace k))))
+
+(defn harness-of
+  "The harness-id `k` names, or nil when `k` is not a projection hook key.
+   Inverse of `projection-ext-key`. Pure; never throws."
+  [k]
+  (when (projection-ext-key? k) (keyword (name k))))
 
 (defprotocol IGuardRuleSource
   "A source of GuardRules (see hive-spi.guard.rule/GuardRule)."
