@@ -43,6 +43,12 @@ jobs:
       - name: Freeze check
         run: clojure -T:build freeze-check
 
+      # Same reasoning as the freeze gate, for correctness rather than
+      # cadence. This repo has no other workflow, so nothing else stands
+      # between a red commit and an immutable pom.
+      - name: Run tests
+        run: clojure -M:test
+
       - name: Bump version
         # The scheduled run has no inputs and falls back to :patch, so the
         # quarterly cadence is unchanged.
