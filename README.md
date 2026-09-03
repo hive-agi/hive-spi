@@ -17,17 +17,33 @@ on stable contracts rather than concrete implementations.
 
 ## Ports
 
-`src/hive_spi/workflow/ports.cljc` defines the workflow ports:
+The seam is grouped by domain, one namespace per family. Every protocol below
+is part of the 1.0 contract.
 
-| Protocol            | Purpose                                                  |
-|---------------------|----------------------------------------------------------|
-| `IPlanCompiler`     | Lower a Plan-EDN front-end into the wf-IR node-map tree. |
-| `IPlanGraph`        | Read-only view of a Plan as a Kahn-orderable DAG.        |
-| `ITaskBoard`        | Headless task/kanban surface used by methods.            |
-| `IHeadlessDispatcher` | Spawn/dispatch on a headless backend.                  |
-| `IWorkflowStore`    | Persistence facade for authored workflow ASTs.           |
-| `IEffectHandler`    | Self-describing verb seam for routing effects.           |
-| `IIntrospectable`   | Probe for strategies and verbs.                          |
+| Namespace                     | Protocols                                                                                                                  |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `hive-spi.workflow.engine`    | `IWorkflowEngine`, `IWorkflowPersistence`                                                                                    |
+| `hive-spi.workflow.strategy`  | `IDispatchStrategy`                                                                                                          |
+| `hive-spi.memory.ports`       | `IMemoryStore` + 7 optional extensions (analytics, metadata-write, staleness, batch, routing, temporal, liveness)             |
+| `hive-spi.kg.protocol`        | `IKGStore`, `IPersistentKGStore`, `ITemporalKGStore`                                                                         |
+| `hive-spi.kg.factory`         | `IStoreFactory`                                                                                                              |
+| `hive-spi.kg.conn-init`       | `IConnInit`                                                                                                                  |
+| `hive-spi.addon.headless`     | `IHeadlessBackend`, `IHeadlessCapabilities`                                                                                  |
+| `hive-spi.addon.headless-caps`| `IHookable`, `ICheckpointable`, `ISubagentHost`, `IBudgetGuardable`                                                          |
+| `hive-spi.editor.ports`       | `IEditorPort` (required) + `IEditorBufferPort`, `IEditorDocsPort`, `IEditorDaemonPort` (optional)                             |
+| `hive-spi.cider.ports`        | `ICiderPort`                                                                                                                 |
+| `hive-spi.guard.ports`        | `IGuardRuleSource`, `IGuard`, `IGuardProjection`                                                                             |
+| `hive-spi.diag.ports`         | `IHeapProbe`, `IRetainedSizer`, `IAllocationSampler`, `IProfiler`, `ICacheProbe`, `IMemoryClinic`                             |
+| `hive-spi.lifecycle.ports`    | `IShutdownHook`, `ISweepable`, `IResourceOwner`, `IShutdownBudget`                                                            |
+| `hive-spi.embeddings.ports`   | `EmbeddingProvider`                                                                                                          |
+| `hive-spi.crypto.hash` / `.ports` | `IHasher`, `ISigner`                                                                                                     |
+| `hive-spi.log.ports`          | `ILogger`                                                                                                                    |
+| `hive-spi.time.ports`         | `IClock`                                                                                                                     |
+| `hive-spi.notify`             | `INotify`                                                                                                                    |
+| `hive-spi.slot`               | `ISlot`, `IRegistry`                                                                                                         |
+
+A protocol marked *optional* is one an implementation may leave unextended:
+callers must probe with `satisfies?` rather than assume it.
 
 ## Injection points
 
@@ -86,8 +102,26 @@ schema says.
 hive-spi/
 ├── deps.edn
 ├── .hive-project.edn
-├── src/hive_spi/slot.cljc          — mutable injection points
-├── src/hive_spi/provider.cljc      — providers as data, registry as a value
-├── src/hive_spi/workflow/ports.cljc
-└── test/hive_spi/workflow/ports_test.clj
+├── src/hive_spi/slot.cljc            (mutable injection points)
+├── src/hive_spi/provider.cljc        (providers as data, registry as a value)
+├── src/hive_spi/schema/              (capability, derive, gen, help, registry, typed)
+├── src/hive_spi/<domain>/ports.cljc  (one port family per domain, see Ports)
+└── test/hive_spi/                    (a conformance suite per port family)
 ```
+
+## Versioning
+
+From 1.0.0 this library follows [Semantic Versioning](https://semver.org).
+The public contract is: the protocol names and their method signatures, the
+schemas in `hive-spi.schema.*`, and the `slot` / `provider` injection APIs.
+
+- Removing a protocol, renaming a method, or changing an existing method's
+  arity or argument order is a **major** change.
+- Adding a protocol, or adding an *optional* extension protocol, is a **minor**
+  change: existing implementations keep satisfying what they already satisfied.
+- Adding a method to an existing protocol is a **major** change, because every
+  implementation must grow it. New behaviour arrives as a new optional
+  protocol instead.
+
+The library carries no third-party runtime dependencies, so a consumer's
+version conflicts can never come from here.
