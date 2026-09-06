@@ -41,6 +41,7 @@ is part of the 1.0 contract.
 | `hive-spi.time.ports`         | `IClock`                                                                                                                     |
 | `hive-spi.notify`             | `INotify`                                                                                                                    |
 | `hive-spi.slot`               | `ISlot`, `IRegistry`                                                                                                         |
+| `hive-spi.ingest.ports`       | `ISource` (required) + `ISourceHealth`, `IParserRule` (optional); `hive-spi.ingest.model` carries the Document they promise, `hive-spi.ingest.registry` the owner-scoped registry, `hive-spi.ingest.tck` the public conformance kit. Guide: `resources/hive_spi/writing-an-ingest-provider.md` |
 
 A protocol marked *optional* is one an implementation may leave unextended:
 callers must probe with `satisfies?` rather than assume it.
