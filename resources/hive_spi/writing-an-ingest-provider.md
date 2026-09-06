@@ -134,3 +134,14 @@ Your `deps.edn` should read:
 ```
 
 Both are MIT and on Clojars. No token, no private registry.
+
+## Shared helpers, if you want them
+
+Most providers end up wanting the same things over this seam: turn a fetched
+or read body into a Document via the parse profile its shape selects, claim a
+response shape before a generic parser sees it, parse plaintext or an IETF
+RFC. Those live in
+[`hive-ingest-kit`](https://github.com/hive-agi/hive-ingest-kit) (MIT,
+Clojars), which depends on this library and on
+[`hive-html`](https://github.com/hive-agi/hive-html) and on nothing closed.
+`hive-ingestor-web` and `hive-ingestor-rfc` are two providers written that way.
