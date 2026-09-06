@@ -1,27 +1,12 @@
 (ns hive-spi.ingest.ports
-  "Ingestion SPI: the contract between a document pipeline and the corpora
-   that feed it, as pure ports.
+  "Ingestion SPI: the ports a document pipeline consumes and a corpus provider
+   implements. Protocols only, no dependencies.
 
-   A host owns a pipeline (extract, chunk, embed, store, link). A PROVIDER
-   teaches that pipeline about one corpus: where its documents come from and
-   what shape the responses arrive in. Providers live in their own repos and
-   install themselves through hive-spi.ingest.registry, so a provider compiles
-   WITHOUT depending on the pipeline. That is the whole point of this leaf.
+   ISource is required; ISourceHealth and IParserRule are optional, so ask
+   `satisfies?` before dispatching. Providers install through
+   hive-spi.ingest.registry.
 
-   INGESTION, not any one pipeline: the host is an adapter like any other. A
-   different pipeline implementing the same registry contract can consume the
-   same providers unchanged.
-
-   Two protocols rather than one, by ISP: a corpus with no meaningful health
-   signal implements only ISource, and a consumer asks `satisfies?` before
-   reaching for ISourceHealth rather than catching an AbstractMethodError.
-
-   IParserRule is the second seam. It is separate from ISource because the
-   questions differ: ISource asks WHERE documents come from, IParserRule asks
-   WHAT SHAPE a fetched response is, and one corpus can serve several shapes.
-
-   Deliberately dependency-free: protocols only, so this namespace can be
-   required from anywhere without dragging a schema runtime behind it.")
+   Rationale: hive memory 20260906013030-2d53c103.")
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;

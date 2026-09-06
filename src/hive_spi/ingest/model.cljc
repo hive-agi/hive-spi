@@ -1,19 +1,11 @@
 (ns hive-spi.ingest.model
-  "The value objects hive-spi.ingest.ports PROMISES, and nothing else.
+  "The value objects hive-spi.ingest.ports promises: DocumentFormat and
+   Document. Smart constructors return Result rather than throwing.
 
-   A provider cannot satisfy `fetch-documents -> Result<seq<Document>>` without
-   being able to CONSTRUCT a Document, so the Document value object and the
-   format vocabulary it carries are part of the contract, not of the pipeline.
+   Chunks, ingestion results, synthesis and pipeline config are deliberately
+   absent; a provider never builds those.
 
-   What is deliberately ABSENT is the rest of the pipeline's model: chunks,
-   ingestion results, knowledge entries, synthesis results, collection and
-   pipeline config. A provider never builds any of those. They stay with the
-   pipeline that owns them, because a contract that carries its implementor's
-   internals is not a contract.
-
-   Smart constructors following Wlaschin: illegal states unrepresentable,
-   invariants enforced at creation, failures returned as Result rather than
-   thrown."
+   Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.string :as str]
             [hive-dsl.adt :as adt]
             [hive-dsl.result :as r]))
@@ -23,11 +15,7 @@
 ;; SPDX-License-Identifier: MIT
 
 (adt/defadt DocumentFormat
-  "The file formats a document can arrive in.
-
-   Closed: a pipeline must be able to dispatch extraction on this exhaustively,
-   and a format nothing can extract is not a format. Providers name one of
-   these on every Document they emit."
+  "The file formats a document can arrive in. Closed."
   :format/pdf
   :format/markdown
   :format/docx
@@ -44,11 +32,11 @@
   :format/asciidoc)
 
 (defn make-document
-  "Smart constructor for the Document value object. Returns Result<Document>.
+  "Smart constructor for Document. Returns Result<Document>.
 
-   The one value object a provider must be able to build. `format` is a
-   DocumentFormat variant; `metadata` is the provider's own map and is the
-   sanctioned place for anything this contract does not model."
+   `format` is a DocumentFormat variant. `metadata` is the provider's own map,
+   for anything this contract does not model. Errs on blank id or source, or
+   nil content."
   [{:keys [id source format content metadata]
     :or {metadata {}}}]
   (cond

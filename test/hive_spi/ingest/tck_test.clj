@@ -1,23 +1,12 @@
 (ns hive-spi.ingest.tck-test
-  "Proof that the ingestion seam works in the direction that is hard.
+  "The claim: a provider can be written, registered, discovered and proven
+   with hive-spi alone. Requires nothing from the pipeline, so a leak in the
+   seam stops this file compiling.
 
-   The easy direction is FOSS <- proprietary: a closed addon consuming open
-   libraries. The fleet has that everywhere.
+   CommunityCorpus is a stand-in third party; BrokenCorpus is the control that
+   proves the kit can fail.
 
-   This is the other one. A CLOSED pipeline, extended by a provider its author
-   could not read, could not resolve, and never needed. The falsifiable claim
-   is exactly this:
-
-     a working provider can be written, registered, discovered and PROVEN
-     correct with hive-spi alone on the classpath.
-
-   Everything below therefore requires only hive-spi.ingest.*. If any of it
-   ever needs the pipeline, the seam has leaked and this file stops compiling,
-   which is the point of putting the proof here rather than in the host.
-
-   `community-corpus` stands in for a third-party provider. `broken-corpus` is
-   the control: a kit that cannot fail is not evidence, so the same laws are
-   run against a provider that violates them and must report those violations."
+   Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-dsl.result :as r]
             [hive-spi.ingest.model :as model]

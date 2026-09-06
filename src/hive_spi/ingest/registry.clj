@@ -1,21 +1,10 @@
 (ns hive-spi.ingest.registry
-  "The injection point for ingestion providers. Owner-scoped.
+  "The injection point for ingestion providers. Owner-scoped, process-local.
 
-   A provider installs its ISource and any IParserRule here on init and
-   retracts them on shutdown; a pipeline reads what is installed. Neither
-   compiles against the other, which is the whole seam.
+   A provider registers on init and retracts on shutdown. A write by an owner
+   other than the incumbent is refused as :source-registry/owner-conflict.
 
-   OWNER-SCOPED, unlike the single-port registries elsewhere in this SPI. Two
-   differences drive it. Sources are cardinality-many, so `multi-slot` alone
-   would not say who may replace whom. And a provider that shuts down must
-   remove exactly its own registrations and no one else's, which needs the
-   owner recorded at write time. A different owner attempting to replace an
-   existing key is refused as :source-registry/owner-conflict rather than
-   silently winning, because in a shared JVM the loser of a silent race is a
-   corpus that stops answering for reasons nobody can see.
-
-   Process-local, and paired with addon lifecycle: registrations do not
-   survive a restart and are not meant to."
+   Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.string :as str]
             [hive-dsl.result :as r]))
 

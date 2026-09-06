@@ -1,40 +1,14 @@
 (ns hive-spi.ingest.tck
-  "The source conformance kit: what an ingestion provider must DO, executed.
+  "Conformance kit for ingestion providers. `conform` runs the law set against
+   a provider and returns a report; it asserts nothing and needs no test
+   framework.
 
-   `hive-spi.ingest.ports` says what a provider IS. That is a claim about
-   shape only: an ISource returning an empty vector from every call satisfies
-   the protocol and ingests nothing. This namespace discharges the other half,
-   by running a provider against laws its answers must satisfy.
+   Rungs, weakest first: :rung/descriptor (static, nothing fetched) and
+   :rung/behaviour (one fetch against fixture opts). A law whose protocol is
+   unimplemented or whose fixture is absent is SKIPPED, never passed.
+   `register-law!` extends the set.
 
-   WHY THIS IS PUBLIC, and why that is the whole point.
-
-   The pipeline that consumes providers is closed. A community author cannot
-   read it, cannot resolve it, and must never need to. So the ability to prove
-   a provider correct has to live on the PUBLIC side of the seam, next to the
-   ports, or the seam only works for people who already have the product. A
-   conformance kit shipped inside the proprietary artifact is a conformance
-   kit only employees can run.
-
-   Plain functions over plain data, on purpose. `conform` returns a report and
-   asserts NOTHING, so a provider drives it from clojure.test, from a REPL, or
-   from a CI script, and needs no test framework on its classpath to do so.
-   The only dependencies are clojure.string and hive-dsl, the same ones the
-   ports and registry already carry.
-
-   Two rungs, weakest first, and every result names the rung it came from:
-
-     :rung/descriptor  static. Identity and its stability. Nothing is fetched.
-     :rung/behaviour   one fetch against fixture opts. Result discipline,
-                       document validity, uniqueness, and limit honouring.
-
-   A law whose protocol is not implemented, or whose fixture was not supplied,
-   is SKIPPED and itemised in `:skips` with the reason. It NEVER counts as a
-   pass. A provider that runs three descriptor laws and reports `:ok true` has
-   been measured at the descriptor rung and nowhere else, and the report says
-   so.
-
-   Laws are an OPEN set: `register-law!` adds one, so a corpus contributes the
-   laws only it can state without editing this namespace."
+   Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.string :as str]
             [hive-spi.ingest.model :as model]
             [hive-spi.ingest.ports :as ports]))
@@ -44,8 +18,7 @@
 ;; SPDX-License-Identifier: MIT
 
 (def rungs
-  "Evidence rungs, weakest first. A report is only as strong as the weakest
-   rung it actually ran."
+  "Evidence rungs, weakest first."
   [:rung/descriptor :rung/behaviour])
 
 ;; =============================================================================
@@ -62,9 +35,7 @@
 ;;               FAILURE with the throwable's message, never an escape.
 
 (defn- ok-result?
-  "hive-dsl Result discriminated without requiring hive-dsl.result here: an ok
-   carries :ok, an err carries :error. Kept structural so the kit does not
-   pin a Result implementation a provider might shade."
+  "Structural Result check, so the kit pins no Result implementation."
   [x]
   (and (map? x) (contains? x :ok)))
 
@@ -83,11 +54,8 @@
 ;; =============================================================================
 
 (def default-laws
-  "The laws every ingestion provider must satisfy.
-
-   Deliberately few and deliberately about the CONTRACT, not about any corpus.
-   A law that only one corpus can state belongs in that corpus, added through
-   `register-law!`."
+  "The laws every ingestion provider must satisfy. Contract-level only; a
+   corpus-specific law is added through `register-law!`."
   [{:law/id      :source/id-is-non-blank
     :law/rung    :rung/descriptor
     :law/summary "source-id returns a non-blank string, which is the registry key."
@@ -275,21 +243,14 @@
            :reason (or (:detail out) "check returned false")})))))
 
 (defn conform
-  "Run the kit against SOURCE and return a REPORT. Asserts nothing.
+  "Run the kit against SOURCE. Returns a report; asserts nothing.
 
-   ctx supplies the fixtures the behaviour rung needs:
-     :opts        opts for the baseline fetch
-     :limit-opts  opts carrying a positive :limit
+   ctx fixtures: :opts (baseline fetch), :limit-opts (carrying a positive
+   :limit).
 
-   The report:
-     :ok        true when nothing FAILED. Skips do not make it false, and do
-                not make it meaningful either, which is what :rungs-measured
-                is for.
-     :results   every law, with its rung and status
-     :passes / :failures / :skips   itemised
-     :rungs-measured  the rungs that actually ran at least one law. A report
-                      with :ok true and only #{:rung/descriptor} here has said
-                      nothing whatever about fetching."
+   Report keys: :ok (nothing failed), :results, :passes, :failures, :skips,
+   and :rungs-measured, the rungs that actually ran a law. Read
+   :rungs-measured, not :ok, for what was proved."
   ([source] (conform source {}))
   ([source ctx]
    (let [ctx (assoc ctx :source source)
