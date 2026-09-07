@@ -19,8 +19,7 @@
    Fallible methods return a hive-dsl.result Result — `{:ok v}` / `{:error k …}`
    — never throw for environmental failure (capability absent, profiler already
    running, cache backend not loaded). They throw ex-info only on a programming
-   error (a non-conformant argument)."
-  #?(:cljs (:require-macros)))
+   error (a non-conformant argument).")
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>

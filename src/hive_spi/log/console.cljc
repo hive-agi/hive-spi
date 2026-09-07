@@ -9,11 +9,25 @@
 
 ;; SPDX-License-Identifier: MIT
 
+(defn- err-println
+  "Print ARGS as one `println` line on the host's error stream.
+
+   `*err*` is a JVM-family var; ClojureScript names the same stream
+   `*print-err-fn*`, and where the host installed none the line falls back to
+   the standard stream rather than throwing."
+  [& args]
+  #?(:clj  (binding [*out* *err*]
+             (apply println args))
+     :cljs (if *print-err-fn*
+             (binding [*print-fn* *print-err-fn*]
+               (apply println args))
+             (apply println args)))
+  nil)
+
 (defrecord ConsoleLogger []
   log/ILogger
   (log-event [_ level message]
-    (binding [*out* *err*]
-      (println (str/upper-case (name level)) message))
+    (err-println (str/upper-case (name level)) message)
     nil)
   (logger-levels [_] #{:debug :info :warn :error}))
 

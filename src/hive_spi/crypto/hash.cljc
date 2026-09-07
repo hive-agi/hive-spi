@@ -37,10 +37,14 @@
 
 (defonce ^:private host-default
   (delay
-    (try
-      (when-let [ctor (requiring-resolve 'hive-spi.crypto.hash-jvm/default-hasher)]
-        (ctor))
-      (catch #?(:clj Exception :cljs :default) _ nil))))
+    ;; `requiring-resolve` is a JVM-family primitive: ClojureScript loads its
+    ;; namespaces at compile time and has no runtime require, so there is no
+    ;; host default to resolve there.
+    #?(:clj (try
+              (when-let [ctor (requiring-resolve 'hive-spi.crypto.hash-jvm/default-hasher)]
+                (ctor))
+              (catch Exception _ nil))
+       :cljs nil)))
 
 (defonce ^:private hasher-slot
   (slot/single-slot {:validate #(satisfies? IHasher %)

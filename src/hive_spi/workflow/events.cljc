@@ -153,7 +153,7 @@
   [prev next-event]
   (let [p (variant-of prev)
         n (variant-of next-event)]
-    (boolean (contains? (get transitions p #{}) n))))
+    (contains? (get transitions p #{}) n)))
 
 (defn terminal?
   "True if the variant (or event) is a terminal lifecycle state."

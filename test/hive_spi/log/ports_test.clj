@@ -3,7 +3,8 @@
    absent — the reason hive-contracts.registry could not load on ClojureWasm.
    The port must therefore route to whatever is installed, fall back rather
    than throw, and never make a diagnostic the reason a caller fails."
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is use-fixtures]]
             [hive-spi.log.console :as console]
             [hive-spi.log.ports :as log]))
 
@@ -67,7 +68,7 @@
   (let [err (java.io.StringWriter.)]
     (binding [*err* err]
       (log/warn "no provider for" :ICodeIntel))
-    (is (= "WARN no provider for :ICodeIntel" (clojure.string/trim (str err))))))
+    (is (= "WARN no provider for :ICodeIntel" (str/trim (str err))))))
 
 (deftest an-implementation-that-is-not-a-logger-is-rejected-test
   (is (thrown? AssertionError (log/set-logger! {:not :a-logger})))

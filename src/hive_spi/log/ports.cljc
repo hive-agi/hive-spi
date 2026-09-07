@@ -35,18 +35,24 @@
     (logger-levels [this]
       "The set of level keywords this logger emits.")))
 
-(def ^:private host-default-candidates
-  ['hive-spi.log.timbre/default-logger
-   'hive-spi.log.console/default-logger])
+;; The whole host-default ladder is JVM-family only. `requiring-resolve` is the
+;; primitive that walks it, and ClojureScript resolves its namespaces at compile
+;; time and has no runtime require — so neither the candidate list nor the walk
+;; exists there, and the empty-policy yields nil.
+#?(:clj
+   (def ^:private host-default-candidates
+     ['hive-spi.log.timbre/default-logger
+      'hive-spi.log.console/default-logger]))
 
 (defonce ^:private host-default
   (delay
-    (some (fn [ctor-sym]
-            (try
-              (when-let [ctor (requiring-resolve ctor-sym)]
-                (ctor))
-              (catch #?(:clj Exception :cljs :default) _ nil)))
-          host-default-candidates)))
+    #?(:clj (some (fn [ctor-sym]
+                    (try
+                      (when-let [ctor (requiring-resolve ctor-sym)]
+                        (ctor))
+                      (catch Exception _ nil)))
+                  host-default-candidates)
+       :cljs nil)))
 
 (defonce ^:private logger-slot
   (slot/single-slot {:validate #(satisfies? ILogger %)

@@ -36,18 +36,24 @@
     (clock-iso [this]
       "The current instant as an ISO-8601 string.")))
 
-(def ^:private host-default-candidates
-  ['hive-spi.time.clock-jvm/default-clock
-   'hive-spi.time.clock-portable/default-clock])
+;; The whole host-default ladder is JVM-family only. `requiring-resolve` is the
+;; primitive that walks it, and ClojureScript resolves its namespaces at compile
+;; time and has no runtime require — so neither the candidate list nor the walk
+;; exists there, and the empty-policy yields nil.
+#?(:clj
+   (def ^:private host-default-candidates
+     ['hive-spi.time.clock-jvm/default-clock
+      'hive-spi.time.clock-portable/default-clock]))
 
 (defonce ^:private host-default
   (delay
-    (some (fn [ctor-sym]
-            (try
-              (when-let [ctor (requiring-resolve ctor-sym)]
-                (ctor))
-              (catch #?(:clj Exception :cljs :default) _ nil)))
-          host-default-candidates)))
+    #?(:clj (some (fn [ctor-sym]
+                    (try
+                      (when-let [ctor (requiring-resolve ctor-sym)]
+                        (ctor))
+                      (catch Exception _ nil)))
+                  host-default-candidates)
+       :cljs nil)))
 
 (defonce ^:private clock-slot
   (slot/single-slot {:validate #(satisfies? IClock %)
