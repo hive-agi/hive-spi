@@ -4,11 +4,11 @@
  ;; deps.edn, so a cold clone and CI resolve hive-agi artifacts identically.
  ;; Credentials come from ~/.m2/settings.xml (server id "hive-gitea").
  :mvn/repos {"hive-gitea" {:url "https://gitea.hive-mcp.com/api/packages/hive-agi/maven"}}
- :deps {org.clojure/clojure {:mvn/version "1.12.5"}
+ :deps {org.clojure/clojure {:mvn/version "1.12.6"}
 
         ;; hive-dsl — defadt (closed sum types) for WorkflowEvent ADT +
         ;; Result spec.
-        io.github.hive-agi/hive-dsl {:mvn/version "0.5.24"}
+        io.github.hive-agi/hive-dsl {:mvn/version "0.5.27"}
 
         ;; metosin/malli — schema for the WorkflowAST node map.
         metosin/malli {:mvn/version "0.20.1"}}
@@ -31,5 +31,5 @@
 
   ;; Clojars publishing. version = the repo's VERSION file.
   :build
-  {:deps {io.github.hive-agi/hive-build {:mvn/version "0.1.15"}}
+  {:deps {io.github.hive-agi/hive-build {:mvn/version "0.1.17"}}
    :ns-default hive-build.api}}}
