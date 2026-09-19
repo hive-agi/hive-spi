@@ -6,9 +6,7 @@
 
    ISP-segregated: registry and LLM-backend protocols remain in
    hive-mcp.agent.protocol (they are hive-mcp concerns).")
-;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
-;;
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 
 (defprotocol IAgent
   "Unified agent lifecycle protocol for lings"

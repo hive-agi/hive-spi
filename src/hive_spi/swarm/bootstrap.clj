@@ -12,9 +12,7 @@
      state (tasks, claims) stays in the in-memory Datascript registry.
    - FP: methods return data; side effects confined to records; -close!
      runs in halt order.")
-;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
-;;
-;; SPDX-License-Identifier: AGPL-3.0-or-later
+;; SPDX-License-Identifier: MIT
 
 (defprotocol ISwarmBootstrap
   "Durable projection of the Slave aggregate.
