@@ -20,6 +20,19 @@ instead.
 The library declares no third-party runtime dependencies, so it cannot
 contribute a version conflict to a consumer's tree.
 
+## [Unreleased]
+
+### Added
+
+- `hive-spi.swarm.dispatch-context`: `IDispatchContext` with its two values,
+  `TextContext` and `RefContext`, and `->text-context`, `->ref-context`,
+  `ensure-context`. It is the dispatch-context protocol hive-mcp carried as
+  `hive-mcp.protocols.dispatch`, made host-free: a `RefContext` takes its
+  reconstruction function as data and resolves no host namespace, and one
+  built without a function resolves to its prompt and references unexpanded.
+  `resolve-context` never throws; a throwing reconstruction is reported
+  inside the resolved prompt. A new protocol, so minor.
+
 ## [1.0.0]
 
 The seam stopped moving. Nothing in the contract changed for this release.
