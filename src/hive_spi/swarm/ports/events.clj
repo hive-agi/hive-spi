@@ -155,7 +155,8 @@
     (stop-dag! [this]
       "Stop the active scheduler, if any. Idempotent. Returns the scheduler's
        stop summary ({:stopped true :plan-id ... :completed-count ...}), or
-       nil when there is no scheduler.")
+       nil when there is no scheduler, or {:stopped false :error msg} when the
+       host failed to stop it. Never throws.")
 
     (dag-status [this]
       "A progress snapshot {:active bool :plan-id ... :max-slots ... ...}.
