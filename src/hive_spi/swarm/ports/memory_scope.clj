@@ -64,6 +64,21 @@
        Replaces hive-mcp.knowledge-graph.disc/kg-first-context (1-arity; the
        host supplies its default staleness-threshold).")))
 
+(defonce ^:private -idiscpropagation-defined? (atom false))
+
+(when (compare-and-set! -idiscpropagation-defined? false true)
+  (defprotocol IDiscPropagation
+    "OPTIONAL extension of the installed memory-scope port: the host learns
+     that a file's content changed, and spreads that to whatever knowledge
+     was grounded in it. A port that does not implement it is a host with no
+     such knowledge. Consumers call `content-changed!` below, never the
+     method, so absence needs no branch of their own."
+
+    (-content-changed! [this path cause]
+      "The content of file PATH changed; CAUSE is a keyword naming how the
+       caller knows, e.g. :hash-mismatch. The host owns what CAUSE weighs.
+       Returns a summary map of what was propagated, or nil. Never throws.")))
+
 ;;; ============================================================================
 ;;; Noop — the degraded host: 'global' everywhere, no staleness knowledge
 ;;; ============================================================================
@@ -106,3 +121,16 @@
   "True iff a port is explicitly installed. The Noop does not count."
   []
   (slot/present? port-slot))
+
+(defn content-changed!
+  "Tell the host that file PATH's content changed, CAUSE naming how the caller
+   knows (e.g. :hash-mismatch). Answers the host's propagation summary, or nil
+   when the active port has no IDiscPropagation (the Noop, or a host with no
+   knowledge store) or when the host's propagation throws: a claim release
+   must never fail because knowledge could not be updated."
+  [path cause]
+  (let [port (get-memory-scope)]
+    (when (satisfies? IDiscPropagation port)
+      (try
+        (-content-changed! port path cause)
+        (catch Throwable _ nil)))))

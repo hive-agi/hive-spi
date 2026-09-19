@@ -32,6 +32,14 @@ contribute a version conflict to a consumer's tree.
   built without a function resolves to its prompt and references unexpanded.
   `resolve-context` never throws; a throwing reconstruction is reported
   inside the resolved prompt. A new protocol, so minor.
+- `hive-spi.swarm.ports.memory-scope`: `IDiscPropagation`, an optional
+  extension of the installed memory-scope port, and `content-changed!`, the
+  function consumers call. A swarm that sees a claimed file's content change
+  tells the host with a cause keyword (`:hash-mismatch`); the host owns what
+  that cause weighs and what it spreads to. `content-changed!` answers nil
+  for the Noop, for a host that lacks the extension and for a host whose
+  propagation throws. `IProjectScope`, `IDiscStaleness` and `noop` are
+  untouched, so every existing implementation keeps working. Minor.
 
 ## [1.0.0]
 
