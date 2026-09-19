@@ -15,6 +15,9 @@
      :generator        test.check generator                     [hive-spi.schema.gen]
      :cases            (fn [seed n] {label input}) reproducible [hive-spi.schema.gen]
 
+   A projection that throws is omitted from the bundle and its exception is
+   recorded under :projection-errors {k ex} (key absent when all succeed).
+
    Coercion applies malli json + string transformers (JSON scalars -> EDN:
    \"30\"->30, \"kw\"->:kw). All artifacts resolve :hive/* named refs through
    the registry."
@@ -70,7 +73,9 @@
 
 (defn compile-op
   "Derive the single-source op bundle from one malli schema: the core artifacts
-   below plus one entry per registered projection. See ns docstring."
+   below plus one entry per registered projection. A projection that throws is
+   omitted and its exception lands under :projection-errors {k ex}, so the core
+   artifacts never depend on a projection. See ns docstring."
   [?schema]
   (let [s        (reg/schema ?schema)
         validate (m/validator s)
@@ -83,7 +88,11 @@
                                        {:error :schema/invalid
                                         :explanation (me/humanize (m/explain s d))})))))]
     (reduce-kv
-     (fn [bundle k project] (assoc bundle k (project s)))
+     (fn [bundle k project]
+       (try
+         (assoc bundle k (project s))
+         (catch #?(:clj Exception :cljs :default) e
+           (assoc-in bundle [:projection-errors k] e))))
      {:schema         s
       :input-schema   (input-schema s)
       :validate       validate

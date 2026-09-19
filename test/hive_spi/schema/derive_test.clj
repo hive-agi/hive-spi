@@ -74,6 +74,24 @@
   (testing "deregistering removes it from subsequent bundles"
     (is (not (contains? (der/compile-op args-schema) ::answer)))))
 
+(deftest a-failing-projection-cannot-take-the-core-bundle-down
+  (testing "a projection that throws is omitted and recorded; coercion survives"
+    (der/register-projection! ::boom (fn [_] (throw (ex-info "boom" {:type ::boom}))))
+    (try
+      (let [op (der/compile-op args-schema)]
+        (is (not (contains? op ::boom)))
+        (is (= ::boom (-> op :projection-errors ::boom ex-data :type)))
+        (is (= {:query "m" :limit 9} ((:coerce op) {:query "m" :limit "9"}))))
+      (finally (der/deregister-projection! ::boom))))
+  (testing "an un-generatable leaf costs the :generator facet only"
+    (let [op (der/compile-op [:map [:f [:fn fn?]]])]
+      (is (= {:f inc} ((:coerce op) {:f inc})))
+      (is (not (contains? op :generator)))
+      (is (= :malli.generator/no-generator
+             (-> op :projection-errors :generator ex-data :type)))))
+  (testing "a bundle whose projections all succeed carries no :projection-errors"
+    (is (not (contains? (der/compile-op args-schema) :projection-errors)))))
+
 (deftest bundle-includes-test-projection
   (testing "loading hive-spi.schema.gen extends the bundle with the test facet"
     (let [op (der/compile-op args-schema)]
