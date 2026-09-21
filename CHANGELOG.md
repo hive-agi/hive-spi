@@ -40,6 +40,41 @@ contribute a version conflict to a consumer's tree.
   for the Noop, for a host that lacks the extension and for a host whose
   propagation throws. `IProjectScope`, `IDiscStaleness` and `noop` are
   untouched, so every existing implementation keeps working. Minor.
+- `hive-spi.memory.conformance`: the executable IMemoryStore contract, as data
+  (`cases`) with two projections, `defconformance` (one deftest per case) and
+  `run-conformance`. Covers every IMemoryStore method, every documented
+  query-entries opt, the expiry and duplicate paths, the degraded semantic
+  branch, and each role protocol when the store satisfies it.
+- `hive-spi.memory.stub`: atom-backed reference store that passes the suite;
+  an optional `:embedder` turns its semantic branch on.
+- `hive-spi.memory.entry`: pure entry helpers (type tokens, ISO parsing,
+  expiry predicates, reference filter, ordering, projection).
+- `hive-spi.memory.ports/degraded-search-result`: the value search-similar
+  returns when supports-semantic-search? is false.
+- `hive-spi.catchup.registry`: a contribution registry for catchup blocks.
+  A contributor (a host domain or an addon) registers
+  `{:block/id kw :block/fn (fn [ctx]) :block/order int}`; the host calls
+  `compose` with a context and receives `{:blocks {id value} :failed {id
+  message}}`, blocks run in `:block/order` and a throwing block never aborts
+  the others. Minor: a new seam, nothing existing changed.
+- `hive-spi.kanban`: the kanban port. `IKanbanRead` (`list-tasks`,
+  `get-task`) and `IKanbanWrite` (`transition!`, `create-task!`), the malli
+  schemas for their arguments and results (`Task`, `ListQuery`,
+  `TransitionRequest`, `CreateRequest`, `TransitionResult`, `CreateResult`),
+  and `conformance`, the cases every provider and every double must pass.
+  `hive-spi.kanban.registry` keys the two roles separately and fronts them
+  with a facade that degrades to Noops (reads empty, writes
+  `{:err {:error :kanban/provider-unavailable}}`) when nothing is
+  registered. `hive-spi.kanban.stub` is a recording, atom-backed double held
+  to the same conformance. hive-mcp carries this port host-local as
+  `hive-mcp.spi.kanban`; this is its library home. New protocols, so minor.
+
+### Changed
+
+- IMemoryStore method docstrings now state the contract the conformance suite
+  pins: add-entry! returns the id, cleanup-expired! returns
+  `{:count n :deleted-ids [...]}`, search-similar returns a sequential and the
+  degraded value when unsupported, :type compares by name, :tags are a set.
 
 ## [1.0.0]
 
