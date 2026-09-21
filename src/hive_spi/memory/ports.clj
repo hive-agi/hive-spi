@@ -24,46 +24,61 @@
 
 (defonce ^:private -imemorystore-defined? (atom false))
 
-(when (compare-and-set! -imemorystore-defined? false true)
-  (defprotocol IMemoryStore
-    "Storage backend protocol for memory entries."
+(defprotocol IMemoryStore
+    "Storage backend protocol for memory entries.
+
+     Entry shape (open map): :id string, :type keyword or string (compared by
+     name), :content string or map, :tags collection of strings (set
+     semantics), :content-hash string, :project-id string, :duration keyword,
+     :created / :updated / :expires ISO-8601 strings. Stores stamp :id,
+     :created and :updated when absent and preserve them when given.
+
+     hive-spi.memory.conformance is the executable form of this contract;
+     hive-spi.memory.stub is its reference implementation."
 
     (connect! [this config]
-      "Initialize connection to the storage backend.")
+      "Initialize connection to the storage backend.
+       Returns a map with a boolean :success?; connected? is true afterwards
+       on success.")
 
     (disconnect! [this]
-      "Close connection and release backend resources.")
+      "Close connection and release backend resources. connected? is false
+       afterwards. Return value is unspecified.")
 
     (connected? [this]
-      "Check if this store has an active connection.")
+      "Boolean: does this store hold an active connection.")
 
     (health-check [this]
-      "Verify backend health and reachability.")
+      "Map with a boolean :healthy? describing backend reachability.")
 
     (add-entry! [this entry]
-      "Add a new memory entry to the store.")
+      "Add ENTRY, minting an :id when it has none. Returns the id string.")
 
     (get-entry [this id]
-      "Get a memory entry by ID.")
+      "The entry map under ID, or nil when unknown.")
 
     (update-entry! [this id updates]
-      "Update an existing entry's attributes.")
+      "Merge UPDATES into the entry under ID, preserving fields not named.
+       Returns a truthy value on success.")
 
     (delete-entry! [this id]
-      "Delete an entry from the store.")
+      "Remove the entry under ID. Returns truthy; an unknown ID does not
+       throw.")
 
     (query-entries [this opts]
-      "Query entries with filtering.
+      "Query entries with filtering. Returns a sequential of entry maps.
 
        Opts (map):
-         :type             — entry type filter (e.g. \"note\", \"axiom\")
+         :type             — entry type filter, keyword or string, by name
          :project-id       — single project scope
          :project-ids      — collection of project scopes (OR)
          :tags             — required tags (AND)
-         :exclude-tags     — excluded tags
-         :limit            — max rows returned
-         :include-expired? — include expired entries (default false)
-         :output-fields    — projection of field names
+         :exclude-tags     — entries carrying any of these are dropped
+         :limit            — max rows returned (default 100)
+         :include-expired? — include entries past :expires (default false)
+         :output-fields    — projection: entry-key names as strings; rows
+                             carry only those keys (:id always survives).
+                             Without it rows carry the full entry.
          :order-by         — [field direction] e.g. [:created :desc] | [:created :asc].
                              When set, returned rows are sorted by `field` in
                              `direction`. Backends without server-side ordering
@@ -72,29 +87,47 @@
                              top-N. Unspecified ⇒ backend-native scan order.")
 
     (search-similar [this query-text opts]
-      "Semantic similarity search.")
+      "Semantic similarity search. Returns a sequential of entry maps, best
+       first, each optionally carrying a numeric :score; honours :limit,
+       :type, :project-ids and :exclude-tags from OPTS.
+
+       Degraded contract: when supports-semantic-search? is false this
+       returns `degraded-search-result`, an empty vector whose metadata
+       names the reason under :hive-spi.memory/degraded. It never throws
+       and never fabricates scores.")
 
     (supports-semantic-search? [this]
-      "Check if this store supports semantic search.")
+      "Boolean: can this store answer search-similar with real similarity
+       (an embedding lane is wired).")
 
     (cleanup-expired! [this]
-      "Delete all expired entries.")
+      "Delete every entry past its :expires, sparing `protected-ids`.
+       Returns {:count n :deleted-ids [id ...]}. Idempotent.")
 
     (entries-expiring-soon [this days opts]
-      "Get entries expiring within the given number of days.")
+      "Sequential of entries whose :expires lies within DAYS days from now,
+       narrowed by :project-id in OPTS when given.")
 
     (find-duplicate [this type content-hash opts]
-      "Find entry with matching content-hash.")
+      "The entry with TYPE (by name) and CONTENT-HASH, narrowed by
+       :project-id in OPTS when given; nil when none.")
 
     (store-status [this]
-      "Get store status and configuration info.")
+      "Map describing the store; :backend is a string naming it.")
 
     (reset-store! [this]
-      "Reset the store to empty state.")))
+      "Remove every entry. Returns truthy; the store stays usable."))
 
 ;;; ============================================================================
 ;;; IMemoryStoreWithAnalytics — optional analytics tracking
 ;;; ============================================================================
+
+(defn degraded-search-result
+  "The value search-similar returns when supports-semantic-search? is false:
+   an empty vector carrying WHY (a map, e.g. {:reason :no-embedder}) under
+   the :hive-spi.memory/degraded metadata key."
+  [why]
+  (with-meta [] {:hive-spi.memory/degraded why}))
 
 (defonce ^:private -iwithanalytics-defined? (atom false))
 
