@@ -233,6 +233,24 @@
 ;;; IMemoryStoreTemporal — bitemporal query extension
 ;;; ============================================================================
 
+;;; ============================================================================
+;;; IMemoryStoreRoutingEmbedText — relocation for content the backend cannot embed
+;;; ============================================================================
+
+(defonce ^:private -iroutingembed-defined? (atom false))
+
+(when (compare-and-set! -iroutingembed-defined? false true)
+  (defprotocol IMemoryStoreRoutingEmbedText
+    "Optional extension to IMemoryStoreWithRouting for stores whose stored
+     :content is not what may be embedded (a decorator that encrypts at
+     rest). relocate-entry! re-vectorizes from the stored content; this
+     variant takes the text to embed from the caller."
+
+    (relocate-entry-with! [this id opts]
+      "relocate-entry!, embedding (:embed-text opts) in place of the stored
+       :content. The embed text is transient: it is never written to the
+       record. Same return shape as relocate-entry!.")))
+
 (defonce ^:private -iwithtemporal-defined? (atom false))
 
 (when (compare-and-set! -iwithtemporal-defined? false true)

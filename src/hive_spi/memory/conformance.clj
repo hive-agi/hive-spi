@@ -30,7 +30,8 @@
   (:require [clojure.test :as t :refer [is testing]]
             [hive-spi.memory.entry :as entry]
             [hive-spi.memory.ids :as ids]
-            [hive-spi.memory.ports :as ports])
+            [hive-spi.memory.ports :as ports]
+            [hive-spi.memory.decorate :as decorate])
   (:import [java.time Duration Instant]))
 
 ;; SPDX-License-Identifier: MIT
@@ -368,6 +369,21 @@
              (ports/add-entry! s (make-entry {:type :convention}))
              (is (nil? (ports/find-duplicate s :convention
                                              (ids/content-hash (str "other " (token))) {})))))}
+
+   ;; ---- embed-text ---------------------------------------------------------
+   {:id :embed-text :section :embed-text
+    :doc "A store declaring the :embed-text capability never persists :embed-text and, with semantic search on, embeds it in place of :content."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (when (decorate/embed-text-capable? (ports/store-status s))
+               (let [hidden (make-entry {:content "aaaaaaaa" :embed-text "zzzzzzzz"})
+                     plain  (make-entry {:content "aaaaaaaa"})]
+                 (seed! s [hidden plain])
+                 (is (not (contains? (ports/get-entry s (:id hidden)) :embed-text)))
+                 (is (= "aaaaaaaa" (:content (ports/get-entry s (:id hidden)))))
+                 (when (ports/supports-semantic-search? s)
+                   (is (= (:id hidden) (:id (first (ports/search-similar s "zzzzzzzz" {:limit 2})))))
+                   (is (= (:id plain) (:id (first (ports/search-similar s "aaaaaaaa" {:limit 2}))))))))))}
 
    ;; ---- reset -------------------------------------------------------------
    {:id :reset-empties :section :reset
