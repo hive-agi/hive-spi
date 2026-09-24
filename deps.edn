@@ -31,5 +31,6 @@
 
   ;; Clojars publishing. version = the repo's VERSION file.
   :build
-  {:deps {io.github.hive-agi/hive-build {:mvn/version "0.1.22"}}
-   :ns-default hive-build.api}}}
+  {:deps {io.github.hive-agi/hive-build {:mvn/version "0.1.23"}}
+   :ns-default hive-build.api}
+  :provided {:extra-deps {com.taoensso/timbre {:mvn/version "6.8.0"} org.typedclojure/typed.clj.checker {:mvn/version "1.4.0"}}}}}

@@ -8,7 +8,7 @@
    - Coordinator protection (when-not-coordinator) so test fixtures do not
      corrupt production state."
 
-  (:require [taoensso.timbre :as log]))
+  (:require [hive-spi.log.ports :as log]))
 ;; SPDX-License-Identifier: MIT
 
 ;;; =============================================================================
