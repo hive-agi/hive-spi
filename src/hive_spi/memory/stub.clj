@@ -34,11 +34,12 @@
 
 (defn- put!
   "Normalize ENTRY, embed it when an embedder is configured, store it and
-   return the stored entry."
+   return the stored entry. A transient :embed-text is what gets embedded
+   when given, and it is never stored."
   [state entry]
-  (let [e   (entry/normalize entry)
+  (let [e   (entry/normalize (dissoc entry :embed-text))
         f   (embedder state)
-        txt (entry/embed-text (:content e))
+        txt (entry/embed-text (or (:embed-text entry) (:content e)))
         emb (when (and (fn? f) txt) (f txt))]
     (swap! state (fn [st]
                    (cond-> (assoc-in st [:entries (:id e)] e)
@@ -130,7 +131,8 @@
      :configured?      true
      :connected?       (boolean (:connected? @state))
      :entry-count      (count (:entries @state))
-     :supports-search? (fn? (embedder state))})
+     :supports-search? (fn? (embedder state))
+     :capabilities     [:embed-text]})
 
   (reset-store! [_]
     (swap! state assoc :entries {} :embeddings {})
