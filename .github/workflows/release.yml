@@ -1,15 +1,15 @@
 name: release
 
-# CADENCE, not release-on-merge. hive-spi carries fan-in 14; its cost to the
-# fleet is fan-in x releases, and publishing on every src push made the second
-# factor the dominant one (10 releases in 90 days). Merges now accumulate; a
-# release is an act someone takes, on the schedule ./freeze-policy.edn declares.
-# The quarterly cron is the floor, not a promise — freeze-check still refuses a
-# run that lands inside the window without a declared exception.
+# Patch-bump and publish when a push to main changes the library, like the
+# rest of the fleet. README / CI / test-only commits do not mint a version.
+# freeze-check still refuses a release that removes or narrows a published name.
 on:
-  schedule:
-    # 04:00 UTC on the first day of Jan / Apr / Jul / Oct.
-    - cron: '0 4 1 1,4,7,10 *'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'resources/**'
+      - 'deps.edn'
   workflow_dispatch:
     inputs:
       level:
