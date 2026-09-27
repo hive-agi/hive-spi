@@ -24,7 +24,8 @@
 
 (defonce ^:private -imemorystore-defined? (atom false))
 
-(defprotocol IMemoryStore
+(when (compare-and-set! -imemorystore-defined? false true)
+  (defprotocol IMemoryStore
     "Storage backend protocol for memory entries.
 
      Entry shape (open map): :id string, :type keyword or string (compared by
@@ -116,7 +117,7 @@
       "Map describing the store; :backend is a string naming it.")
 
     (reset-store! [this]
-      "Remove every entry. Returns truthy; the store stays usable."))
+      "Remove every entry. Returns truthy; the store stays usable.")))
 
 ;;; ============================================================================
 ;;; IMemoryStoreWithAnalytics — optional analytics tracking
@@ -199,6 +200,24 @@
       "Fetch multiple entries by ID in a single backend round-trip.
        Returns a seq of entry maps (missing IDs omitted). Order is not
        guaranteed — callers must index by :id.")))
+
+;;; ============================================================================
+;;; IMemoryStoreScan — optional complete enumeration
+;;; ============================================================================
+
+(defonce ^:private -iwithscan-defined? (atom false))
+
+(when (compare-and-set! -iwithscan-defined? false true)
+  (defprotocol IMemoryStoreScan
+    "Optional extension for walking every entry a store holds. query-entries
+     is capped (:limit) and cannot say whether its page was the whole store;
+     a migration that must touch every row needs this instead."
+
+    (scan-ids [this opts]
+      "Every entry id in the store, each once, in no particular order. Opts:
+       :include-expired? (default false). Complete or it throws: a backend
+       that cannot read part of the store raises, never returns a shorter
+       list.")))
 
 ;;; ============================================================================
 ;;; IMemoryStoreWithRouting — optional multi-container routing
