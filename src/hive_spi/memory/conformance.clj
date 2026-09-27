@@ -487,6 +487,21 @@
                    (is (= #{(:id a) (:id b)} (ids-of rows))))
                  (is (empty? (ports/get-entries s [])))))))}
 
+   {:id :scan :section :roles
+    :doc "IMemoryStoreScan: scan-ids lists every live id exactly once, and expired ids only with :include-expired?."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (when (satisfies? ports/IMemoryStoreScan s)
+               (is (empty? (ports/scan-ids s {})) "an empty store scans to nothing")
+               (let [live    (repeatedly 5 make-entry)
+                     expired (make-entry {:expires "2000-01-01T00:00:00Z"})]
+                 (seed! s (conj (vec live) expired))
+                 (let [ids (ports/scan-ids s {})]
+                   (is (= (count ids) (count (distinct ids))) "no id twice")
+                   (is (= (set (map :id live)) (set ids))))
+                 (is (= (set (map :id (conj (vec live) expired)))
+                        (set (ports/scan-ids s {:include-expired? true}))))))))}
+
    {:id :routing :section :roles
     :doc "IMemoryStoreWithRouting: target-collection-for is nil or a string; relocate-entry! of an unknown id reports :moved? false."
     :run (fn [ctx]

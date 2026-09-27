@@ -196,6 +196,14 @@
   (get-entries [_ ids]
     (into [] (keep #(get-in @state [:entries %])) (distinct ids)))
 
+  ports/IMemoryStoreScan
+
+  (scan-ids [_ opts]
+    (let [now (Instant/now)]
+      (into [] (comp (filter #(entry/matches? % (select-keys opts [:include-expired?]) now))
+                     (map :id))
+            (entries state))))
+
   ports/IMemoryStoreLiveness
 
   (-probe! [_] (boolean (:connected? @state)))
