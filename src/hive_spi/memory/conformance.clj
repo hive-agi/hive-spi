@@ -31,6 +31,7 @@
             [hive-spi.memory.entry :as entry]
             [hive-spi.memory.ids :as ids]
             [hive-spi.memory.ports :as ports]
+            [hive-spi.memory.contract :as contract]
             [hive-spi.memory.decorate :as decorate])
   (:import [java.time Duration Instant]))
 
@@ -189,6 +190,36 @@
              (is (tags= ["a" "b"] (:tags got)))
              (is (type= :note (:type got)))
              (is (= "p-upd" (:project-id got)))))}
+
+   {:id :write-returns-honour-contract :section :crud
+    :doc "add-entry! answers the id, update-entry! the merged entry carrying its :id, delete-entry! true: each a :landed outcome of hive-spi.memory.contract."
+    :run (fn [ctx]
+           (let [s   (fresh ctx)
+                 e   (make-entry {:content "before" :tags ["a"]})
+                 add (ports/add-entry! s e)
+                 upd (ports/update-entry! s (:id e) {:content "after"})
+                 del (ports/delete-entry! s (:id e))]
+             (is (= :landed (contract/outcome :add-entry! add)) (pr-str (contract/explain :add-entry! add)))
+             (is (= (:id e) add))
+             (is (= :landed (contract/outcome :update-entry! upd)) (pr-str (contract/explain :update-entry! upd)))
+             (is (= (:id e) (:id upd)))
+             (is (= "after" (:content upd)))
+             (is (= :landed (contract/outcome :delete-entry! del)) (pr-str (contract/explain :delete-entry! del)))))}
+
+   {:id :update-unknown-is-absent :section :crud
+    :doc "update-entry! of an unknown id answers nil and mints nothing."
+    :run (fn [ctx]
+           (let [s  (fresh ctx)
+                 id (str "missing-" (token))
+                 r  (ports/update-entry! s id {:content "ghost"})]
+             (is (= :absent (contract/outcome :update-entry! r)) (pr-str r))
+             (is (nil? (ports/get-entry s id)))))}
+
+   {:id :delete-unknown-is-true :section :crud
+    :doc "delete-entry! of an unknown id answers true."
+    :run (fn [ctx]
+           (let [r (ports/delete-entry! (fresh ctx) (str "missing-" (token)))]
+             (is (= :landed (contract/outcome :delete-entry! r)) (pr-str r))))}
 
    {:id :delete-then-get-is-nil :section :crud
     :doc "delete-entry! returns truthy and the entry is unreadable afterwards."
@@ -450,7 +481,9 @@
                  (ports/add-entry! s e)
                  (let [r   (ports/update-metadata! s (:id e) {:tags ["a" "z"] :project-id "p-meta2"})
                        got (ports/get-entry s (:id e))]
-                   (is (map? r))
+                   (is (= :landed (contract/outcome :update-metadata! r))
+                       (pr-str (contract/explain :update-metadata! r)))
+                   (is (= (:id e) (:id r)))
                    (is (tags= ["a" "z"] (:tags got)))
                    (is (= "p-meta2" (:project-id got)))
                    (is (= "meta" (:content got))))
