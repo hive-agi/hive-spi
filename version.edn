@@ -3,4 +3,5 @@
  :license  {:name "MIT" :url "https://opensource.org/licenses/MIT"}
  :scm-url  "https://github.com/hive-agi/hive-spi"
  :src-dirs ["src" "resources"] :publish  :clojars-aot
- :aot/source-namespaces [hive-spi.log.timbre hive-spi.schema.typed-ann]}
+ :aot/source-namespaces [hive-spi.log.timbre hive-spi.schema.typed-ann]
+ :aot/ship-sources true}
