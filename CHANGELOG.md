@@ -22,6 +22,38 @@ contribute a version conflict to a consumer's tree.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-10-01
+
+### Added
+
+- `hive-spi.memory.ports`: `IMemoryStoreScan`, a port for complete
+  enumeration of a memory store, with matching conformance checks and stub
+  support. `IMemoryStore` is now guarded against redefinition on reload.
+
+## [1.4.1] - 2026-09-24
+
+No contract change. The jar is published to Clojars AOT-compiled
+(`:clojars-aot`), with optional integrations shipped as source.
+`hive-spi.swarm.guards` logs through `hive-spi.log.ports` instead of
+requiring timbre.
+
+## [1.4.0] - 2026-09-24
+
+### Added
+
+- `hive-spi.memory.conformance`, `hive-spi.memory.entry`,
+  `hive-spi.memory.stub`: an `IMemoryStore` conformance suite, entry helpers
+  and an atom-backed stub.
+- `hive-spi.catchup.registry`: a catchup block contribution registry.
+- `hive-spi.kanban`, `hive-spi.kanban.registry`, `hive-spi.kanban.stub`: the
+  `IKanbanRead` / `IKanbanWrite` port, its registry and a recording stub.
+- `hive-spi.memory.decorate`: a store decorator chain in the memory registry,
+  and `:embed-text` in the store contract.
+- `hive-spi.memory.ports`: `IMemoryStoreRoutingEmbedText`, relocation that
+  embeds the caller's text.
+
+## [1.3.0] - 2026-09-20
+
 ### Added
 
 - `hive-spi.swarm.dispatch-context`: `IDispatchContext` with its two values,
@@ -75,6 +107,57 @@ contribute a version conflict to a consumer's tree.
   pins: add-entry! returns the id, cleanup-expired! returns
   `{:count n :deleted-ids [...]}`, search-similar returns a sequential and the
   degraded value when unsupported, :type compares by name, :tags are a set.
+
+### Fixed
+
+- `hive-spi.schema.derive`: a throwing projection no longer takes the
+  compile-op bundle down.
+
+## [1.2.0] - 2026-09-19
+
+### Added
+
+- `hive-spi.vector.ports`, `hive-spi.vector.memory`: a vendor-neutral port
+  for a named vector collection.
+- `hive-spi.swarm.protocol`, `hive-spi.swarm.bootstrap`: the swarm registry
+  and bootstrap protocols.
+- `hive-spi.swarm.agent`, `hive-spi.swarm.agent-types`,
+  `hive-spi.swarm.spawn-modes`: `IAgent` and the agent-type / spawn-mode
+  registries.
+- `hive-spi.swarm.ports.events`, `hive-spi.swarm.ports.memory-scope`,
+  `hive-spi.swarm.ports.agent-context`, `hive-spi.swarm.ports.ling-host`:
+  host ports for events, scope, agent context and ling host.
+- `hive-spi.swarm.ports.messaging`: a platform-agnostic messaging port with
+  inbox sinks.
+- `hive-spi.swarm.guards`: the swarm process-role guards.
+- `hive-spi.swarm.ling-strategy`, `hive-spi.swarm.spawn-store`,
+  `hive-spi.swarm.ledger`: the ling-strategy, spawn-store and ledger
+  contracts.
+
+### Fixed
+
+- `stop-dag!` returns the scheduler's stop summary, and reports a host
+  failure as `{:stopped false :error}`.
+
+## [1.1.1] - 2026-09-14
+
+### Added
+
+- `hive-spi.vessel`: `IRenderer`, a presentation-only renderer port.
+
+### Fixed
+
+- The `:cljs` arm of seven `.cljc` namespaces named JVM-only primitives
+  (`requiring-resolve`, `format`, `*err*`, `java.time`, `System`); each now
+  loads on ClojureScript.
+
+## [1.1.0] - 2026-09-06
+
+### Added
+
+- `hive-spi.ingest.model`, `hive-spi.ingest.ports`,
+  `hive-spi.ingest.registry`, `hive-spi.ingest.tck`: the seam that lets a
+  closed ingest pipeline take community providers.
 
 ## [1.0.0]
 
