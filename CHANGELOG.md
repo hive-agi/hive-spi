@@ -56,6 +56,8 @@ requiring timbre.
 
 ### Added
 
+- `hive-spi.native`: portable native ports, hive-cabi/v1 schemas, loader registry and conformance observations.
+
 - `hive-spi.swarm.dispatch-context`: `IDispatchContext` with its two values,
   `TextContext` and `RefContext`, and `->text-context`, `->ref-context`,
   `ensure-context`. It is the dispatch-context protocol hive-mcp carried as
