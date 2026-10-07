@@ -5,17 +5,23 @@
 
 (def capability :native/loader)
 
-(defprotocol INativePort
-  "One opened library speaking hive-cabi/v1."
-  (library [p] "Logical library name used as the tool prefix.")
-  (host [p] "Transport keyword used to open this library.")
-  (call-op [p op request] "Call an operation with a request map; return an envelope, never throw.")
-  (close! [p] "Release resources idempotently; return nil."))
+(defonce ^:private -native-port-defined? (atom false))
 
-(defprotocol INativeLoader
-  "Host-specific factory for native ports."
-  (transports [l] "Set of transport keywords usable on this host.")
-  (open-port [l library-spec] "Return an INativePort; never throw, including when unavailable."))
+(when (compare-and-set! -native-port-defined? false true)
+  (defprotocol INativePort
+    "One opened library speaking hive-cabi/v1."
+    (library [p] "Logical library name used as the tool prefix.")
+    (host [p] "Transport keyword used to open this library.")
+    (call-op [p op request] "Call an operation with a request map; return an envelope, never throw.")
+    (close! [p] "Release resources idempotently; return nil.")))
+
+(defonce ^:private -native-loader-defined? (atom false))
+
+(when (compare-and-set! -native-loader-defined? false true)
+  (defprotocol INativeLoader
+    "Host-specific factory for native ports."
+    (transports [l] "Set of transport keywords usable on this host.")
+    (open-port [l library-spec] "Return an INativePort; never throw, including when unavailable.")))
 
 (defn ok?
   "True only for a successful native envelope."
