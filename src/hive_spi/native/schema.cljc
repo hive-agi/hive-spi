@@ -22,6 +22,15 @@
   "An ordered catalog of operations, returned as the value of `ops`."
   [:vector OpEntry])
 
+(def tool-char?
+  "Set of the chars an MCP tool name may carry: [A-Za-z0-9_-]. Portable (chars on JVM, 1-char strings on cljs)."
+  (set "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"))
+
+(def ToolName
+  "An MCP tool name: 1 to 64 of [A-Za-z0-9_-]. Native op names may carry dots and must be projected into this set."
+  [:and :string [:fn {:error/message "tool name must be 1-64 of [A-Za-z0-9_-]"}
+                 (fn [s] (and (<= 1 (count s) 64) (every? tool-char? s)))]])
+
 (def Transport
   "Supported native host transport identifiers."
   [:enum :jvm/ffm :node/ffi :node/wasm :cljrs/dlopen :cljw/wasi :subprocess])
@@ -29,6 +38,7 @@
 (def ^:private artifact
   [:map [:shared {:optional true} :string]
    [:js {:optional true} :string]
+   [:exec {:optional true} :string]
    [:wasi {:optional true} :string]])
 
 (def LibrarySpec

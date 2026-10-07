@@ -23,6 +23,23 @@
    :rel (fn [input output] (= input output))
    :mutation true})
 
+(defn- tool-name-of [[library op]] (ports/tool-name library op))
+
+(hst/deftrifecta-from-schema tool-name
+  hive-spi.native.contract-test/tool-name-of
+  {:in [:tuple :string :string]
+   :out schema/ToolName
+   :rel (fn [[library op] output]
+          (and (<= (count output) 64)
+               (= (count output) (min 64 (+ 1 (count library) (count op))))))
+   :mutation true})
+
+(deftest tool-name-projects-dotted-craft-ops
+  (is (= "photocraft_engine_execute" (ports/tool-name "photocraft" "engine.execute")))
+  (is (= "vectorcraft_ui_tool_list" (ports/tool-name "vectorcraft" "ui.tool.list")))
+  (is (= "autopdf_audit" (ports/tool-name "autopdf" "audit")))
+  (is (schema/valid? schema/ToolName (ports/tool-name "x" (apply str (repeat 100 \.))))))
+
 (deftest unavailable-port-law
   (let [p (ports/unavailable-port "missing" "mount hive-native")
         result (ports/call-op p "ops" {})]

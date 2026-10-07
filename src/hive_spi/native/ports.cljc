@@ -1,5 +1,6 @@
 (ns hive-spi.native.ports
-  "Portable operation-and-JSON native seam; hosts implement transport, not addon policy.")
+  "Portable operation-and-JSON native seam; hosts implement transport, not addon policy."
+  (:require [hive-spi.native.schema :as schema]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -32,6 +33,12 @@
   "Build a failure envelope; optional error type identifies a host failure."
   ([message] {:ok false :error message})
   ([message error-type] {:ok false :error message :error/type error-type}))
+
+(defn tool-name
+  "Project a library and native op name into an MCP tool name: \"<library>_<op>\",
+   every char outside [A-Za-z0-9_-] replaced by _, truncated to 64 chars."
+  [library op]
+  (apply str (take 64 (map #(if (schema/tool-char? %) % \_) (str library "_" op)))))
 
 (defn unavailable-port
   "Return a safe, inert port when a library cannot be opened. Calls never throw."
