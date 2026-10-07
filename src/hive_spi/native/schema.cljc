@@ -53,3 +53,21 @@
   "True when a value conforms to a native contract schema."
   [schema value]
   (m/validate schema value))
+
+(defn ->library-spec
+  "Validate and return a library declaration or throw with malli explanation."
+  [spec]
+  (if (valid? LibrarySpec spec)
+    spec
+    (throw (ex-info "Invalid native library spec"
+                    {:error :native/invalid-library-spec
+                     :explanation (m/explain LibrarySpec spec)}))))
+
+(defn ->envelope
+  "Validate and return a decoded native envelope or throw with malli explanation."
+  [envelope]
+  (if (valid? Envelope envelope)
+    envelope
+    (throw (ex-info "Invalid native envelope"
+                    {:error :native/malformed
+                     :explanation (m/explain Envelope envelope)}))))
