@@ -24,7 +24,7 @@
 
 (defonce ^:private -ilogger-defined? (atom false))
 
-(when (compare-and-set! -ilogger-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ilogger-defined? false true))
   (defprotocol ILogger
     "A diagnostic sink."
 

@@ -16,7 +16,7 @@
 
 (defonce ^:private -ishutdownhook-defined? (atom false))
 
-(when (compare-and-set! -ishutdownhook-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ishutdownhook-defined? false true))
   (defprotocol IShutdownHook
     "Participation in ordered system shutdown. Registered implementations are
      invoked in ascending `shutdown-priority` order."
@@ -35,7 +35,7 @@
 
 (defonce ^:private -isweepable-defined? (atom false))
 
-(when (compare-and-set! -isweepable-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -isweepable-defined? false true))
   (defprotocol ISweepable
     "Participation in periodic background maintenance. The orchestrator calls
      `sweep!` at each implementation's declared cadence."
@@ -55,7 +55,7 @@
 
 (defonce ^:private -iresourceowner-defined? (atom false))
 
-(when (compare-and-set! -iresourceowner-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -iresourceowner-defined? false true))
   (defprotocol IResourceOwner
     "Per-entity resource ownership. An implementation represents one logical
      entity and releases everything it owns when that entity is reaped."
@@ -74,7 +74,7 @@
 
 (defonce ^:private -ishutdownbudget-defined? (atom false))
 
-(when (compare-and-set! -ishutdownbudget-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ishutdownbudget-defined? false true))
   (defprotocol IShutdownBudget
     "Optional per-hook wall-clock budget. A hook that does not extend this
      protocol runs under the shutdown sequence's default budget."

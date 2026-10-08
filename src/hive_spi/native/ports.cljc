@@ -8,7 +8,7 @@
 
 (defonce ^:private -native-port-defined? (atom false))
 
-(when (compare-and-set! -native-port-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -native-port-defined? false true))
   (defprotocol INativePort
     "One opened library speaking hive-cabi/v1."
     (library [p] "Logical library name used as the tool prefix.")
@@ -18,7 +18,7 @@
 
 (defonce ^:private -native-loader-defined? (atom false))
 
-(when (compare-and-set! -native-loader-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -native-loader-defined? false true))
   (defprotocol INativeLoader
     "Host-specific factory for native ports."
     (transports [l] "Set of transport keywords usable on this host.")

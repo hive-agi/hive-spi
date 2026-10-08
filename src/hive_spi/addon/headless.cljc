@@ -14,7 +14,7 @@
 
 (defonce ^:private -iheadlessbackend-defined? (atom false))
 
-(when (compare-and-set! -iheadlessbackend-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -iheadlessbackend-defined? false true))
   (defprotocol IHeadlessBackend
     "A headless session backend. Implementations that are addons must also
      satisfy IAddon; in-tree backends need not."
@@ -52,7 +52,7 @@
 
 (defonce ^:private -iheadlesscapabilities-defined? (atom false))
 
-(when (compare-and-set! -iheadlesscapabilities-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -iheadlesscapabilities-defined? false true))
   (defprotocol IHeadlessCapabilities
     "Optional capability declaration, used for registry queries and feature
      gating."

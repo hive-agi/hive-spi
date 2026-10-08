@@ -30,7 +30,7 @@
 
 (defonce ^:private -ieditorport-defined? (atom false))
 
-(when (compare-and-set! -ieditorport-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ieditorport-defined? false true))
   (defprotocol IEditorPort
     "Editor substrate port — evaluation, messaging and liveness. The minimum
      an adapter must implement to be registered."
@@ -53,7 +53,7 @@
 
 (defonce ^:private -ieditorbufferport-defined? (atom false))
 
-(when (compare-and-set! -ieditorbufferport-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ieditorbufferport-defined? false true))
   (defprotocol IEditorBufferPort
     "Buffer and file surface — optional. An adapter whose editor has no buffer
      model omits this protocol entirely."
@@ -96,7 +96,7 @@
 
 (defonce ^:private -ieditordocsport-defined? (atom false))
 
-(when (compare-and-set! -ieditordocsport-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ieditordocsport-defined? false true))
   (defprotocol IEditorDocsPort
     "The editor's own help/introspection system — optional."
 
@@ -123,7 +123,7 @@
 
 (defonce ^:private -ieditordaemonport-defined? (atom false))
 
-(when (compare-and-set! -ieditordaemonport-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ieditordaemonport-defined? false true))
   (defprotocol IEditorDaemonPort
     "Editor daemon/instance lifecycle — optional. Adapters that talk to a
      single always-on editor process omit this protocol.
