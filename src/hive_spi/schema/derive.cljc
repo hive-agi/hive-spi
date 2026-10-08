@@ -91,7 +91,7 @@
      (fn [bundle k project]
        (try
          (assoc bundle k (project s))
-         (catch #?(:clj Exception :cljs :default) e
+         (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) e
            (assoc-in bundle [:projection-errors k] e))))
      {:schema         s
       :input-schema   (input-schema s)

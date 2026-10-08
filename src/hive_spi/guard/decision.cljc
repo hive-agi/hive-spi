@@ -79,13 +79,13 @@
 (defn valid?
   "True if `x` conforms to `GuardDecision`. Pure; never throws."
   [x]
-  (try (m/validate GuardDecision x) (catch #?(:clj Exception :cljs :default) _ false)))
+  (try (m/validate GuardDecision x) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ false)))
 
 (defn explain
   "Return a malli explanation map for `x`, or nil if it conforms.
    Pure; never throws."
   [x]
-  (try (m/explain GuardDecision x) (catch #?(:clj Exception :cljs :default) _ nil)))
+  (try (m/explain GuardDecision x) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ nil)))
 
 (defn allow
   "An `:allow` decision. Optional `opts` may carry :guard/rule-id and

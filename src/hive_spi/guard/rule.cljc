@@ -88,13 +88,13 @@
 (defn valid?
   "True if `x` conforms to `GuardRule`. Pure; never throws."
   [x]
-  (try (m/validate GuardRule x) (catch #?(:clj Exception :cljs :default) _ false)))
+  (try (m/validate GuardRule x) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ false)))
 
 (defn explain
   "Return a malli explanation map for `x`, or nil if it conforms.
    Pure; never throws."
   [x]
-  (try (m/explain GuardRule x) (catch #?(:clj Exception :cljs :default) _ nil)))
+  (try (m/explain GuardRule x) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ nil)))
 
 (defn enabled?
   "True unless `rule` explicitly sets `:rule/enabled?` false."

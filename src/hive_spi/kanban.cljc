@@ -124,7 +124,7 @@
   {:case case-id :ok? (boolean ok?) :detail detail})
 
 (defn- attempt [thunk]
-  (try (thunk) (catch #?(:clj Throwable :cljs :default) t t)))
+  (try (thunk) (catch #?(:clj Throwable :cljs :default :cljr Exception :lpy python/Exception :default :default) t t)))
 
 (defn conformance
   "Run the contract cases against `read-impl` and `write-impl` and return a

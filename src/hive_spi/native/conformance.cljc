@@ -12,7 +12,7 @@
   [port {:keys [op request expected] :as expectation}]
   (let [actual (try
                  (ports/call-op port op request)
-                 (catch #?(:clj Throwable :cljs :default) e
+                 (catch #?(:clj Throwable :cljs :default :cljr Exception :lpy python/Exception :default :default) e
                    (ports/failure (str e) :native/failed)))]
     (assoc expectation
            :actual actual

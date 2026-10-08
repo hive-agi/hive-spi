@@ -101,13 +101,13 @@
 (defn valid?
   "True if `x` conforms to `GuardEvent`. Pure; never throws."
   [x]
-  (try (m/validate GuardEvent x) (catch #?(:clj Exception :cljs :default) _ false)))
+  (try (m/validate GuardEvent x) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ false)))
 
 (defn explain
   "Return a malli explanation map for `x`, or nil if it conforms.
    Pure; never throws."
   [x]
-  (try (m/explain GuardEvent x) (catch #?(:clj Exception :cljs :default) _ nil)))
+  (try (m/explain GuardEvent x) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ nil)))
 
 (defn guard-event
   "Build a validated GuardEvent from a partial map.
