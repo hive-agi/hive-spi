@@ -24,7 +24,8 @@
 
 (defonce ^:private -imemorystore-defined? (atom false))
 
-(defprotocol IMemoryStore
+(when (compare-and-set! -imemorystore-defined? false true)
+  (defprotocol IMemoryStore
     "Storage backend protocol for memory entries.
 
      Entry shape (open map): :id string, :type keyword or string (compared by
@@ -52,18 +53,23 @@
       "Map with a boolean :healthy? describing backend reachability.")
 
     (add-entry! [this entry]
-      "Add ENTRY, minting an :id when it has none. Returns the id string.")
+      "Add ENTRY, minting an :id when it has none. Returns the id string;
+       a write accepted for replay or refused answers the queued / failure
+       map of hive-spi.memory.contract/AddResult.")
 
     (get-entry [this id]
       "The entry map under ID, or nil when unknown.")
 
     (update-entry! [this id updates]
       "Merge UPDATES into the entry under ID, preserving fields not named.
-       Returns a truthy value on success.")
+       Returns the merged entry map (carrying ID as :id) on success, nil
+       when ID is unknown, never the id alone. Queued and refused writes
+       answer the maps of hive-spi.memory.contract/UpdateResult.")
 
     (delete-entry! [this id]
-      "Remove the entry under ID. Returns truthy; an unknown ID does not
-       throw.")
+      "Remove the entry under ID. Returns true, an unknown ID included; it
+       does not throw. Queued and refused writes answer the maps of
+       hive-spi.memory.contract/DeleteResult.")
 
     (query-entries [this opts]
       "Query entries with filtering. Returns a sequential of entry maps.
@@ -116,7 +122,7 @@
       "Map describing the store; :backend is a string naming it.")
 
     (reset-store! [this]
-      "Remove every entry. Returns truthy; the store stays usable."))
+      "Remove every entry. Returns truthy; the store stays usable.")))
 
 ;;; ============================================================================
 ;;; IMemoryStoreWithAnalytics — optional analytics tracking
@@ -164,7 +170,8 @@
        expected to read the existing record (including its :embedding
        vector), merge `updates`, and upsert with the retrieved vector.
 
-       Returns the merged entry on success, nil if id not found.")))
+       Returns the merged entry on success, nil if id not found; the
+       contract is hive-spi.memory.contract/UpdateResult.")))
 
 ;;; ============================================================================
 ;;; IMemoryStoreWithStaleness — optional staleness tracking
@@ -199,6 +206,24 @@
       "Fetch multiple entries by ID in a single backend round-trip.
        Returns a seq of entry maps (missing IDs omitted). Order is not
        guaranteed — callers must index by :id.")))
+
+;;; ============================================================================
+;;; IMemoryStoreScan — optional complete enumeration
+;;; ============================================================================
+
+(defonce ^:private -iwithscan-defined? (atom false))
+
+(when (compare-and-set! -iwithscan-defined? false true)
+  (defprotocol IMemoryStoreScan
+    "Optional extension for walking every entry a store holds. query-entries
+     is capped (:limit) and cannot say whether its page was the whole store;
+     a migration that must touch every row needs this instead."
+
+    (scan-ids [this opts]
+      "Every entry id in the store, each once, in no particular order. Opts:
+       :include-expired? (default false). Complete or it throws: a backend
+       that cannot read part of the store raises, never returns a shorter
+       list.")))
 
 ;;; ============================================================================
 ;;; IMemoryStoreWithRouting — optional multi-container routing
