@@ -51,7 +51,7 @@
     (string? x)
     (try
       (r/ok (edn/read-string {:readers {} :eof nil} x))
-      (catch #?(:clj Exception :cljs :default) e
+      (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) e
         (r/err :edn/unreadable {:input x :cause (ex-message e)})))
 
     (nil? x)  (r/ok nil)

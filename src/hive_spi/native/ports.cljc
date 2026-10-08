@@ -47,5 +47,5 @@
    (reify INativePort
      (library [_] library-name)
      (host [_] :native/unavailable)
-     (call-op [_ _ _] (failure message :native/unavailable))
+     (call-op [_ _op _request] (failure message :native/unavailable))
      (close! [_] nil))))

@@ -51,7 +51,7 @@
   (clear! [_]
     (when-let [impl @state]
       (when teardown
-        (try (teardown impl) (catch #?(:clj Exception :cljs :default) _ nil))))
+        (try (teardown impl) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ nil))))
     (reset! state nil)
     nil))
 
