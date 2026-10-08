@@ -21,7 +21,7 @@
 
 (defonce ^:private -iciderport-defined? (atom false))
 
-(when (compare-and-set! -iciderport-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -iciderport-defined? false true))
   (defprotocol ICiderPort
     "CIDER/REPL tool-surface port — one method per `code :cider` verb."
 
