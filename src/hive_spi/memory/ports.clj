@@ -211,6 +211,21 @@
 ;;; IMemoryStoreScan — optional complete enumeration
 ;;; ============================================================================
 
+(defonce ^:private -iwithbatchwrite-defined? (atom false))
+
+(when (compare-and-set! -iwithbatchwrite-defined? false true)
+  (defprotocol IMemoryStoreBatchWrite
+    "Optional extension for batched writes: many add-entry! calls folded
+     into as few backend round-trips as the store can manage."
+
+    (add-entries! [this entries]
+      "Add every entry of ENTRIES (a sequential of entry maps), minting an
+       :id where absent. Returns a vector with one result per input entry,
+       in input order; each result is what add-entry! would answer for that
+       entry (an id string, or a queued / failure map). One entry failing
+       MUST NOT lose the others' results. The contract is
+       hive-spi.memory.contract/AddEntriesResult.")))
+
 (defonce ^:private -iwithscan-defined? (atom false))
 
 (when (compare-and-set! -iwithscan-defined? false true)

@@ -196,6 +196,11 @@
   (get-entries [_ ids]
     (into [] (keep #(get-in @state [:entries %])) (distinct ids)))
 
+  ports/IMemoryStoreBatchWrite
+
+  (add-entries! [_ es]
+    (mapv #(:id (put! state %)) es))
+
   ports/IMemoryStoreScan
 
   (scan-ids [_ opts]
