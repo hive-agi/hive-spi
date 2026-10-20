@@ -19,7 +19,7 @@
 
 (defonce ^:private -isigner-defined? (atom false))
 
-(when (compare-and-set! -isigner-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -isigner-defined? false true))
   (defprotocol ISigner
     "Detached signatures over bytes."
 

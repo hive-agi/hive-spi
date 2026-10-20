@@ -32,7 +32,7 @@
 (defn- attempt
   "Value of `(f)`, or nil when it throws."
   [f]
-  (try (f) (catch #?(:clj Throwable :cljs :default) _ nil)))
+  (try (f) (catch #?(:clj Throwable :cljs :default :cljr Exception :lpy python/Exception :default :default) _ nil)))
 
 (defn- param-name
   "Sortable name of a param key: \"qn\" for :qn, \"a/b\" for :a/b, `str` for

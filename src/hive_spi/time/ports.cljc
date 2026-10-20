@@ -23,7 +23,7 @@
 
 (defonce ^:private -iclock-defined? (atom false))
 
-(when (compare-and-set! -iclock-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -iclock-defined? false true))
   (defprotocol IClock
     "The host's view of the current time."
 

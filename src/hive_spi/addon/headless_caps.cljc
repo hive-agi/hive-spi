@@ -14,7 +14,7 @@
 
 (defonce ^:private -ihookable-defined? (atom false))
 
-(when (compare-and-set! -ihookable-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ihookable-defined? false true))
   (defprotocol IHookable
     "A backend that accepts hook injection: gating hooks, pre-tool-use
      validation, post-tool-use logging."
@@ -30,7 +30,7 @@
 
 (defonce ^:private -icheckpointable-defined? (atom false))
 
-(when (compare-and-set! -icheckpointable-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -icheckpointable-defined? false true))
   (defprotocol ICheckpointable
     "A backend that can save session state and return to it."
 
@@ -44,7 +44,7 @@
 
 (defonce ^:private -isubagenthost-defined? (atom false))
 
-(when (compare-and-set! -isubagenthost-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -isubagenthost-defined? false true))
   (defprotocol ISubagentHost
     "A backend that supports native subagent definitions: nested agent
      hierarchies declared by the caller."
@@ -60,7 +60,7 @@
 
 (defonce ^:private -ibudgetguardable-defined? (atom false))
 
-(when (compare-and-set! -ibudgetguardable-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ibudgetguardable-defined? false true))
   (defprotocol IBudgetGuardable
     "A backend that enforces a per-session spending limit, interrupting the
      session when it is exceeded."

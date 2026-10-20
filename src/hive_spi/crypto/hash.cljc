@@ -23,7 +23,7 @@
 
 (defonce ^:private -ihasher-defined? (atom false))
 
-(when (compare-and-set! -ihasher-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -ihasher-defined? false true))
   (defprotocol IHasher
     "Cryptographic digests over text."
 

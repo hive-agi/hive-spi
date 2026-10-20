@@ -13,7 +13,7 @@
 
 (defonce ^:private -embeddingprovider-defined? (atom false))
 
-(when (compare-and-set! -embeddingprovider-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -embeddingprovider-defined? false true))
   (defprotocol EmbeddingProvider
     "Turns text into embedding vectors."
 

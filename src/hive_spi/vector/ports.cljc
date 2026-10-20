@@ -27,7 +27,7 @@
 
 (defonce ^:private -vectorcollectionstore-defined? (atom false))
 
-(when (compare-and-set! -vectorcollectionstore-defined? false true)
+(when #?(:cljr true :default (compare-and-set! -vectorcollectionstore-defined? false true))
   (defprotocol IVectorCollectionStore
     "A backend holding named collections of embedded records."
 
