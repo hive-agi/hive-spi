@@ -18,15 +18,15 @@
 
 (conformance/defconformance stub
   #(stub/create-store {})
-  {:connect-config {} :seal-ready? true})
+  {:connect-config {} :seal-ready? true :degraded-reason? true})
 
 (conformance/defconformance stub-semantic
   #(stub/create-store {:embedder bag-embedder})
-  {:connect-config {} :seal-ready? true})
+  {:connect-config {} :seal-ready? true :degraded-reason? true})
 
 (deftest run-conformance-reports-every-case
   (let [r (conformance/run-conformance #(stub/create-store {})
-                                       {:connect-config {} :seal-ready? true})]
+                                       {:connect-config {} :seal-ready? true :degraded-reason? true})]
 
     (testing "every case ran, none skipped"
       (is (= conformance/case-ids (:ran r)))
