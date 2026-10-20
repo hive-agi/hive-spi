@@ -504,6 +504,77 @@
                  (do (is (empty? r))
                      (is (not-any? :score r)))))))}
 
+   ;; Negative branches of search-similar: each holds for a store with and
+   ;; without semantic search (the unsupported answer is an empty sequential,
+   ;; which satisfies every bound below), and each fails a store that throws,
+   ;; ignores a bound, or returns what no longer exists.
+   {:id :search-similar-empty-store :section :semantic
+    :doc "search-similar over a store holding no entries answers an empty sequential and does not throw."
+    :run (fn [ctx]
+           (let [r (ports/search-similar (fresh ctx) "anything at all" {:limit 5})]
+             (is (sequential? r))
+             (is (empty? r))))}
+
+   {:id :search-similar-blank-query :section :semantic
+    :doc "a blank query answers a sequential of entry maps within :limit and does not throw."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (seed! s [(make-entry {:content "blank query target"})])
+             (doseq [q ["" "   "]]
+               (let [r (ports/search-similar s q {:limit 5})]
+                 (is (sequential? r) (pr-str q))
+                 (is (<= (count r) 5) (pr-str q))
+                 (is (every? map? r) (pr-str q))))))}
+
+   {:id :search-similar-honours-limit :section :semantic
+    :doc ":limit caps the row count of search-similar."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (seed! s (repeatedly 4 #(make-entry {:content (str "limit probe " (token))})))
+             (is (<= (count (ports/search-similar s "limit probe" {:limit 1})) 1))
+             (is (<= (count (ports/search-similar s "limit probe" {:limit 2})) 2))))}
+
+   {:id :search-similar-honours-filters :section :semantic
+    :doc ":type, :project-ids and :exclude-tags narrow search-similar: no returned row violates a filter."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (seed! s [(make-entry {:type :note :project-id "ps1" :tags ["keep"]
+                                    :content (str "filter probe " (token))})
+                       (make-entry {:type :convention :project-id "ps2" :tags ["keep"]
+                                    :content (str "filter probe " (token))})
+                       (make-entry {:type :note :project-id "ps2" :tags ["skip"]
+                                    :content (str "filter probe " (token))})])
+             (let [by-type (ports/search-similar s "filter probe" {:type :convention :limit 10})
+                   by-proj (ports/search-similar s "filter probe" {:project-ids ["ps1"] :limit 10})
+                   by-excl (ports/search-similar s "filter probe" {:exclude-tags ["skip"] :limit 10})]
+               (is (every? #(type= :convention (:type %)) by-type))
+               (is (every? #(= "ps1" (:project-id %)) by-proj))
+               (is (not-any? #(contains? (set (map str (:tags %))) "skip") by-excl)))))}
+
+   {:id :search-similar-skips-deleted :section :semantic
+    :doc "an entry deleted from the store is absent from search-similar."
+    :run (fn [ctx]
+           (let [s    (fresh ctx)
+                 gone (make-entry {:content (str "deletion probe " (token))})
+                 stay (make-entry {:content (str "deletion probe " (token))})]
+             (seed! s [gone stay])
+             (ports/delete-entry! s (:id gone))
+             (is (not (contains? (ids-of (ports/search-similar s "deletion probe" {:limit 10}))
+                                 (:id gone))))))}
+
+   {:id :search-similar-degraded-reason :section :semantic :requires-opt :degraded-reason?
+    :doc "Opt-in with {:degraded-reason? true}: a store without semantic search answers `degraded-search-result`, an empty sequential naming why under :hive-spi.memory/degraded metadata; a store with it carries no degraded marker."
+    :run (fn [ctx]
+           (when (get-in ctx [:opts :degraded-reason?])
+             (let [s (fresh ctx)
+                   r (ports/search-similar s "degraded probe" {:limit 3})
+                   d (get (meta r) :hive-spi.memory/degraded)]
+               (if (ports/supports-semantic-search? s)
+                 (is (nil? d))
+                 (do (is (empty? r))
+                     (is (map? d))
+                     (is (some? (:reason d))))))))}
+
    ;; ---- role protocols ----------------------------------------------------
    {:id :analytics :section :roles
     :doc "IMemoryStoreWithAnalytics: log-access! counts, record-feedback! counts, get-helpfulness-ratio shape."
