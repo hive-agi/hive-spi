@@ -19,6 +19,10 @@
      :connect-config  map handed to connect! by the lifecycle case; when the
                       key is absent that case is skipped
      :skip            {case-id \"reason\"} cases to skip, reported by name
+     :seal-ready?     true opts into the :seal-ready case, which FAILS a store
+                      lacking any of `seal-requirements`; `seal-readiness`
+                      answers the same question as data
+
 
    IMemoryStore cases run for every store. Role-protocol cases run only when
    (satisfies? Proto store) and pass vacuously otherwise. The semantic case
@@ -100,6 +104,57 @@
         f (query-fixture)]
     (seed! s (vals f))
     [s (into {} (map (fn [[k e]] [k (:id e)])) f)]))
+
+(def seal-requirements
+  "What a store must offer before the seal layer can wrap it, keyed by the
+   name `seal-readiness` reports under :missing.
+     :embed-text  store-status declares the :embed-text capability, so a
+                  sealed entry is embedded from its plaintext while only
+                  ciphertext is persisted
+     :scan        the store satisfies IMemoryStoreScan, so existing entries
+                  can be enumerated for seal migration and rekeying
+   The plain conformance cases for both run only when the store declares
+   them, so a store that declares neither passes them vacuously; this map is
+   what turns that silence into a reported gap."
+  {:embed-text {:reason "store-status :capabilities lacks :embed-text"
+                :ready? (fn [_store status] (decorate/embed-text-capable? status))}
+   :scan       {:reason "store does not satisfy hive-spi.memory.ports/IMemoryStoreScan"
+                :ready? (fn [store _status] (satisfies? ports/IMemoryStoreScan store))}})
+
+(defn seal-readiness
+  "Seal readiness of STORE: {:seal-ready? bool :missing #{k ...} :reasons {k why}},
+   :missing naming every key of `seal-requirements` the store fails. Reads
+   store-status once and writes nothing. The 2-arity takes a store-status map
+   already in hand and calls nothing on STORE."
+  ([store] (seal-readiness store (ports/store-status store)))
+  ([store status]
+   (let [missing (into (sorted-set)
+                       (keep (fn [[k {:keys [ready?]}]]
+                               (when-not (ready? store status) k)))
+                       seal-requirements)]
+     {:seal-ready? (empty? missing)
+      :missing     missing
+      :reasons     (into (sorted-map)
+                         (map (fn [k] [k (get-in seal-requirements [k :reason])]))
+                         missing)})))
+
+(defn seal-readiness-report
+  "Seal readiness of every store in STORES, a map of name -> store:
+   {name {:seal-ready? :missing :reasons}}."
+  [stores]
+  (into (sorted-map) (map (fn [[n s]] [n (seal-readiness s)])) stores))
+
+(defn assert-seal-ready
+  "clojure.test assertion that STORE is seal-ready; the failure message names
+   every missing requirement and why. Returns the `seal-readiness` map. A
+   first-party backend suite calls this (or opts into the :seal-ready case
+   with {:seal-ready? true}) so a seal gap fails its build."
+  [store]
+  (let [r (seal-readiness store)]
+    (is (:seal-ready? r)
+        (str "store is not seal-ready, missing " (pr-str (:missing r))
+             ": " (pr-str (:reasons r))))
+    r))
 
 ;;; ============================================================================
 ;;; Cases
@@ -562,7 +617,15 @@
            (let [s (fresh ctx)]
              (when (satisfies? ports/IMemoryStoreLiveness s)
                (is (ports/-probe! s))
-               (is (boolean? (ports/-await-reconnect! s 10))))))}])
+               (is (boolean? (ports/-await-reconnect! s 10))))))}
+
+   ;; ---- seal readiness ----------------------------------------------------
+   {:id :seal-ready :section :seal :requires-opt :seal-ready?
+    :doc "Opt-in with {:seal-ready? true}: the store declares :embed-text and satisfies IMemoryStoreScan, so the seal layer can wrap it. Unlike :embed-text and :scan, this FAILS a store that declares neither."
+    :run (fn [ctx]
+           (when (get-in ctx [:opts :seal-ready?])
+             (assert-seal-ready (fresh ctx))))}])
+
 
 (def case-ids
   "The case ids, in run order."
