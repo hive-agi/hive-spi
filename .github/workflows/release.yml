@@ -19,6 +19,8 @@ on:
         type: choice
         options: [patch, minor, major]
 
+# One release at a time per branch. Queued runs wait, they are never cancelled:
+# a cancelled run could die between the tag push and the deploy.
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -29,11 +31,34 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Check out the branch TIP, not the commit that fired the event. Two
+      # merges back to back queue two runs; the second must build on top of
+      # the first run's release commit, and a run pinned to its event sha
+      # would push a commit that is behind main.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
-      - uses: DeLaGuardo/setup-clojure@13.0
+      # A queued run can find its merge already published by the run before
+      # it (that run released the tip). Releasing again would mint an empty
+      # version, so a push-triggered run stops when no published path changed
+      # since the last release tag reachable from HEAD. A manual dispatch is
+      # an explicit request and always releases.
+      - name: Anything to release
+        id: pending
+        run: |
+          LAST=$(git describe --tags --abbrev=0 --match 'v*' HEAD 2>/dev/null || true)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$LAST" ] \
+             || ! git diff --quiet "$LAST" HEAD -- src resources deps.edn; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "nothing changed under src/resources/deps.edn since $LAST; not releasing"
+          fi
+
+      - if: steps.pending.outputs.release == 'true'
+        uses: DeLaGuardo/setup-clojure@13.0
         with:
           cli: latest
 
@@ -41,20 +66,33 @@ jobs:
       # immutable: refusing here costs a red run, refusing after deploy is
       # impossible. Reads ./freeze-policy.edn.
       - name: Freeze check
+        if: steps.pending.outputs.release == 'true'
         run: clojure -T:build freeze-check
 
       # Same reasoning as the freeze gate, for correctness rather than
       # cadence. This repo has no other workflow, so nothing else stands
       # between a red commit and an immutable pom.
       - name: Run tests
+        if: steps.pending.outputs.release == 'true'
         run: clojure -M:test
 
       - name: Bump version
+        if: steps.pending.outputs.release == 'true'
         # The scheduled run has no inputs and falls back to :patch, so the
         # quarterly cadence is unchanged.
-        run: clojure -T:build bump :level :${{ inputs.level || 'patch' }}
+        run: |
+          clojure -T:build bump :level :${{ inputs.level || 'patch' }}
+          # A tag that exists but is not on this branch (left behind by an
+          # earlier run that tagged and then failed to push the branch) must
+          # not wedge every later release: step past it. Clojars is immutable,
+          # so reusing the number is never an option anyway.
+          while git rev-parse -q --verify "refs/tags/v$(cat VERSION)" >/dev/null; do
+            echo "::warning::tag v$(cat VERSION) already exists; bumping past it"
+            clojure -T:build bump :level :patch
+          done
 
       - name: Commit and tag
+        if: steps.pending.outputs.release == 'true'
         run: |
           VER=$(cat VERSION)
           git config user.name  "hive-ci"
@@ -65,9 +103,13 @@ jobs:
           # Annotated: `git push --follow-tags` ignores lightweight tags,
           # which would publish the artifact and silently drop the tag.
           git tag -a "v$VER" -m "release $VER"
-          git push --follow-tags
+          # Atomic: the branch and the tag land together or not at all. A
+          # plain `git push --follow-tags` pushed the tag, then had the branch
+          # rejected, which left an orphan tag that failed every later run.
+          git push --atomic origin "HEAD:refs/heads/${GITHUB_REF_NAME}" "refs/tags/v$VER"
 
       - name: Deploy
+        if: steps.pending.outputs.release == 'true'
         env:
           CLOJARS_USERNAME: ${{ secrets.CLOJARS_USERNAME }}
           CLOJARS_PASSWORD: ${{ secrets.CLOJARS_DEPLOY_TOKEN }}
