@@ -122,3 +122,13 @@
                     {:error       :guard/invalid-event
                      :event       m
                      :explanation (explain m)}))))
+
+;;; ===========================================================================
+;;; Contracts
+;;; ===========================================================================
+
+(m/=> phase? [:=> [:cat :any] :boolean])
+(m/=> tool-phase? [:=> [:cat :any] :boolean])
+(m/=> valid? [:=> [:cat :any] :boolean])
+(m/=> explain [:=> [:cat :any] [:maybe :map]])
+(m/=> guard-event [:=> [:cat [:maybe :map]] GuardEvent])

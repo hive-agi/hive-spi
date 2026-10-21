@@ -135,3 +135,15 @@
                       {:error       :guard/invalid-rule
                        :rule        m
                        :explanation (explain r)})))))
+
+;;; ===========================================================================
+;;; Contracts
+;;; ===========================================================================
+
+(m/=> valid? [:=> [:cat :any] :boolean])
+(m/=> explain [:=> [:cat :any] [:maybe :map]])
+(m/=> enabled? [:=> [:cat [:maybe :map]] :boolean])
+(m/=> applies-to-harness? [:=> [:cat [:maybe :map] :any] :boolean])
+(m/=> applies-to-phase? [:=> [:cat [:maybe :map] :any] :boolean])
+(m/=> candidate? [:=> [:cat [:maybe :map] [:maybe :map]] :boolean])
+(m/=> guard-rule [:=> [:cat [:maybe :map]] GuardRule])

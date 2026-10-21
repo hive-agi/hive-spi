@@ -148,3 +148,33 @@
               nil
               decisions)
       (allow)))
+
+;;; ===========================================================================
+;;; Contracts
+;;; ===========================================================================
+
+(def DecisionOpts
+  "The optional provenance a constructor merges into its decision. Open: a
+   projection may add vendor fields."
+  [:maybe [:map {:closed false}
+           [:guard/rule-id {:optional true} [:maybe :keyword]]
+           [:guard/citations {:optional true} Citations]]])
+
+(m/=> valid? [:=> [:cat :any] :boolean])
+(m/=> explain [:=> [:cat :any] [:maybe :map]])
+;; `allow` merges OPTS last, so an opts map naming its own :guard/verdict wins;
+;; the result is a verdict-carrying map, a GuardDecision only for clean opts.
+(m/=> allow [:function
+             [:=> [:cat] GuardDecision]
+             [:=> [:cat DecisionOpts] [:map [:guard/verdict :keyword]]]])
+(m/=> warn [:function
+            [:=> [:cat :string] GuardDecision]
+            [:=> [:cat :string DecisionOpts] GuardDecision]])
+(m/=> deny [:function
+            [:=> [:cat :string] GuardDecision]
+            [:=> [:cat :string DecisionOpts] GuardDecision]])
+(m/=> denied? [:=> [:cat [:maybe :map]] :boolean])
+(m/=> rank [:=> [:cat [:maybe :map]] [:int {:min 0 :max 2}]])
+;; Returns one of its inputs (or a bare allow), so it promises no more than
+;; the decisions it was handed.
+(m/=> strongest [:=> [:cat [:maybe [:sequential [:maybe :map]]]] :map])
