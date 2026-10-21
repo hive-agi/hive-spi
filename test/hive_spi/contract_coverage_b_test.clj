@@ -8,10 +8,15 @@
 
 (def paths
   ["src/hive_spi/addon"
+   "src/hive_spi/cider"
    "src/hive_spi/crypto"
    "src/hive_spi/diag"
+   "src/hive_spi/editor"
    "src/hive_spi/embeddings"
    "src/hive_spi/guard"
+   "src/hive_spi/ingest"
+   "src/hive_spi/kg"
+   "src/hive_spi/lifecycle"
    "src/hive_spi/log"
    "src/hive_spi/time"
    "src/hive_spi/vector"
@@ -25,7 +30,20 @@
     total satisfies? predicate; pinned by a golden in engine-test."
    'hive-spi.workflow.engine/persistent-engine?
    "Same require-free leaf as workflow-engine?; a total satisfies? predicate
-    pinned by the same golden."})
+    pinned by the same golden."
+   'hive-spi.kg.protocol/kg-store?
+   "hive-spi.kg.protocol is declared a no-deps leaf (its ns docstring); a
+    total satisfies? predicate."
+   'hive-spi.kg.protocol/persistent-store?
+   "No-deps kg.protocol leaf; a total satisfies? predicate."
+   'hive-spi.kg.protocol/temporal-store?
+   "No-deps kg.protocol leaf; a total satisfies? predicate."
+   'hive-spi.kg.protocol/noop-store
+   "No-deps kg.protocol leaf; returns the NoopKGStore record, exercised by
+    hive-spi.kg.factory-test."
+   'hive-spi.kg.conn-init/atom-conn-init
+   "hive-spi.kg.conn-init is declared a no-deps leaf; returns a reified
+    IConnInit (a Java object with no data shape)."})
 
 (deftest-contract-coverage contract-coverage-b
   {:paths paths :exempt exempt})

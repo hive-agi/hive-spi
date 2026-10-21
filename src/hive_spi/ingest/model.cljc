@@ -8,7 +8,8 @@
    Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.string :as str]
             [hive-dsl.adt :as adt]
-            [hive-dsl.result :as r]))
+            [hive-dsl.result :as r]
+            [malli.core :as m]))
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
@@ -55,3 +56,33 @@
            :document/format   format
            :document/content  content
            :document/metadata metadata})))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Document
+  "The value object `make-document` builds."
+  [:map
+   [:document/id [:and :string [:re #"\S"]]]
+   [:document/source [:and :string [:re #"\S"]]]
+   [:document/format :any]
+   [:document/content some?]
+   [:document/metadata :any]])
+
+(def DocumentResult
+  [:or
+   [:map [:ok Document]]
+   [:map [:error [:= :ingest/invalid-document]]
+    [:field [:enum :id :source :content]]
+    [:reason :string]]])
+
+;; Fields are read with destructuring, so any map (or nil) is accepted; a
+;; non-string id/source is a caller error str/blank? throws on.
+(m/=> make-document [:=> [:cat [:maybe [:map
+                                        [:id {:optional true} [:maybe :string]]
+                                        [:source {:optional true} [:maybe :string]]
+                                        [:format {:optional true} :any]
+                                        [:content {:optional true} :any]
+                                        [:metadata {:optional true} :any]]]]
+                     DocumentResult])

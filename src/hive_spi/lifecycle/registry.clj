@@ -5,7 +5,8 @@
    the orchestrator reads the registries when it runs a shutdown or a sweep
    tick."
   (:require [hive-spi.lifecycle.ports :as ports]
-            [hive-spi.slot :as slot]))
+            [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -95,3 +96,65 @@
   (when (seq sweeps) (slot/reg-merge! sweep-slot sweeps))
   (when (seq owners) (slot/reg-merge! owner-slot owners))
   nil)
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def ShutdownHook
+  "An IShutdownHook. Generates a no-op hook at a generated priority."
+  [:fn {:error/message "must satisfy IShutdownHook"
+        :gen/schema    [:int {:min 0 :max 499}]
+        :gen/fmap      (fn [prio]
+                         (reify ports/IShutdownHook
+                           (shutdown-priority [_] prio)
+                           (shutdown-name [_] (str "hook-" prio))
+                           (shutdown! [_ _] nil)))}
+   #(satisfies? ports/IShutdownHook %)])
+
+(def Sweeper
+  "An ISweepable. Generates a no-op sweeper at a generated cadence."
+  [:fn {:error/message "must satisfy ISweepable"
+        :gen/schema    [:int {:min 1 :max 3600}]
+        :gen/fmap      (fn [s]
+                         (reify ports/ISweepable
+                           (sweep-interval-s [_] s)
+                           (sweep-name [_] (str "sweep-" s))
+                           (sweep! [_ _] {:swept 0 :errors []})))}
+   #(satisfies? ports/ISweepable %)])
+
+(def ResourceOwner
+  "An IResourceOwner. Generates an owner of nothing under a generated id."
+  [:fn {:error/message "must satisfy IResourceOwner"
+        :gen/schema    [:string {:min 1 :max 8}]
+        :gen/fmap      (fn [id]
+                         (reify ports/IResourceOwner
+                           (owner-id [_] id)
+                           (owned-resources [_] {})
+                           (release-all! [_] nil)))}
+   #(satisfies? ports/IResourceOwner %)])
+
+(def Snapshot
+  "`registry-snapshot`'s value, and what `restore-all!` takes back."
+  [:map
+   [:shutdown [:maybe [:map-of :any ShutdownHook]]]
+   [:sweeps [:maybe [:map-of :any Sweeper]]]
+   [:owners [:maybe [:map-of :any ResourceOwner]]]])
+
+(m/=> register-shutdown! [:=> [:cat :any ShutdownHook] ShutdownHook])
+(m/=> unregister-shutdown! [:=> [:cat :any] :nil])
+(m/=> registered-shutdown-hooks [:=> [:cat] [:vector ShutdownHook]])
+(m/=> register-sweep! [:=> [:cat :any Sweeper] Sweeper])
+(m/=> unregister-sweep! [:=> [:cat :any] :nil])
+(m/=> registered-sweeps [:=> [:cat] [:map-of :any Sweeper]])
+(m/=> register-resource-owner! [:=> [:cat :any ResourceOwner] ResourceOwner])
+(m/=> unregister-resource-owner! [:=> [:cat :any] :nil])
+(m/=> get-resource-owner [:=> [:cat :any] [:maybe ResourceOwner]])
+(m/=> registered-resource-owners [:=> [:cat] [:map-of :any ResourceOwner]])
+(m/=> registry-snapshot [:=> [:cat] Snapshot])
+(m/=> reset-all! [:=> [:cat] :nil])
+(m/=> restore-all! [:=> [:cat [:maybe [:map {:closed false}
+                                     [:shutdown {:optional true} [:maybe [:map-of :any ShutdownHook]]]
+                                     [:sweeps {:optional true} [:maybe [:map-of :any Sweeper]]]
+                                     [:owners {:optional true} [:maybe [:map-of :any ResourceOwner]]]]]]
+                    :nil])
