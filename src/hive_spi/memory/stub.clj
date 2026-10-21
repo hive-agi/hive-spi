@@ -14,7 +14,8 @@
    `ports/degraded-search-result`."
   (:require [hive-spi.memory.entry :as entry]
             [hive-spi.memory.ids :as ids]
-            [hive-spi.memory.ports :as ports])
+            [hive-spi.memory.ports :as ports]
+            [malli.core :as m])
   (:import [java.time Instant]))
 
 ;; SPDX-License-Identifier: MIT
@@ -223,3 +224,27 @@
                              :connected? true
                              :entries    {}
                              :embeddings {}}))))
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+(def StubConfig
+  "create-store's CONFIG: optional :embedder, a (fn [text] -> numbers)."
+  [:maybe [:map [:embedder {:optional true}
+                 [:fn {:error/message "must be a fn"
+                       :gen/schema    :nil
+                       :gen/fmap      (fn [_] (fn [text] [(double (count text)) 1.0]))}
+                  fn?]]]])
+
+(def StubStore
+  "A StubMemoryStore."
+  [:fn {:error/message "must be a StubMemoryStore"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] (->StubMemoryStore (atom {:config {} :connected? true
+                                                          :entries {} :embeddings {}})))}
+   #(instance? StubMemoryStore %)])
+
+(m/=> create-store [:function
+                    [:=> [:cat] StubStore]
+                    [:=> [:cat StubConfig] StubStore]])

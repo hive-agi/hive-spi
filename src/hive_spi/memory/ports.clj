@@ -14,7 +14,8 @@
 
    Reload-safety: each defprotocol is wrapped in a defonce-guarded
    compare-and-set! so re-evaluating this namespace does not mint a fresh
-   host interface class per reload.")
+   host interface class per reload."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -355,3 +356,27 @@
   (if-let [f @-protection-provider]
     (try (set (f)) (catch Throwable _ #{}))
     #{}))
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+(def MemoryStore
+  "An IMemoryStore implementation. Generates a fresh reference stub store
+   (resolved lazily: hive-spi.memory.stub requires this namespace)."
+  [:fn {:error/message "must satisfy IMemoryStore"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] ((requiring-resolve 'hive-spi.memory.stub/create-store)))}
+   #(satisfies? IMemoryStore %)])
+
+(def ProtectionProvider
+  "The host's afterlife provider: a 0-arg fn answering a coll of entry ids."
+  [:fn {:error/message "must be callable"
+        :gen/schema    [:set [:string {:min 1 :max 6}]]
+        :gen/fmap      (fn [ids] (constantly ids))}
+   ifn?])
+
+(m/=> degraded-search-result [:=> [:cat [:maybe :map]] [:= []]])
+(m/=> register-protection-provider! [:=> [:cat [:maybe ProtectionProvider]] [:maybe ProtectionProvider]])
+;; The ids are whatever the host provider answers, coerced to a set.
+(m/=> protected-ids [:=> [:cat] [:set :any]])

@@ -11,7 +11,8 @@
    the chain to the stores already registered."
   (:require [hive-spi.memory.decorate :as decorate]
             [hive-spi.memory.ports :as ports]
-            [hive-spi.slot :as slot]))
+            [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -124,3 +125,30 @@
   []
   (when (store-set?)
     (ports/store-status (get-store :default))))
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+;; The store installed is the DECORATED one: a decorator may answer any
+;; IMemoryStore, so the output is the port, not STORE itself.
+(m/=> register-store! [:=> [:cat :any ports/MemoryStore] ports/MemoryStore])
+(m/=> redecorate! [:=> [:cat] :nil])
+(m/=> add-decorator! [:=> [:cat decorate/Decorator] :nil])
+(m/=> remove-decorator! [:=> [:cat :any] :nil])
+(m/=> unregister-store! [:=> [:cat :any] :nil])
+(m/=> registered-stores [:=> [:cat] [:map-of :any ports/MemoryStore]])
+(m/=> get-store [:function
+                 [:=> [:cat] ports/MemoryStore]
+                 [:=> [:cat :any] ports/MemoryStore]])
+(m/=> set-store! [:=> [:cat ports/MemoryStore] ports/MemoryStore])
+(m/=> store-set? [:=> [:cat] :boolean])
+(m/=> reset-registry! [:=> [:cat] :nil])
+(m/=> reset-active-store! [:=> [:cat] :nil])
+;; These pass the store's own answer through unchecked. The port documents
+;; :success? / :healthy? / :backend, but a store answering another map (the
+;; registries test double does) reaches the caller as-is: state that, not
+;; the documented ideal.
+(m/=> connect-active-store! [:=> [:cat :any] [:maybe :map]])
+(m/=> active-store-healthy? [:=> [:cat] [:maybe :map]])
+(m/=> active-store-status [:=> [:cat] [:maybe :map]])

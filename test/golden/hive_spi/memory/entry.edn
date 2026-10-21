@@ -1,0 +1,9 @@
+{:excluded ["b"],
+ :by-tags ["a" "b"],
+ :expired? [false false true false],
+ :by-projects ["a" "c" "d"],
+ :within-3d [false false false true],
+ :type-kw [:note :convention nil],
+ :parse ["2026-01-01T00:00:00Z" "2025-12-31T22:00:00Z" nil nil nil],
+ :by-type ["a" "d"],
+ :query [{:id "b"} {:id "a"}]}

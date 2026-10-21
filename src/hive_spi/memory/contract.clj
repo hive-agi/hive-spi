@@ -118,3 +118,17 @@
   [verb r]
   (some-> (m/explain (write-results verb) r)
           (update :errors (partial mapv #(select-keys % [:path :in :value :type])))))
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+(def WriteVerb
+  "A key of `write-results`."
+  (into [:enum] (keys write-results)))
+
+(m/=> failure? [:=> [:cat :any] :boolean])
+(m/=> queued? [:=> [:cat :any] :boolean])
+(m/=> entry? [:=> [:cat :any] :boolean])
+(m/=> landed? [:=> [:cat WriteVerb :any] :boolean])
+(m/=> explain [:=> [:cat WriteVerb :any] [:maybe [:map [:errors [:vector :map]]]]])

@@ -23,6 +23,7 @@
    "src/hive_spi/kg"
    "src/hive_spi/lifecycle"
    "src/hive_spi/log"
+   "src/hive_spi/memory"
    "src/hive_spi/time"
    "src/hive_spi/vector"
    "src/hive_spi/wire"

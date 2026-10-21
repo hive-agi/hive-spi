@@ -1,0 +1,33 @@
+{[:add-entry! :entry]
+ {:outcome :violation, :landed? false, :explain 3},
+ [:add-entry! :failed]
+ {:outcome :failed, :landed? false, :explain nil},
+ [:add-entry! :id] {:outcome :landed, :landed? true, :explain nil},
+ [:add-entry! :nil] {:outcome :violation, :landed? false, :explain 5},
+ [:add-entry! :queued]
+ {:outcome :queued, :landed? false, :explain nil},
+ [:add-entry! :true] {:outcome :violation, :landed? false, :explain 5},
+ [:delete-entry! :entry]
+ {:outcome :violation, :landed? false, :explain 3},
+ [:delete-entry! :failed]
+ {:outcome :failed, :landed? false, :explain nil},
+ [:delete-entry! :id]
+ {:outcome :violation, :landed? false, :explain 5},
+ [:delete-entry! :nil]
+ {:outcome :violation, :landed? false, :explain 5},
+ [:delete-entry! :queued]
+ {:outcome :queued, :landed? false, :explain nil},
+ [:delete-entry! :true]
+ {:outcome :landed, :landed? true, :explain nil},
+ [:update-entry! :entry]
+ {:outcome :landed, :landed? true, :explain nil},
+ [:update-entry! :failed]
+ {:outcome :failed, :landed? false, :explain nil},
+ [:update-entry! :id]
+ {:outcome :violation, :landed? false, :explain 7},
+ [:update-entry! :nil]
+ {:outcome :absent, :landed? false, :explain nil},
+ [:update-entry! :queued]
+ {:outcome :queued, :landed? false, :explain nil},
+ [:update-entry! :true]
+ {:outcome :violation, :landed? false, :explain 7}}
