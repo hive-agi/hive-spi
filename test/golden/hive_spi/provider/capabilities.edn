@@ -1,0 +1,52 @@
+{:case-0
+ {:out #{},
+  :in
+  ({:voucher
+    {:profile #:provider{:id :voucher, :capabilities #{}},
+     :impl :voucher},
+    :chain
+    {:profile #:provider{:id :chain, :capabilities #{}}, :impl :chain}}
+   :chain)},
+ :case-1
+ {:out #{},
+  :in
+  ({:voucher
+    {:profile #:provider{:id :voucher, :capabilities #{:poll}},
+     :impl :voucher}}
+   :manual)},
+ :case-2 {:out #{}, :in ({} :ghost)},
+ :case-3
+ {:out #{},
+  :in
+  ({:cards {:profile #:provider{:id :cards}, :impl :cards}} :voucher)},
+ :case-4
+ {:out #{},
+  :in
+  ({:chain {:profile #:provider{:id :chain}, :impl :chain},
+    :cards {:profile #:provider{:id :cards}, :impl :cards},
+    :manual {:profile #:provider{:id :manual}, :impl :manual}}
+   :cards)},
+ :case-5
+ {:out #{},
+  :in
+  ({:voucher {:profile #:provider{:id :voucher}, :impl :voucher},
+    :manual
+    {:profile
+     #:provider{:id :manual, :capabilities #{:poll :charge :refund}},
+     :impl :manual}}
+   :cards)},
+ :case-6
+ {:out #{},
+  :in
+  ({:voucher
+    {:profile #:provider{:id :voucher, :capabilities #{:poll}},
+     :impl :voucher}}
+   :manual)},
+ :case-7
+ {:out #{},
+  :in
+  ({:voucher {:profile #:provider{:id :voucher}, :impl :voucher},
+    :chain
+    {:profile #:provider{:id :chain, :capabilities #{:refund}},
+     :impl :chain}}
+   :cards)}}
