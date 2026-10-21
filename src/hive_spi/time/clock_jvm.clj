@@ -6,7 +6,8 @@
    Loadable only where `java.time.format.DateTimeFormatter` and
    `java.time.ZonedDateTime` exist; the port resolves this namespace softly and
    falls through to `hive-spi.time.clock-portable` where they do not."
-  (:require [hive-spi.time.ports :as time])
+  (:require [hive-spi.time.ports :as time]
+            [malli.core :as m])
   (:import (java.time LocalDateTime ZoneId ZonedDateTime)
            (java.time.format DateTimeFormatter)))
 
@@ -30,3 +31,10 @@
   "Install the java.time clock as the explicitly active one. Returns it."
   []
   (time/set-clock! (default-clock)))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(m/=> default-clock [:=> [:cat] time/Clock])
+(m/=> install! [:=> [:cat] time/Clock])
