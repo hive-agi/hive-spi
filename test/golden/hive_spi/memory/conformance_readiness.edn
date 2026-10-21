@@ -1,12 +1,4 @@
-{:report {"stub" {:seal-ready? true, :missing #{}, :reasons {}}},
- :bare
- {:seal-ready? false,
-  :missing #{:embed-text :scan},
-  :reasons
-  {:embed-text "store-status :capabilities lacks :embed-text",
-   :scan
-   "store does not satisfy hive-spi.memory.ports/IMemoryStoreScan"}},
- :skipped {:skipped :reset-empties, :reason "not here"},
+{:skipped {:skipped :reset-empties, :reason "not here"},
  :needs
  {:skipped :disconnect-then-connect,
   :reason "opts lack :connect-config"}}

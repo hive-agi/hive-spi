@@ -629,24 +629,11 @@
   "The OPTS the runners read."
   [:maybe [:map
            [:connect-config {:optional true} [:maybe :map]]
-           [:skip {:optional true} [:maybe [:map-of :keyword :string]]]
-           [:seal-ready? {:optional true} :boolean]]])
-
-(def SealReadiness
-  "What `seal-readiness` answers."
-  [:map
-   [:seal-ready? :boolean]
-   [:missing [:set (into [:enum] (keys seal-requirements))]]
-   [:reasons [:map-of (into [:enum] (keys seal-requirements)) :string]]])
+           [:skip {:optional true} [:maybe [:map-of :keyword :string]]]]])
 
 (m/=> make-entry [:function
                   [:=> [:cat] [:map [:id :string] [:content-hash :string]]]
                   [:=> [:cat [:maybe :map]] [:map [:content-hash :string]]]])
-(m/=> seal-readiness [:function
-                      [:=> [:cat ports/MemoryStore] SealReadiness]
-                      [:=> [:cat :any [:maybe :map]] SealReadiness]])
-(m/=> seal-readiness-report [:=> [:cat [:map-of :any ports/MemoryStore]] [:map-of :any SealReadiness]])
-(m/=> assert-seal-ready [:=> [:cat ports/MemoryStore] SealReadiness])
 (m/=> run-case [:=> [:cat MakeStore RunOpts CaseId]
                 [:or [:= :ran] [:map [:skipped CaseId] [:reason :string]]]])
 (m/=> run-conformance [:=> [:cat MakeStore RunOpts]

@@ -25,18 +25,10 @@
    :rel (fn [[reason] out]
           (and (= :warn (:guard/verdict out)) (= reason (:guard/reason out))))})
 
-(hst/deftrifecta-from-schema ask-carries-its-reason
-  hive-spi.guard.decision/ask
-  {:in  [:cat Reason]
-   :out d/GuardDecision
-   :rel (fn [[reason] out]
-          (and (d/asks? out) (d/blocking? out) (not (d/denied? out))
-               (= reason (:guard/reason out))))})
-
 (hst/deftrifecta-from-schema rank-follows-verdict-order
   hive-spi.guard.decision/rank
   {:in  [:cat d/GuardDecision]
-   :out [:int {:min 0 :max 3}]
+   :out [:int {:min 0 :max 2}]
    :rel (fn [[dec] out]
           (= out (.indexOf ^java.util.List d/verdict-order (:guard/verdict dec))))})
 
@@ -53,12 +45,9 @@
 
 (deftest-golden ranks-and-folds
   "test/golden/hive_spi/guard/decision.edn"
-  (let [a (d/allow) w (d/warn "careful") q (d/ask "may I") x (d/deny "no")]
-    {:ranks       (mapv d/rank [a w q x {:guard/verdict :bogus} {}])
-     :denied?     (mapv d/denied? [a w q x nil])
-     :asks?       (mapv d/asks? [a w q x nil])
-     :blocking?   (mapv d/blocking? [a w q x nil])
+  (let [a (d/allow) w (d/warn "careful") x (d/deny "no")]
+    {:ranks       (mapv d/rank [a w x {:guard/verdict :bogus} {}])
+     :denied?     (mapv d/denied? [a w x nil])
      :fold-empty  (d/strongest [])
      :fold-mixed  (d/strongest [w nil a x (d/deny "later")])
-     :fold-ask    (d/strongest [a q w (d/ask "later")])
      :fold-warns  (d/strongest [a (d/warn "first") (d/warn "second")])}))

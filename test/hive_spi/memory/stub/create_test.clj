@@ -25,8 +25,8 @@
         sem   (stub/create-store {:embedder embed})
         id    (ports/add-entry! sem {:id "e1" :content "hello" :created "2026-01-01T00:00:00Z"
                                      :updated "2026-01-01T00:00:00Z"})]
-    (ports/add-entries! sem [{:id "e2" :content "hello world" :created "2026-01-02T00:00:00Z"
-                              :updated "2026-01-02T00:00:00Z"}])
+    (ports/add-entry! sem {:id "e2" :content "hello world" :created "2026-01-02T00:00:00Z"
+                           :updated "2026-01-02T00:00:00Z"})
     {:id         id
      :plain-hits (ports/search-similar plain "x" {})
      :plain-why  (meta (ports/search-similar plain "x" {}))

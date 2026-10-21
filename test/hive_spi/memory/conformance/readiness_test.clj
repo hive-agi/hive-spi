@@ -1,5 +1,5 @@
 (ns hive-spi.memory.conformance.readiness-test
-  "The conformance suite's data surface: seal readiness as data, fixture
+  "The conformance suite's data surface: fixture
    entries, and a single case run against the reference stub."
   (:require [clojure.test :refer [deftest is]]
             [hive-schemas.test :as hst]
@@ -11,16 +11,6 @@
 
 ;; SPDX-License-Identifier: MIT
 
-(hst/deftrifecta-from-schema seal-readiness-names-every-gap
-  hive-spi.memory.conformance/seal-readiness
-  {:in  [:cat :nil [:map [:capabilities [:vector [:enum :embed-text :batch]]]]]
-   :out conf/SealReadiness
-   :rel (fn [[_ status] out]
-          (and (contains? (:missing out) :scan)
-               (= (contains? (:missing out) :embed-text)
-                  (not (some #{:embed-text} (:capabilities status))))
-               (= (:seal-ready? out) (empty? (:missing out)))))})
-
 (hst/deftrifecta-from-schema make-entry-hashes-its-content
   hive-spi.memory.conformance/make-entry
   {:in  [:cat [:map [:content [:string {:max 10}]]]]
@@ -29,9 +19,7 @@
 
 (deftest-golden readiness-report
   "test/golden/hive_spi/memory/conformance_readiness.edn"
-  {:report  (conf/seal-readiness-report {"stub" (stub/create-store)})
-   :bare    (conf/seal-readiness nil {:capabilities []})
-   :skipped (conf/run-case stub/create-store {:skip {:reset-empties "not here"}} :reset-empties)
+  {:skipped (conf/run-case stub/create-store {:skip {:reset-empties "not here"}} :reset-empties)
    :needs   (conf/run-case stub/create-store {} :disconnect-then-connect)})
 
 (deftest a-single-case-runs-against-the-stub

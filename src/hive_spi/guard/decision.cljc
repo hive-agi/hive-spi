@@ -173,14 +173,9 @@
 (m/=> deny [:function
             [:=> [:cat :string] GuardDecision]
             [:=> [:cat :string DecisionOpts] GuardDecision]])
-(m/=> ask [:function
-           [:=> [:cat :string] GuardDecision]
-           [:=> [:cat :string DecisionOpts] GuardDecision]])
-(m/=> asks? [:=> [:cat [:maybe :map]] :boolean])
-(m/=> blocking? [:=> [:cat [:maybe :map]] :boolean])
 (m/=> denied? [:=> [:cat [:maybe :map]] :boolean])
-;; The rank is an index into `verdict-order` (four verdicts since :ask).
-(m/=> rank [:=> [:cat [:maybe :map]] [:int {:min 0 :max 3}]])
+;; The rank is an index into `verdict-order` (three verdicts).
+(m/=> rank [:=> [:cat [:maybe :map]] [:int {:min 0 :max 2}]])
 ;; Returns one of its inputs (or a bare allow), so it promises no more than
 ;; the decisions it was handed.
 (m/=> strongest [:=> [:cat [:maybe [:sequential [:maybe :map]]]] :map])

@@ -1,8 +1,5 @@
-{:ranks [0 1 2 3 0 0],
- :denied? [false false false true false],
- :asks? [false false true false false],
- :blocking? [false false true true false],
+{:ranks [0 1 2 0 0],
+ :denied? [false false true false],
  :fold-empty #:guard{:verdict :allow},
  :fold-mixed #:guard{:verdict :deny, :reason "no"},
- :fold-ask #:guard{:verdict :ask, :reason "may I"},
  :fold-warns #:guard{:verdict :warn, :reason "first"}}
