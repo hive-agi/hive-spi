@@ -9,6 +9,7 @@
 (def paths
   ["src/hive_spi/addon"
    "src/hive_spi/crypto"
+   "src/hive_spi/diag"
    "src/hive_spi/embeddings"
    "src/hive_spi/guard"
    "src/hive_spi/log"
