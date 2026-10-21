@@ -69,6 +69,18 @@
   "add-entry!: the id on success."
   [:or Id Queued Failure])
 
+(def AddEntriesResult
+  "add-entries!: one AddResult per input entry, in input order."
+  [:vector AddResult])
+
+(defn add-entries-result?
+  "True when R is a valid add-entries! answer for N input entries: a vector
+   of AddResult, one per entry."
+  [n r]
+  (and (m/validate AddEntriesResult r) (= n (count r))))
+
+(m/=> add-entries-result? [:=> [:cat nat-int? :any] :boolean])
+
 (def UpdateResult
   "update-entry! and update-metadata!: the merged entry on success, nil for
    an unknown id."

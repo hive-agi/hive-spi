@@ -19,6 +19,10 @@
      :connect-config  map handed to connect! by the lifecycle case; when the
                       key is absent that case is skipped
      :skip            {case-id \"reason\"} cases to skip, reported by name
+     :seal-ready?     true opts into the :seal-ready case, which FAILS a store
+                      lacking any of `seal-requirements`; `seal-readiness`
+                      answers the same question as data
+
 
    IMemoryStore cases run for every store. Role-protocol cases run only when
    (satisfies? Proto store) and pass vacuously otherwise. The semantic case
@@ -100,6 +104,57 @@
         f (query-fixture)]
     (seed! s (vals f))
     [s (into {} (map (fn [[k e]] [k (:id e)])) f)]))
+
+(def seal-requirements
+  "What a store must offer before the seal layer can wrap it, keyed by the
+   name `seal-readiness` reports under :missing.
+     :embed-text  store-status declares the :embed-text capability, so a
+                  sealed entry is embedded from its plaintext while only
+                  ciphertext is persisted
+     :scan        the store satisfies IMemoryStoreScan, so existing entries
+                  can be enumerated for seal migration and rekeying
+   The plain conformance cases for both run only when the store declares
+   them, so a store that declares neither passes them vacuously; this map is
+   what turns that silence into a reported gap."
+  {:embed-text {:reason "store-status :capabilities lacks :embed-text"
+                :ready? (fn [_store status] (decorate/embed-text-capable? status))}
+   :scan       {:reason "store does not satisfy hive-spi.memory.ports/IMemoryStoreScan"
+                :ready? (fn [store _status] (satisfies? ports/IMemoryStoreScan store))}})
+
+(defn seal-readiness
+  "Seal readiness of STORE: {:seal-ready? bool :missing #{k ...} :reasons {k why}},
+   :missing naming every key of `seal-requirements` the store fails. Reads
+   store-status once and writes nothing. The 2-arity takes a store-status map
+   already in hand and calls nothing on STORE."
+  ([store] (seal-readiness store (ports/store-status store)))
+  ([store status]
+   (let [missing (into (sorted-set)
+                       (keep (fn [[k {:keys [ready?]}]]
+                               (when-not (ready? store status) k)))
+                       seal-requirements)]
+     {:seal-ready? (empty? missing)
+      :missing     missing
+      :reasons     (into (sorted-map)
+                         (map (fn [k] [k (get-in seal-requirements [k :reason])]))
+                         missing)})))
+
+(defn seal-readiness-report
+  "Seal readiness of every store in STORES, a map of name -> store:
+   {name {:seal-ready? :missing :reasons}}."
+  [stores]
+  (into (sorted-map) (map (fn [[n s]] [n (seal-readiness s)])) stores))
+
+(defn assert-seal-ready
+  "clojure.test assertion that STORE is seal-ready; the failure message names
+   every missing requirement and why. Returns the `seal-readiness` map. A
+   first-party backend suite calls this (or opts into the :seal-ready case
+   with {:seal-ready? true}) so a seal gap fails its build."
+  [store]
+  (let [r (seal-readiness store)]
+    (is (:seal-ready? r)
+        (str "store is not seal-ready, missing " (pr-str (:missing r))
+             ": " (pr-str (:reasons r))))
+    r))
 
 ;;; ============================================================================
 ;;; Cases
@@ -449,6 +504,77 @@
                  (do (is (empty? r))
                      (is (not-any? :score r)))))))}
 
+   ;; Negative branches of search-similar: each holds for a store with and
+   ;; without semantic search (the unsupported answer is an empty sequential,
+   ;; which satisfies every bound below), and each fails a store that throws,
+   ;; ignores a bound, or returns what no longer exists.
+   {:id :search-similar-empty-store :section :semantic
+    :doc "search-similar over a store holding no entries answers an empty sequential and does not throw."
+    :run (fn [ctx]
+           (let [r (ports/search-similar (fresh ctx) "anything at all" {:limit 5})]
+             (is (sequential? r))
+             (is (empty? r))))}
+
+   {:id :search-similar-blank-query :section :semantic
+    :doc "a blank query answers a sequential of entry maps within :limit and does not throw."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (seed! s [(make-entry {:content "blank query target"})])
+             (doseq [q ["" "   "]]
+               (let [r (ports/search-similar s q {:limit 5})]
+                 (is (sequential? r) (pr-str q))
+                 (is (<= (count r) 5) (pr-str q))
+                 (is (every? map? r) (pr-str q))))))}
+
+   {:id :search-similar-honours-limit :section :semantic
+    :doc ":limit caps the row count of search-similar."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (seed! s (repeatedly 4 #(make-entry {:content (str "limit probe " (token))})))
+             (is (<= (count (ports/search-similar s "limit probe" {:limit 1})) 1))
+             (is (<= (count (ports/search-similar s "limit probe" {:limit 2})) 2))))}
+
+   {:id :search-similar-honours-filters :section :semantic
+    :doc ":type, :project-ids and :exclude-tags narrow search-similar: no returned row violates a filter."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (seed! s [(make-entry {:type :note :project-id "ps1" :tags ["keep"]
+                                    :content (str "filter probe " (token))})
+                       (make-entry {:type :convention :project-id "ps2" :tags ["keep"]
+                                    :content (str "filter probe " (token))})
+                       (make-entry {:type :note :project-id "ps2" :tags ["skip"]
+                                    :content (str "filter probe " (token))})])
+             (let [by-type (ports/search-similar s "filter probe" {:type :convention :limit 10})
+                   by-proj (ports/search-similar s "filter probe" {:project-ids ["ps1"] :limit 10})
+                   by-excl (ports/search-similar s "filter probe" {:exclude-tags ["skip"] :limit 10})]
+               (is (every? #(type= :convention (:type %)) by-type))
+               (is (every? #(= "ps1" (:project-id %)) by-proj))
+               (is (not-any? #(contains? (set (map str (:tags %))) "skip") by-excl)))))}
+
+   {:id :search-similar-skips-deleted :section :semantic
+    :doc "an entry deleted from the store is absent from search-similar."
+    :run (fn [ctx]
+           (let [s    (fresh ctx)
+                 gone (make-entry {:content (str "deletion probe " (token))})
+                 stay (make-entry {:content (str "deletion probe " (token))})]
+             (seed! s [gone stay])
+             (ports/delete-entry! s (:id gone))
+             (is (not (contains? (ids-of (ports/search-similar s "deletion probe" {:limit 10}))
+                                 (:id gone))))))}
+
+   {:id :search-similar-degraded-reason :section :semantic :requires-opt :degraded-reason?
+    :doc "Opt-in with {:degraded-reason? true}: a store without semantic search answers `degraded-search-result`, an empty sequential naming why under :hive-spi.memory/degraded metadata; a store with it carries no degraded marker."
+    :run (fn [ctx]
+           (when (get-in ctx [:opts :degraded-reason?])
+             (let [s (fresh ctx)
+                   r (ports/search-similar s "degraded probe" {:limit 3})
+                   d (get (meta r) :hive-spi.memory/degraded)]
+               (if (ports/supports-semantic-search? s)
+                 (is (nil? d))
+                 (do (is (empty? r))
+                     (is (map? d))
+                     (is (some? (:reason d))))))))}
+
    ;; ---- role protocols ----------------------------------------------------
    {:id :analytics :section :roles
     :doc "IMemoryStoreWithAnalytics: log-access! counts, record-feedback! counts, get-helpfulness-ratio shape."
@@ -562,7 +688,15 @@
            (let [s (fresh ctx)]
              (when (satisfies? ports/IMemoryStoreLiveness s)
                (is (ports/-probe! s))
-               (is (boolean? (ports/-await-reconnect! s 10))))))}])
+               (is (boolean? (ports/-await-reconnect! s 10))))))}
+
+   ;; ---- seal readiness ----------------------------------------------------
+   {:id :seal-ready :section :seal :requires-opt :seal-ready?
+    :doc "Opt-in with {:seal-ready? true}: the store declares :embed-text and satisfies IMemoryStoreScan, so the seal layer can wrap it. Unlike :embed-text and :scan, this FAILS a store that declares neither."
+    :run (fn [ctx]
+           (when (get-in ctx [:opts :seal-ready?])
+             (assert-seal-ready (fresh ctx))))}])
+
 
 (def case-ids
   "The case ids, in run order."
