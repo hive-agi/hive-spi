@@ -2,16 +2,18 @@
   "GuardDecision — the verdict a guard returns for a GuardEvent, and the join
    that folds several verdicts into one.
 
-   Three verdicts, ordered by severity: `:allow` < `:warn` < `:deny`. The order
-   is not decoration — several rules may fire on one event, and `strongest`
-   folds them by taking the maximum. That makes the fold commutative and
-   associative, so rule evaluation ORDER cannot change the outcome.
+   Four verdicts, ordered by severity: `:allow` < `:warn` < `:ask` < `:deny`.
+   `:ask` stops the call until the operator answers yes; anything short of an
+   explicit yes is a `:deny`. The order is not decoration — several rules may
+   fire on one event, and `strongest` folds them by taking the maximum. That
+   makes the fold commutative and associative, so rule evaluation ORDER cannot
+   change the outcome.
 
-   A `:deny` and a `:warn` MUST carry a non-blank `:guard/reason`. A verdict a
-   caller cannot read back is one it cannot argue with, and an unarguable deny
-   is the failure mode this subsystem exists to remove. `:guard/citations`
-   carries the hive memory ids the rule was derived from, so the reason points
-   at the axiom rather than restating it.
+   A `:deny`, an `:ask` and a `:warn` MUST carry a non-blank `:guard/reason`. A
+   verdict a caller cannot read back is one it cannot argue with, and an
+   unarguable deny is the failure mode this subsystem exists to remove.
+   `:guard/citations` carries the hive memory ids the rule was derived from, so
+   the reason points at the axiom rather than restating it.
 
    Pure leaf: schema, vocabulary, constructors, the join. Deciding WHICH
    verdict an event earns is the engine's job, not this namespace's."
@@ -22,7 +24,7 @@
 (def verdict-order
   "Verdicts from least to most severe. The vector IS the order `strongest`
    folds by; `verdict-rank` is derived from it."
-  [:allow :warn :deny])
+  [:allow :warn :ask :deny])
 
 (def verdict-keys
   "The closed set of guard verdicts."
@@ -53,12 +55,12 @@
   "Malli schema for a guard verdict.
 
    A `:multi` on `:guard/verdict`, because the obligation differs by verdict:
-   `:deny` and `:warn` REQUIRE a non-blank `:guard/reason`, `:allow` does not.
-   Open maps — a projection may carry vendor-specific fields alongside.
+   `:deny`, `:ask` and `:warn` REQUIRE a non-blank `:guard/reason`, `:allow`
+   does not. Open maps — a projection may carry vendor-specific fields alongside.
 
    Shape:
      {:guard/verdict   Verdict  (required)
-      :guard/reason    string   (required for :deny / :warn, min length 1)
+      :guard/reason    string   (required for :deny / :ask / :warn, min length 1)
       :guard/rule-id   keyword  (optional) — the rule that produced it
       :guard/citations [MemoryId] (optional) — the axioms it was derived from}"
   (m/schema
@@ -69,6 +71,10 @@
                   common-entries)]
     [:warn  (into [:map {:closed false}
                    [:guard/verdict [:= :warn]]
+                   [:guard/reason [:string {:min 1}]]]
+                  common-entries)]
+    [:ask   (into [:map {:closed false}
+                   [:guard/verdict [:= :ask]]
                    [:guard/reason [:string {:min 1}]]]
                   common-entries)]
     [:deny  (into [:map {:closed false}
@@ -120,6 +126,31 @@
        (throw (ex-info "A :deny decision requires a non-blank :guard/reason"
                        {:error :guard/invalid-decision :decision d
                         :explanation (explain d)}))))))
+
+(defn ask
+  "An `:ask` decision carrying `reason`: the operator decides. Optional `opts`
+   may carry :guard/rule-id and :guard/citations.
+
+   FAIL-LOUD on a blank reason — see the namespace docstring."
+  ([reason] (ask reason nil))
+  ([reason opts]
+   (let [d (merge {:guard/verdict :ask :guard/reason reason} opts)]
+     (if (valid? d)
+       d
+       (throw (ex-info "An :ask decision requires a non-blank :guard/reason"
+                       {:error :guard/invalid-decision :decision d
+                        :explanation (explain d)}))))))
+
+(defn asks?
+  "True if `decision` is an `:ask`."
+  [decision]
+  (= :ask (:guard/verdict decision)))
+
+(defn blocking?
+  "True if `decision` stops the call unless something grants it: a `:deny`,
+   or an `:ask` the operator has not answered yes to."
+  [decision]
+  (contains? #{:ask :deny} (:guard/verdict decision)))
 
 (defn denied?
   "True if `decision` is a `:deny`."

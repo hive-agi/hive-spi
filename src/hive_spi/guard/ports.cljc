@@ -151,7 +151,10 @@
               {:hookSpecificOutput {…}}, an eca chat/toolCallReject params map,
               or the decision itself for an in-process gate).
      Every verdict MUST be encodable: a harness with no :warn channel degrades
-     it to its advisory channel, never silently to :allow.
+     it to its advisory channel, never silently to :allow. A harness with no
+     native ask prompt degrades :ask to its refusal channel, carrying the
+     reason, never to :allow; an in-process gate may first ask the operator
+     through a consent channel and run the call only on an explicit yes.
      Pure; never throws.")
 
   (render-config

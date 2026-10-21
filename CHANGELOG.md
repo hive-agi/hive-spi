@@ -22,6 +22,14 @@ contribute a version conflict to a consumer's tree.
 
 ## [Unreleased]
 
+### Added
+
+- `hive-spi.swarm.ports.agent-context`: `ICallerIdContext`, an optional
+  extension of the installed agent context answering the caller id of the
+  tool call in flight (the identity enclave scoping keys on), and the
+  `current-caller-id` reader, which answers nil for the Noop, for a context
+  without the extension, and when the host's lookup throws.
+
 ## [1.4.2] - 2026-10-01
 
 ### Added

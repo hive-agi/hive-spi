@@ -107,10 +107,11 @@
 ;;; ===========================================================================
 
 (deftest verdicts-are-closed-and-ordered
-  (is (= [:allow :warn :deny] d/verdict-order))
-  (is (= #{:allow :warn :deny} d/verdict-keys))
+  (is (= [:allow :warn :ask :deny] d/verdict-order))
+  (is (= #{:allow :warn :ask :deny} d/verdict-keys))
   (is (< (d/verdict-rank :allow) (d/verdict-rank :warn)))
-  (is (< (d/verdict-rank :warn) (d/verdict-rank :deny)))
+  (is (< (d/verdict-rank :warn) (d/verdict-rank :ask)))
+  (is (< (d/verdict-rank :ask) (d/verdict-rank :deny)))
   (is (not (d/valid? {:guard/verdict :block :guard/reason "no"}))))
 
 (deftest deny-and-warn-require-a-reason
@@ -119,11 +120,14 @@
     (is (not (d/valid? {:guard/verdict :deny :guard/reason ""})))
     (is (not (d/valid? {:guard/verdict :warn})))
     (is (not (d/valid? {:guard/verdict :warn :guard/reason ""})))
-    (is (d/valid? {:guard/verdict :deny :guard/reason "x"})))
+    (is (not (d/valid? {:guard/verdict :ask})))
+    (is (not (d/valid? {:guard/verdict :ask :guard/reason ""})))
+    (is (d/valid? {:guard/verdict :deny :guard/reason "x"}))
+    (is (d/valid? {:guard/verdict :ask :guard/reason "x"})))
   (testing "an :allow needs none"
     (is (d/valid? (d/allow))))
   (testing "the constructors enforce it rather than describing it"
-    (doseq [ctor [d/deny d/warn]]
+    (doseq [ctor [d/deny d/ask d/warn]]
       (let [ex (try (ctor "") (catch Exception ex ex))]
         (is (instance? clojure.lang.ExceptionInfo ex))
         (is (= :guard/invalid-decision (:error (ex-data ex))))))))
@@ -144,6 +148,7 @@
   (gen/one-of
    [(gen/return (d/allow))
     (gen/fmap #(d/warn (str "warn-" %)) gen/small-integer)
+    (gen/fmap #(d/ask (str "ask-" %)) gen/small-integer)
     (gen/fmap #(d/deny (str "deny-" %)) gen/small-integer)]))
 
 (defn- verdict [dec] (:guard/verdict dec))
@@ -175,6 +180,23 @@
   (prop/for-all [ds (gen/vector gen-decision 1 6)]
                 (= (boolean (some d/denied? ds))
                    (d/denied? (d/strongest ds)))))
+
+(defspec blocking-absorbs-everything-below-it 200
+  (prop/for-all [ds (gen/vector gen-decision 1 6)]
+                (= (boolean (some d/blocking? ds))
+                   (d/blocking? (d/strongest ds)))))
+
+(deftest ask-sits-between-warn-and-deny
+  (let [w (d/warn "w") a (d/ask "a") x (d/deny "x")]
+    (is (d/asks? a))
+    (is (not (d/denied? a)))
+    (is (d/blocking? a))
+    (is (d/blocking? x))
+    (is (not (d/blocking? w)))
+    (is (not (d/blocking? (d/allow))))
+    (is (= a (d/strongest [w a])))
+    (is (= x (d/strongest [a x])))
+    (is (= x (d/strongest [x a])))))
 
 (defspec nils-are-ignored-not-fatal 100
   (prop/for-all [ds (gen/vector gen-decision 0 4)]
