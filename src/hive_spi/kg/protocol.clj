@@ -1,7 +1,8 @@
 (ns hive-spi.kg.protocol
-  "SPI contracts for Knowledge-Graph storage backends. Leaf — no deps, so any
-   backend implements it without pulling hive-mcp. Active-store slot management
-   stays in hive-mcp.protocols.kg.")
+  "SPI contracts for Knowledge-Graph storage backends. Leaf — only malli (for
+   the m/=> contracts), so any backend implements it without pulling hive-mcp.
+   Active-store slot management stays in hive-mcp.protocols.kg."
+  (:require [malli.core :as m]))
 ;; SPDX-License-Identifier: MIT
 
 (defprotocol IKGStore
@@ -57,3 +58,12 @@
   (close! [_this] nil))
 
 (defn noop-store [] (->NoopKGStore))
+
+(def KGStore
+  "Any IKGStore implementation."
+  [:fn {:error/message "an IKGStore"} #(satisfies? IKGStore %)])
+
+(m/=> kg-store? [:=> [:cat :any] :boolean])
+(m/=> persistent-store? [:=> [:cat :any] :boolean])
+(m/=> temporal-store? [:=> [:cat :any] :boolean])
+(m/=> noop-store [:=> [:cat] KGStore])
