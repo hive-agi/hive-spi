@@ -1,0 +1,34 @@
+name: ci
+
+# PR gate. release.yml runs freeze-check and the tests only on push to main,
+# so a PR that breaks either showed no red until the release refused it
+# (hive-spi PR #2, 2026-09-27). Same setup and commands as release.yml; no
+# secrets are needed because nothing is bumped or deployed here.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # fetch-depth 0: freeze-check reads the release tags for its baseline.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: DeLaGuardo/setup-clojure@13.0
+        with:
+          cli: latest
+
+      - name: Freeze check
+        run: clojure -T:build freeze-check
+
+      - name: Run tests
+        run: clojure -M:test

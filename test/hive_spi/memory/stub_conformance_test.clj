@@ -40,6 +40,17 @@
       (is (contains? (:skipped r) :disconnect-then-connect))
       (is (not (some #{:batch :disconnect-then-connect} (:ran r)))))))
 
+(deftest get-entries-accepts-any-collection-of-ids
+  (testing "the port says only \"multiple entries by ID\", so a set of ids, the
+            StoreIds shape get-entries-projected admits, is as valid as a vector"
+    (let [s (stub/create-store {})]
+      (ports/add-entry! s {:id "a" :type "note" :content "alpha"})
+      (ports/add-entry! s {:id "b" :type "note" :content "beta"})
+      (is (= ["a"] (mapv :id (ports/get-entries s #{"a"}))))
+      (is (= #{"a" "b"} (set (map :id (ports/get-entries s #{"a" "b" "missing"})))))
+      (is (= ["a"] (mapv :id (ports/get-entries s '("a" "a")))) "duplicates collapse")
+      (is (= [] (ports/get-entries s #{}))))))
+
 (deftest semantic-branches-are-honest
   (testing "no embedder: degraded result carries its reason as metadata"
     (let [s (stub/create-store {})
