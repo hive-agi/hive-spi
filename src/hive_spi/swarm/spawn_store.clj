@@ -9,7 +9,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded. Re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol this name."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -44,3 +45,11 @@
   "Remove the installed store. Returns nil."
   []
   (slot/clear! store-slot))
+
+(def SpawnStore
+  "Any ISpawnStore implementation."
+  [:fn {:error/message "an ISpawnStore"} #(satisfies? ISpawnStore %)])
+
+(m/=> set-store! [:=> [:cat SpawnStore] SpawnStore])
+(m/=> get-store [:=> [:cat] [:maybe SpawnStore]])
+(m/=> clear-store! [:=> [:cat] :nil])

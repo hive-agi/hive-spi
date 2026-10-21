@@ -1,0 +1,9 @@
+{:coerced {:prompt ":kw"},
+ :ref-bare {:prompt "t"},
+ :ref-full
+ {:prompt "21hive\n\n---\n\nt",
+  :refs ["c1" "c2"],
+  :kg-nodes ["n1"],
+  :reconstructed "21hive"},
+ :text {:prompt "t"},
+ :types [:text :ref]}

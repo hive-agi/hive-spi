@@ -1,0 +1,23 @@
+{:add [{:tempids {"ling-1" 1}} {:tempids {"ling-2" 1}}],
+ :get
+ [#:slave{:id "ling-1",
+          :name "Worker",
+          :status :idle,
+          :depth 1,
+          :project-id "hive"}
+  nil],
+ :update [{:tempids {}} nil],
+ :by-status ["ling-1" "ling-2"],
+ :by-project ["ling-1"],
+ :tasks
+ [{:tempids {"t-1" 2}}
+  {:tempids {"task-1" 2}}
+  {:tempids {}}
+  #:task{:id "t-1",
+         :slave "ling-1",
+         :status :completed,
+         :prompt "do it"}
+  ["t-1" "task-1"]
+  ["task-1"]],
+ :remove [{:tempids {}} nil],
+ :all ["ling-1"]}

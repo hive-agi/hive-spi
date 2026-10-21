@@ -8,7 +8,8 @@
    - Coordinator protection (when-not-coordinator) so test fixtures do not
      corrupt production state."
 
-  (:require [hive-spi.log.ports :as log]))
+  (:require [hive-spi.log.ports :as log]
+            [malli.core :as m]))
 ;; SPDX-License-Identifier: MIT
 
 ;;; =============================================================================
@@ -185,3 +186,38 @@
   `(if (coordinator-running?)
      (log/debug "Guarded operation skipped (coordinator running):" ~msg)
      (do ~@body)))
+
+;;; =============================================================================
+;;; Contracts
+;;; =============================================================================
+
+(def EnforcementMode
+  "The enforcement modes `set-enforcement-mode!` accepts."
+  [:enum :warn :block])
+
+(def GuardStatus
+  "What `guard-status` reports."
+  [:map
+   [:enabled? :boolean]
+   [:mode EnforcementMode]
+   [:child-ling? :boolean]
+   [:role :string]
+   [:ling-depth :int]
+   [:agent-id [:maybe :string]]
+   [:coordinator-running? :boolean]])
+
+(m/=> child-ling? [:=> [:cat] :boolean])
+(m/=> coordinator? [:=> [:cat] :boolean])
+(m/=> get-role [:=> [:cat] :string])
+(m/=> ling-depth [:=> [:cat] :int])
+(m/=> child-ling-env [:=> [:cat] [:map
+                                  ["HIVE_MCP_ROLE" [:= "child-ling"]]
+                                  ["HIVE_LING_DEPTH" [:re #"^-?\d+$"]]]])
+;; Any value is accepted; only :warn and :block change the mode.
+(m/=> set-enforcement-mode! [:=> [:cat :any] :nil])
+(m/=> enable-guards! [:=> [:cat] :nil])
+(m/=> disable-guards! [:=> [:cat] :nil])
+(m/=> guard-status [:=> [:cat] GuardStatus])
+(m/=> coordinator-running? [:=> [:cat] :boolean])
+(m/=> mark-coordinator-running! [:=> [:cat] :nil])
+(m/=> mark-coordinator-stopped! [:=> [:cat] :nil])
