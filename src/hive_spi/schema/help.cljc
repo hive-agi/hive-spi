@@ -139,4 +139,18 @@
                (sort-by (juxt #(if (:required? %) 0 1) #(param-name (:param %))))
                vec))))))
 
+(def HelpRow
+  "One row of `schema->help-rows` (see the ns docstring)."
+  [:map
+   [:param :any]
+   [:required? :boolean]
+   [:type :string]
+   [:description [:maybe :string]]
+   [:enum [:maybe [:vector :any]]]
+   [:default :any]
+   [:aliases [:vector :keyword]]])
+
+;; TOTAL: any value in; nil when it does not resolve.
+(m/=> schema->help-rows [:=> [:cat reg/AnyRef] [:maybe [:vector HelpRow]]])
+
 (der/register-projection! :help schema->help-rows)

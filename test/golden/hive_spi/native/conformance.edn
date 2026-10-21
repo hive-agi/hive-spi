@@ -1,0 +1,4 @@
+{:obs
+ [{:valid-envelope? true, :matches? true}
+  {:valid-envelope? true, :matches? false}],
+ :conformant? [false true true]}

@@ -1,0 +1,105 @@
+{:ping {:status :capability/undeclared, :accepted nil},
+ :contract
+ {:schema
+  [:map
+   [:qn {:description "Qualified name", :aliases [:function]} :string]
+   [:limit {:optional true} :int]],
+  :group nil,
+  :stability :stability/stable,
+  :tool "demo",
+  :accepted
+  {:required
+   [{:param :qn,
+     :required? true,
+     :type "string",
+     :description "Qualified name",
+     :enum nil,
+     :default nil,
+     :aliases [:function]}],
+   :optional
+   [{:param :limit,
+     :required? false,
+     :type "integer",
+     :description nil,
+     :enum nil,
+     :default nil,
+     :aliases []}]},
+  :command "read",
+  :summary "Read one",
+  :status :capability/declared,
+  :examples [],
+  :effects #{:effect/read}},
+ :coverage
+ {:tool "demo",
+  :total 3,
+  :declared 2,
+  :schematized 2,
+  :undeclared ["ping"],
+  :declared-pct 0.6666666666666667,
+  :schematized-pct 0.6666666666666667},
+ :resolved [:a],
+ :merge
+ {:properties
+  {:qn {:description "The qn to write", :type "string"},
+   :limit {:type "integer"},
+   :body {:type "string"}},
+  :conflicts
+  [{:param :qn,
+    :winner
+    [:map
+     [:qn {:description "The qn to write"} :string]
+     [:body :string]],
+    :losers
+    [[:map
+      [:qn
+       {:description "Qualified name", :aliases [:function]}
+       :string]
+      [:limit {:optional true} :int]]]}],
+  :description-regressions [],
+  :undescribed [:body :limit]},
+ :flat
+ {:type "object",
+  :properties
+  {"_caller_cwd"
+   {:type "string", :description "Calling agent's working directory."},
+   "agent_id"
+   {:type "string", :description "Calling agent identifier."},
+   "command"
+   {:type "string",
+    :description
+    "Subcommand to dispatch. Must be one of the enumerated values.",
+    :enum ["ping" "read" "write"]},
+   "timeout"
+   {:type "integer", :description "Call timeout in seconds."},
+   "timeout-ms"
+   {:type "integer",
+    :description
+    "Call timeout budget in milliseconds; takes priority over timeout. 0 means unbounded."}},
+  :required ["command"],
+  :x-hive/coverage
+  {:tool "demo",
+   :total 3,
+   :declared 2,
+   :schematized 2,
+   :undeclared ["ping"],
+   :declared-pct 0.6666666666666667,
+   :schematized-pct 0.6666666666666667}},
+ :missing nil,
+ :aliases {:function :qn, :q :qn},
+ :catalog
+ {"read"
+  {:summary "Read one",
+   :required [:qn],
+   :optional [:limit],
+   :status :capability/declared,
+   :stability :stability/stable,
+   :effects #{:effect/read},
+   :group nil},
+  "write"
+  {:summary "Write",
+   :required [:body :qn],
+   :optional [],
+   :status :capability/declared,
+   :stability :stability/stable,
+   :effects #{:effect/write},
+   :group nil}}}
