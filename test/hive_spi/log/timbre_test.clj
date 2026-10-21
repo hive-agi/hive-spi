@@ -3,7 +3,8 @@
    :test alias), and then the port's preferred host default."
   (:require [clojure.test :refer [use-fixtures]]
             [hive-schemas.test :as hst]
-            [hive-spi.log.ports :as log]))
+            [hive-spi.log.ports :as log]
+            [hive-spi.log.timbre]))
 
 ;; SPDX-License-Identifier: MIT
 

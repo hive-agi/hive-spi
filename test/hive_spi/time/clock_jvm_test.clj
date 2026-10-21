@@ -4,7 +4,8 @@
   (:require [clojure.test :refer [use-fixtures]]
             [hive-schemas.test :as hst]
             [hive-spi.time.ports :as time]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.time.clock-jvm]))
 
 ;; SPDX-License-Identifier: MIT
 
