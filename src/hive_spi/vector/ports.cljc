@@ -21,7 +21,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -86,3 +87,30 @@
   "Remove the active vector-collection store. Returns nil."
   []
   (slot/clear! store-slot))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Store
+  "An IVectorCollectionStore implementation. Generates an inert store that
+   holds a generated collection name and nothing else."
+  [:fn {:error/message "must satisfy IVectorCollectionStore"
+        :gen/schema    [:string {:min 1 :max 8}]
+        :gen/fmap      (fn [coll-name]
+                         (reify IVectorCollectionStore
+                           (-configure [this _] this)
+                           (-get-collection [_ n] (when (= n coll-name) n))
+                           (-create-collection [_ n _] n)
+                           (-delete-collection [_ _] nil)
+                           (-add [_ _ _ _] nil)
+                           (-get [_ _ _] [])
+                           (-query [_ _ _ _] [])
+                           (-delete [_ _ _] nil)
+                           (-update [_ _ _] nil)))}
+   #(satisfies? IVectorCollectionStore %)])
+
+(m/=> set-store! [:=> [:cat Store] Store])
+(m/=> get-store [:=> [:cat] [:maybe Store]])
+(m/=> store-set? [:=> [:cat] :boolean])
+(m/=> clear-store! [:=> [:cat] :nil])

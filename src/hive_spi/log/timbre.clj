@@ -10,7 +10,8 @@
    caller, because the port's facade is functions rather than macros. Messages
    that need to name their origin carry it in the message text."
   (:require [hive-spi.log.ports :as log]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -30,3 +31,10 @@
   "Install the timbre logger as the explicitly active one. Returns it."
   []
   (log/set-logger! (default-logger)))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(m/=> default-logger [:=> [:cat] log/Logger])
+(m/=> install! [:=> [:cat] log/Logger])

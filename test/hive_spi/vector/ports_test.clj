@@ -15,7 +15,8 @@
      with both."
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [hive-spi.vector.ports :as vp]
-            [hive-spi.vector.memory :as mem]))
+            [hive-spi.vector.memory :as mem]
+            [hive-schemas.test :as hst]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -101,3 +102,12 @@
     (is (= 3 (count (vp/-get a "c" {}))))
     (is (= 0 (count (vp/-get b "c" {})))
         "each call to in-memory-store gets its own state, so one test cannot poison another")))
+
+(hst/deftrifecta-from-schema set-store-installs-the-store
+  hive-spi.vector.ports/set-store!
+  {:in  [:cat vp/Store]
+   :out vp/Store
+   :rel (fn [[store] out]
+          (and (identical? store out)
+               (identical? store (vp/get-store))
+               (true? (vp/store-set?))))})

@@ -7,7 +7,11 @@
 ;; SPDX-License-Identifier: MIT
 
 (def paths
-  ["src/hive_spi/time"])
+  ["src/hive_spi/crypto"
+   "src/hive_spi/embeddings"
+   "src/hive_spi/log"
+   "src/hive_spi/time"
+   "src/hive_spi/vector"])
 
 (def exempt
   {})

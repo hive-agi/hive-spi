@@ -5,7 +5,8 @@
 
    Renders one line per event: `LEVEL message`, level upper-cased."
   (:require [clojure.string :as str]
-            [hive-spi.log.ports :as log]))
+            [hive-spi.log.ports :as log]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -40,3 +41,10 @@
   "Install the console logger as the explicitly active one. Returns it."
   []
   (log/set-logger! (default-logger)))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(m/=> default-logger [:=> [:cat] log/Logger])
+(m/=> install! [:=> [:cat] log/Logger])

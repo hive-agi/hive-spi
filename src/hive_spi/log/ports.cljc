@@ -18,7 +18,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -92,3 +93,29 @@
 (defn info  [& args] (apply log! :info args))
 (defn warn  [& args] (apply log! :warn args))
 (defn error [& args] (apply log! :error args))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Logger
+  "An ILogger implementation. Generates a silent logger emitting a generated
+   set of levels."
+  [:fn {:error/message "must satisfy ILogger"
+        :gen/schema    [:set {:min 1} [:enum :debug :info :warn :error]]
+        :gen/fmap      (fn [levels]
+                         (reify ILogger
+                           (log-event [_ _ _] nil)
+                           (logger-levels [_] levels)))}
+   #(satisfies? ILogger %)])
+
+(m/=> set-logger! [:=> [:cat Logger] Logger])
+(m/=> get-logger [:=> [:cat] [:maybe Logger]])
+(m/=> clear-logger! [:=> [:cat] :nil])
+(m/=> logger-set? [:=> [:cat] :boolean])
+;; ARGS are timbre-style variadic message parts: anything `print-str` renders.
+(m/=> log! [:=> [:cat :keyword [:* :any]] :nil])
+(m/=> debug [:=> [:cat [:* :any]] :nil])
+(m/=> info [:=> [:cat [:* :any]] :nil])
+(m/=> warn [:=> [:cat [:* :any]] :nil])
+(m/=> error [:=> [:cat [:* :any]] :nil])

@@ -6,7 +6,8 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is use-fixtures]]
             [hive-spi.log.console :as console]
-            [hive-spi.log.ports :as log]))
+            [hive-spi.log.ports :as log]
+            [hive-schemas.test :as hst]))
 
 ;; =============================================================================
 ;; Fixtures
@@ -73,3 +74,13 @@
 (deftest an-implementation-that-is-not-a-logger-is-rejected-test
   (is (thrown? AssertionError (log/set-logger! {:not :a-logger})))
   (is (false? (log/logger-set?)) "a rejected install leaves the slot empty"))
+
+(hst/deftrifecta-from-schema set-logger-installs-the-logger
+  hive-spi.log.ports/set-logger!
+  {:in  [:cat log/Logger]
+   :out log/Logger
+   :rel (fn [[logger] out]
+          (and (identical? logger out)
+               (identical? logger (log/get-logger))
+               (true? (log/logger-set?))
+               (nil? (log/warn "routed to" (log/logger-levels logger)))))})
