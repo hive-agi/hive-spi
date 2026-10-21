@@ -3,7 +3,8 @@
    capability predicate that answers wrongly silently routes work to a
    backend that cannot do it."
   (:require [clojure.test :refer [deftest is testing]]
-            [hive-spi.addon.headless :as headless]))
+            [hive-spi.addon.headless :as headless]
+            [hive-schemas.test :as hst]))
 
 ;; =============================================================================
 ;; Doubles
@@ -69,3 +70,27 @@
 (deftest an-interrupt-may-be-declined-test
   (is (= :not-supported (:reason (headless/headless-interrupt! (->PlainBackend) {:id "x"})))
       "backends without interrupt support answer, they do not throw"))
+
+;; =============================================================================
+;; Facets: capability resolution over generated backends
+;; =============================================================================
+
+(def ^:private Backend
+  "A backend that either declares a generated capability set or declares
+   none, so both branches of `capabilities` are reached."
+  [:or
+   [:fn {:gen/schema [:set [:enum :cap/hooks :cap/interrupts :cap/subagents]]
+         :gen/fmap (fn [caps]
+                     (reify headless/IHeadlessCapabilities
+                       (declared-capabilities [_] caps)))}
+    #(satisfies? headless/IHeadlessCapabilities %)]
+   :map :nil])
+
+(hst/deftrifecta-from-schema capabilities-declared-or-defaulted
+  hive-spi.addon.headless/capabilities
+  {:in  [:cat Backend]
+   :out [:set :qualified-keyword]
+   :rel (fn [[b] out]
+          (= out (if (satisfies? headless/IHeadlessCapabilities b)
+                   (headless/declared-capabilities b)
+                   headless/default-capabilities)))})

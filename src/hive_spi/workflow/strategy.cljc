@@ -19,7 +19,8 @@
      definition is last-loaded-wins across the whole JVM.
    * A downstream alias MUST keep the symbol spelled `WorkflowStrategyEntry`:
      `adt-case` resolves its ADT argument by symbol name."
-  (:require [hive-dsl.adt :refer [defadt]]))
+  (:require [hive-dsl.adt :refer [defadt]]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -37,6 +38,8 @@
   "True if x satisfies IDispatchStrategy."
   [x]
   (satisfies? IDispatchStrategy x))
+
+(m/=> dispatch-strategy? [:=> [:cat :any] :boolean])
 
 ;;; ===========================================================================
 ;;; WorkflowStrategyEntry — what addons contribute to the strategy registry
