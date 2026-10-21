@@ -194,7 +194,7 @@
   ports/IMemoryStoreBatch
 
   (get-entries [_ ids]
-    (into [] (keep #(get-in @state [:entries %])) (distinct ids)))
+    (into [] (comp (distinct) (keep #(get-in @state [:entries %]))) ids))
 
   ports/IMemoryStoreScan
 
