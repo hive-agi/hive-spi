@@ -179,3 +179,35 @@
               nil
               decisions)
       (allow)))
+
+;;; ===========================================================================
+;;; Function contracts
+;;; ===========================================================================
+
+(def ^:private Opts
+  "The optional provenance map a constructor merges in."
+  [:maybe :map])
+
+(def ^:private Reason
+  "A verdict reason the constructors accept: a non-empty string."
+  [:string {:min 1}])
+
+(m/=> valid? [:=> [:cat :any] :boolean])
+(m/=> explain [:=> [:cat :any] [:maybe :map]])
+(m/=> allow [:function
+             [:=> [:cat] GuardDecision]
+             [:=> [:cat Opts] :map]])
+(m/=> warn [:function
+            [:=> [:cat Reason] GuardDecision]
+            [:=> [:cat Reason Opts] GuardDecision]])
+(m/=> deny [:function
+            [:=> [:cat Reason] GuardDecision]
+            [:=> [:cat Reason Opts] GuardDecision]])
+(m/=> ask [:function
+           [:=> [:cat Reason] GuardDecision]
+           [:=> [:cat Reason Opts] GuardDecision]])
+(m/=> asks? [:=> [:cat [:maybe :map]] :boolean])
+(m/=> blocking? [:=> [:cat [:maybe :map]] :boolean])
+(m/=> denied? [:=> [:cat [:maybe :map]] :boolean])
+(m/=> rank [:=> [:cat [:maybe :map]] [:int {:min 0 :max 3}]])
+(m/=> strongest [:=> [:cat [:maybe [:sequential [:maybe :map]]]] :map])

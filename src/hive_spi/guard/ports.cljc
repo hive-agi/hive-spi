@@ -25,7 +25,8 @@
    dispatch against it."
   (:require [hive-spi.guard.decision]
             [hive-spi.guard.event]
-            [hive-spi.guard.rule]))
+            [hive-spi.guard.rule]
+            [malli.core :as m]))
 
 ;; MIT License - Copyright (c) 2026 Pedro Gomes Branquinho (BuddhiLW)
 
@@ -67,6 +68,12 @@
    Inverse of `projection-ext-key`. Pure; never throws."
   [k]
   (when (projection-ext-key? k) (keyword (name k))))
+
+;; Contracts for the seam-key helpers. `name` reads a keyword, symbol or
+;; string, so `projection-ext-key` accepts all three.
+(m/=> projection-ext-key [:=> [:cat [:or :keyword :symbol :string]] :qualified-keyword])
+(m/=> projection-ext-key? [:=> [:cat :any] :boolean])
+(m/=> harness-of [:=> [:cat :any] [:maybe simple-keyword?]])
 
 (defprotocol IGuardRuleSource
   "A source of GuardRules (see hive-spi.guard.rule/GuardRule)."

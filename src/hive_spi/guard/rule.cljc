@@ -135,3 +135,25 @@
                       {:error       :guard/invalid-rule
                        :rule        m
                        :explanation (explain r)})))))
+
+;;; ===========================================================================
+;;; Function contracts
+;;; ===========================================================================
+
+(def ^:private RuleLike
+  "What the structural predicates read: a map carrying (some of) a rule's
+   keys. Looser than GuardRule on purpose — the predicates are total over
+   partial rules."
+  [:maybe
+   [:map {:closed false}
+    [:rule/phases    {:optional true} [:maybe [:set :keyword]]]
+    [:rule/harnesses {:optional true} [:maybe [:set :keyword]]]
+    [:rule/enabled?  {:optional true} [:maybe :boolean]]]])
+
+(m/=> valid? [:=> [:cat :any] :boolean])
+(m/=> explain [:=> [:cat :any] [:maybe :map]])
+(m/=> enabled? [:=> [:cat RuleLike] :boolean])
+(m/=> applies-to-harness? [:=> [:cat RuleLike :any] :boolean])
+(m/=> applies-to-phase? [:=> [:cat RuleLike :any] :boolean])
+(m/=> candidate? [:=> [:cat RuleLike [:maybe :map]] :boolean])
+(m/=> guard-rule [:=> [:cat [:maybe :map]] GuardRule])
