@@ -5,7 +5,8 @@
    the orchestrator reads the registries when it runs a shutdown or a sweep
    tick."
   (:require [hive-spi.lifecycle.ports :as ports]
-            [hive-spi.slot :as slot]))
+            [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -95,3 +96,41 @@
   (when (seq sweeps) (slot/reg-merge! sweep-slot sweeps))
   (when (seq owners) (slot/reg-merge! owner-slot owners))
   nil)
+
+;;; ============================================================================
+;;; Function contracts
+;;; ============================================================================
+
+(def ShutdownHook
+  "Any IShutdownHook implementation."
+  [:fn {:error/message "an IShutdownHook"} #(satisfies? ports/IShutdownHook %)])
+
+(def Sweepable
+  "Any ISweepable implementation."
+  [:fn {:error/message "an ISweepable"} #(satisfies? ports/ISweepable %)])
+
+(def ResourceOwner
+  "Any IResourceOwner implementation."
+  [:fn {:error/message "an IResourceOwner"} #(satisfies? ports/IResourceOwner %)])
+
+(def RegistrySnapshot
+  "What `registry-snapshot` returns and `restore-all!` accepts: one
+   {key -> impl} map per kind. `restore-all!` treats a missing kind as empty."
+  [:map
+   [:shutdown {:optional true} [:maybe [:map-of :any ShutdownHook]]]
+   [:sweeps   {:optional true} [:maybe [:map-of :any Sweepable]]]
+   [:owners   {:optional true} [:maybe [:map-of :any ResourceOwner]]]])
+
+(m/=> register-shutdown! [:=> [:cat :any ShutdownHook] ShutdownHook])
+(m/=> unregister-shutdown! [:=> [:cat :any] :nil])
+(m/=> registered-shutdown-hooks [:=> [:cat] [:vector ShutdownHook]])
+(m/=> register-sweep! [:=> [:cat :any Sweepable] Sweepable])
+(m/=> unregister-sweep! [:=> [:cat :any] :nil])
+(m/=> registered-sweeps [:=> [:cat] [:map-of :any Sweepable]])
+(m/=> register-resource-owner! [:=> [:cat :any ResourceOwner] ResourceOwner])
+(m/=> unregister-resource-owner! [:=> [:cat :any] :nil])
+(m/=> get-resource-owner [:=> [:cat :any] [:maybe ResourceOwner]])
+(m/=> registered-resource-owners [:=> [:cat] [:map-of :any ResourceOwner]])
+(m/=> registry-snapshot [:=> [:cat] RegistrySnapshot])
+(m/=> reset-all! [:=> [:cat] :nil])
+(m/=> restore-all! [:=> [:cat [:maybe RegistrySnapshot]] :nil])
