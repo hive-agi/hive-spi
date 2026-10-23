@@ -661,6 +661,69 @@
                  (is (= (set (map :id (conj (vec live) expired)))
                         (set (ports/scan-ids s {:include-expired? true}))))))))}
 
+   {:id :batch-delete :section :roles
+    :doc "IMemoryStoreBatchDelete: delete-entries! answers one delete-entry! result per distinct id in first-seen order, deletes every listed entry, leaves the others, treats an unknown id as deleted and answers [] for no ids."
+    :run (fn [ctx]
+           (let [s (fresh ctx)]
+             (when (satisfies? ports/IMemoryStoreBatchDelete s)
+               (let [es      (vec (repeatedly 5 make-entry))
+                     [a b c] (map :id es)
+                     missing (str "missing-" (token))
+                     _       (seed! s es)
+                     r       (ports/delete-entries! s [a b a missing c])]
+                 (is (contract/delete-entries-result? 4 r) (pr-str r))
+                 (is (every? #(= :landed (contract/outcome :delete-entry! %)) r) (pr-str r))
+                 (is (every? #(nil? (ports/get-entry s %)) [a b c]))
+                 (is (= (set (map :id (drop 3 es)))
+                        (set (keep #(:id (ports/get-entry s (:id %))) es)))
+                     "ids not listed survive"))
+               (is (= [] (ports/delete-entries! s []))))))}
+
+   {:id :count :section :roles
+    :doc "IMemoryStoreCount: count-entries is the exact number of matches, honours the query filters, ignores :limit and answers 0 for no match."
+    :run (fn [ctx]
+           (let [[s ids] (seeded-query-store ctx)]
+             (when (satisfies? ports/IMemoryStoreCount s)
+               (is (= 3 (ports/count-entries s {:type :note})) "live notes: n1 n2 n3")
+               (is (= 5 (ports/count-entries s {:include-expired? true}))
+                   "the count sees expired rows only when asked")
+               (is (< (ports/count-entries s {}) (ports/count-entries s {:include-expired? true})))
+               (is (= 2 (ports/count-entries s {:tags ["a"] :project-id "p1"
+                                                :include-expired? true})))
+               (is (= 3 (ports/count-entries s {:type :note :limit 1 :tags ["a"]}))
+                   ":limit does not cap a count")
+               (is (= 0 (ports/count-entries s {:tags [(str "none-" (token))]})))
+               (is (integer? (ports/count-entries s {})))
+               (is (contains? ids :n1)))))}
+
+   {:id :page :section :roles
+    :doc "IMemoryStorePage: following :next-cursor visits every match exactly once, the walk ends with a nil cursor, and :output-fields projects each row."
+    :run (fn [ctx]
+           (let [[s _] (seeded-query-store ctx)]
+             (when (satisfies? ports/IMemoryStorePage s)
+               (let [walk (fn [opts]
+                            (loop [cursor nil, rows [], pages 0]
+                              (let [r (ports/query-page s (assoc opts :cursor cursor))
+                                    rows (into rows (:rows r))]
+                                (if (and (:next-cursor r) (< pages 50))
+                                  (recur (:next-cursor r) rows (inc pages))
+                                  rows))))
+                     all  (ids-of (ports/query-entries s {:include-expired? true :limit 100}))
+                     rows (walk {:limit 2 :include-expired? true})]
+                 (is (= all (set (map :id rows))) "every match is visited")
+                 (is (= (count rows) (count (distinct (map :id rows)))) "none twice")
+                 (is (= (count all) (count rows))))
+               (is (nil? (:next-cursor (ports/query-page s {:limit 100 :include-expired? true})))
+                   "a page that holds the rest ends the walk")
+               (is (some? (:next-cursor (ports/query-page s {:limit 1 :include-expired? true})))
+                   "a page that does not is followed by a cursor")
+               (let [r (ports/query-page s {:limit 100 :include-expired? true
+                                            :output-fields ["id" "type"]})]
+                 (is (pos? (count (:rows r))))
+                 (is (every? :id (:rows r)))
+                 (is (not-any? #(contains? % :content) (:rows r))))
+               (is (= [] (:rows (ports/query-page s {:tags ["no-such-tag"]})))))))}
+
    {:id :routing :section :roles
     :doc "IMemoryStoreWithRouting: target-collection-for is nil or a string; relocate-entry! of an unknown id reports :moved? false."
     :run (fn [ctx]

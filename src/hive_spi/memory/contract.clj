@@ -90,6 +90,19 @@
   "delete-entry!: true on success, an unknown id included."
   [:or [:= true] Queued Failure])
 
+(def DeleteEntriesResult
+  "delete-entries!: one DeleteResult per distinct input id, in first-seen
+   order."
+  [:vector DeleteResult])
+
+(defn delete-entries-result?
+  "True when R is a valid delete-entries! answer for N distinct input ids: a
+   vector of DeleteResult, one per id."
+  [n r]
+  (and (m/validate DeleteEntriesResult r) (= n (count r))))
+
+(m/=> delete-entries-result? [:=> [:cat nat-int? :any] :boolean])
+
 (def write-results
   "Write verb -> the schema its return value must satisfy."
   {:add-entry!       AddResult
