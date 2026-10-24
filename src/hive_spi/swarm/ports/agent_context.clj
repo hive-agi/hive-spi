@@ -60,13 +60,31 @@
       "Stop tracking spend for AGENT-ID. Returns the removed entry (or nil),
        matching the hook's existing return contract.")))
 
+(defonce ^:private -icalleridcontext-defined? (atom false))
+
+(when (compare-and-set! -icalleridcontext-defined? false true)
+  (defprotocol ICallerIdContext
+    "OPTIONAL extension of the installed agent context: the caller id of the
+     tool call in flight, the identity enclave scoping keys on. It is the
+     host's notion of 'who is calling' (an agent id, a session id, or the
+     coordinator), which can differ from `current-agent-id`.
+
+     A context that does not implement it is a host with no caller identity.
+     Consumers call `current-caller-id` below, never the method, so absence
+     needs no branch of their own."
+    (-current-caller-id [this]
+      "Caller id of the call in flight, or nil. Never throws.")))
+
 (def noop
   "Degraded implementation for a standalone process: no context is ever bound
-   (both readers answer nil) and budget registration is accepted and forgotten
-   (nothing is ever enforced). Never throws."
+   (every reader, the caller id included, answers nil) and budget
+   registration is accepted and forgotten (nothing is ever enforced). Never
+   throws."
   (reify IAgentCallContext
     (current-agent-id [_this] nil)
     (current-directory [_this] nil)
+    ICallerIdContext
+    (-current-caller-id [_this] nil)
     IBudgetGuardrail
     (register-budget! [_this _agent-id _max-budget-usd _opts] nil)
     (deregister-budget! [_this _agent-id] nil)))
@@ -96,3 +114,16 @@
   "True iff an agent context is explicitly installed. The Noop does not count."
   []
   (slot/present? port-slot))
+
+(defn current-caller-id
+  "Caller id of the tool call in flight, read through the active agent
+   context. Answers nil when no context is in flight, when the active context
+   has no ICallerIdContext (the Noop of an older release, or a host with no
+   caller identity), or when the host's lookup throws: a caller that scopes on
+   identity must degrade to 'no caller', never fail."
+  []
+  (let [ctx (get-agent-context)]
+    (when (satisfies? ICallerIdContext ctx)
+      (try
+        (-current-caller-id ctx)
+        (catch Throwable _ nil)))))

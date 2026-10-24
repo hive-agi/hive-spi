@@ -69,6 +69,18 @@
   "add-entry!: the id on success."
   [:or Id Queued Failure])
 
+(def AddEntriesResult
+  "add-entries!: one AddResult per input entry, in input order."
+  [:vector AddResult])
+
+(defn add-entries-result?
+  "True when R is a valid add-entries! answer for N input entries: a vector
+   of AddResult, one per entry."
+  [n r]
+  (and (m/validate AddEntriesResult r) (= n (count r))))
+
+(m/=> add-entries-result? [:=> [:cat nat-int? :any] :boolean])
+
 (def UpdateResult
   "update-entry! and update-metadata!: the merged entry on success, nil for
    an unknown id."
@@ -77,6 +89,19 @@
 (def DeleteResult
   "delete-entry!: true on success, an unknown id included."
   [:or [:= true] Queued Failure])
+
+(def DeleteEntriesResult
+  "delete-entries!: one DeleteResult per distinct input id, in first-seen
+   order."
+  [:vector DeleteResult])
+
+(defn delete-entries-result?
+  "True when R is a valid delete-entries! answer for N distinct input ids: a
+   vector of DeleteResult, one per id."
+  [n r]
+  (and (m/validate DeleteEntriesResult r) (= n (count r))))
+
+(m/=> delete-entries-result? [:=> [:cat nat-int? :any] :boolean])
 
 (def write-results
   "Write verb -> the schema its return value must satisfy."

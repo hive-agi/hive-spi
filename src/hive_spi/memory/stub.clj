@@ -194,7 +194,12 @@
   ports/IMemoryStoreBatch
 
   (get-entries [_ ids]
-    (into [] (keep #(get-in @state [:entries %])) (distinct ids)))
+    (into [] (comp (distinct) (keep #(get-in @state [:entries %]))) ids))
+
+  ports/IMemoryStoreBatchWrite
+
+  (add-entries! [_ es]
+    (mapv #(:id (put! state %)) es))
 
   ports/IMemoryStoreScan
 
@@ -213,6 +218,34 @@
     nil)
 
   (-await-reconnect! [_ _budget-ms] (boolean (:connected? @state))))
+
+(extend-type StubMemoryStore
+  ports/IMemoryStoreBatchDelete
+
+  (delete-entries! [{:keys [state]} ids]
+    (let [ids (into [] (distinct) ids)]
+      (when (seq ids)
+        (swap! state (fn [st]
+                       (-> st
+                           (update :entries #(apply dissoc % ids))
+                           (update :embeddings #(apply dissoc % ids))))))
+      (mapv (constantly true) ids)))
+
+  ports/IMemoryStoreCount
+
+  (count-entries [{:keys [state]} opts]
+    (let [now (Instant/now)]
+      (long (count (filter #(entry/matches? % opts now) (entries state))))))
+
+  ports/IMemoryStorePage
+
+  (query-page [{:keys [state]} {:keys [limit cursor output-fields] :or {limit 100} :as opts}]
+    (let [now      (Instant/now)
+          matching (into [] (filter #(entry/matches? % opts now)) (entries state))
+          start    (min (count matching) (or cursor 0))
+          end      (min (count matching) (+ start (max 1 limit)))]
+      {:rows        (mapv #(entry/project % output-fields) (subvec matching start end))
+       :next-cursor (when (< end (count matching)) end)})))
 
 (defn create-store
   "A connected, empty StubMemoryStore. CONFIG may carry `:embedder`, a

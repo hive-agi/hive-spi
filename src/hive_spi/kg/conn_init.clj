@@ -1,6 +1,8 @@
 (ns hive-spi.kg.conn-init
   "SPI: single-init capability — at-most-once eval of open-fn under concurrent
-   contention (LMDB open is non-idempotent). Leaf — no deps.")
+   contention (LMDB open is non-idempotent). Leaf — only malli, for the m/=>
+   contract."
+  (:require [malli.core :as m]))
 ;; SPDX-License-Identifier: MIT
 
 (defprotocol IConnInit
@@ -24,3 +26,15 @@
                    v)))))
      (snapshot [_] @state-atom)
      (clear! [_] (reset! state-atom nil)))))
+
+(def ConnInit
+  "Any IConnInit implementation."
+  [:fn {:error/message "an IConnInit"} #(satisfies? IConnInit %)])
+
+(def StateAtom
+  "The atom an `atom-conn-init` caches its value in."
+  [:fn {:error/message "an atom"} #(instance? clojure.lang.IAtom %)])
+
+(m/=> atom-conn-init [:function
+                      [:=> [:cat] ConnInit]
+                      [:=> [:cat StateAtom] ConnInit]])
