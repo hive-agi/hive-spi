@@ -11,7 +11,8 @@
    the chain to the stores already registered."
   (:require [hive-spi.memory.decorate :as decorate]
             [hive-spi.memory.ports :as ports]
-            [hive-spi.slot :as slot]))
+            [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -124,3 +125,35 @@
   []
   (when (store-set?)
     (ports/store-status (get-store :default))))
+
+;;; ============================================================================
+;;; Function contracts
+;;; ============================================================================
+
+(def MemoryStore
+  "Any IMemoryStore implementation (decorated or bare)."
+  [:fn {:error/message "an IMemoryStore"} #(satisfies? ports/IMemoryStore %)])
+
+(def Decorator
+  "A store decorator, as hive-spi.memory.decorate/add! accepts it."
+  [:map {:closed false}
+   [:id keyword?]
+   [:order number?]
+   [:decorate fn?]])
+
+(m/=> register-store! [:=> [:cat :any MemoryStore] MemoryStore])
+(m/=> redecorate! [:=> [:cat] :nil])
+(m/=> add-decorator! [:=> [:cat Decorator] :nil])
+(m/=> remove-decorator! [:=> [:cat :any] :nil])
+(m/=> unregister-store! [:=> [:cat :any] :nil])
+(m/=> registered-stores [:=> [:cat] [:map-of :any MemoryStore]])
+(m/=> get-store [:function
+                 [:=> [:cat] MemoryStore]
+                 [:=> [:cat :any] MemoryStore]])
+(m/=> set-store! [:=> [:cat MemoryStore] MemoryStore])
+(m/=> store-set? [:=> [:cat] :boolean])
+(m/=> reset-registry! [:=> [:cat] :nil])
+(m/=> reset-active-store! [:=> [:cat] :nil])
+(m/=> connect-active-store! [:=> [:cat :any] :any])
+(m/=> active-store-healthy? [:=> [:cat] [:maybe :map]])
+(m/=> active-store-status [:=> [:cat] [:maybe :map]])
