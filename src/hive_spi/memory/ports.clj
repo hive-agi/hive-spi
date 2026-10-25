@@ -244,6 +244,72 @@
 ;;; IMemoryStoreWithRouting — optional multi-container routing
 ;;; ============================================================================
 
+;;; ============================================================================
+;;; IMemoryStoreBatchDelete — optional batched deletes
+;;; ============================================================================
+
+(defonce ^:private -iwithbatchdelete-defined? (atom false))
+
+(when (compare-and-set! -iwithbatchdelete-defined? false true)
+  (defprotocol IMemoryStoreBatchDelete
+    "Optional extension for batched deletes: many delete-entry! calls folded
+     into as few backend round-trips as the store can manage."
+
+    (delete-entries! [this ids]
+      "Delete every entry of IDS (a collection of id strings). Returns a
+       vector with one result per DISTINCT input id, in first-seen order;
+       each result is what delete-entry! would answer for that id (true, an
+       unknown id included, or a queued / failure map). One id failing MUST
+       NOT lose the others' results. An empty IDS answers [] without a
+       round trip. The contract is hive-spi.memory.contract/DeleteEntriesResult.")))
+
+;;; ============================================================================
+;;; IMemoryStoreCount / IMemoryStorePage — optional counted and paged reads
+;;; ============================================================================
+;;; query-entries answers at most :limit rows and cannot say whether that was
+;;; everything, so a caller that wanted "how many" or "all of them" had to
+;;; raise :limit until the answer fit and pay for every row's payload. These
+;;; two give the store's own answers: an exact count with no rows, and a walk
+;;; by cursor with a projection.
+
+(defonce ^:private -iwithcount-defined? (atom false))
+
+(when (compare-and-set! -iwithcount-defined? false true)
+  (defprotocol IMemoryStoreCount
+    "Optional extension: how many entries match, without reading them."
+
+    (count-entries [this opts]
+      "Exact number of entries matching OPTS, as a long. OPTS takes the
+       filter keys of query-entries (:type :project-id :project-ids :tags
+       :exclude-tags :include-expired?) and no others: :limit, :order-by
+       and :output-fields are ignored. The count and a query-page walk of
+       the same OPTS agree on a store that is not being written to. Throws
+       when the backend cannot answer; a failure is never reported as 0.")))
+
+(defonce ^:private -iwithpage-defined? (atom false))
+
+(when (compare-and-set! -iwithpage-defined? false true)
+  (defprotocol IMemoryStorePage
+    "Optional extension: walk the entries matching a filter one page at a
+     time, so no call holds more than a page."
+
+    (query-page [this opts]
+      "One page of the entries matching OPTS: {:rows [entry ...]
+       :next-cursor cursor-or-nil}. OPTS takes the filter keys of
+       query-entries (:type :project-id :project-ids :tags :exclude-tags
+       :include-expired?) plus :limit (page size, default 100),
+       :output-fields (projection, as in query-entries) and :cursor (nil
+       starts the walk; otherwise the :next-cursor of the previous page,
+       opaque to the caller).
+
+       :next-cursor is nil exactly when the walk is over. A page may hold
+       fewer than :limit rows while :next-cursor is non-nil, so a caller
+       follows the cursor and never reads a short page as the end. Every
+       matching entry is returned once over a walk of a store that is not
+       being written to; order is the backend's, stable across the walk.
+       Throws when the backend cannot answer; a failure is never an empty
+       page.")))
+
 (defonce ^:private -iwithrouting-defined? (atom false))
 
 (when (compare-and-set! -iwithrouting-defined? false true)
