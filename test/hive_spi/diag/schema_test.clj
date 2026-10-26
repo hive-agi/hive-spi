@@ -5,7 +5,10 @@
    canonical byte unit. These are the domain invariants every diag adapter
    relies on when it returns a value object."
   (:require [clojure.test :refer [deftest is testing]]
-            [hive-spi.diag.schema :as s]))
+            [hive-spi.diag.schema :as s]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.clojure-test :refer [defspec]]
+            [clojure.test.check.properties :as prop]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -54,4 +57,38 @@
     (is (= "1.0 MiB" (s/human-bytes (* 1024 1024))))
     (is (= "1.0 GiB" (s/human-bytes (* 1024 1024 1024)))))
   (testing "rounds to 2 decimals (11.08 GiB from the leak fingerprint)"
-    (is (= "11.08 GiB" (s/human-bytes 11901239296)))))
+    (is (= "11.08 GiB" (s/human-bytes 11901239296))))
+  (testing "non-finite input renders honestly, never as a fake magnitude"
+    (is (= "NaN B"  (s/human-bytes ##NaN)))
+    (is (= "Inf B"  (s/human-bytes ##Inf)))
+    (is (= "-Inf B" (s/human-bytes ##-Inf))))
+  (testing "negative counts scale by magnitude and keep their sign"
+    (is (= "-1.0 B"   (s/human-bytes -1)))
+    (is (= "-2.0 KiB" (s/human-bytes -2048)))
+    (is (= "-11.08 GiB" (s/human-bytes -11901239296)))
+    (is (= "0.0 B" (s/human-bytes -0.001)) "no -0.0"))
+  (testing "huge finite values do not saturate at Long/MAX_VALUE"
+    (is (not (re-find #"9\.22337" (s/human-bytes 1e30))))
+    (is (re-find #"^-\d" (s/human-bytes -1e20)))))
+
+(def ^:private human-bytes-shape
+  #"^(n/a|NaN B|-?Inf B|-?\d+(\.\d+)?(E\d+)? (B|KiB|MiB|GiB|TiB))$")
+
+(defspec human-bytes-total-over-doubles 500
+  (prop/for-all [x (gen/one-of [(gen/double* {:infinite? true :NaN? true})
+                                (gen/elements [##NaN ##Inf ##-Inf 0.0 -0.0])
+                                gen/large-integer])]
+    (let [out (s/human-bytes x)
+          v   (double x)]
+      (and (string? out)
+           (boolean (re-matches human-bytes-shape out))
+           (cond
+             (Double/isNaN v)      (= "NaN B" out)
+             (Double/isInfinite v) (= (if (pos? v) "Inf B" "-Inf B") out)
+             (neg? v)              (or (= "0.0 B" out) (= \- (first out)))
+             :else                 (not= \- (first out)))
+           ;; sign symmetry: -x renders as x with a leading minus
+           (or (not (Double/isFinite v)) (zero? v)
+               (let [p (s/human-bytes (Math/abs v))
+                     n (s/human-bytes (- (Math/abs v)))]
+                 (or (= n p) (= n (str "-" p)))))))))
