@@ -203,13 +203,33 @@
 
 (def ^:private units ["B" "KiB" "MiB" "GiB" "TiB"])
 
+(defn- round2
+  "Round to 2 decimals, half away from zero, in double space (no long overflow
+   for huge magnitudes, unlike Math/round). Never yields -0.0, so a tiny
+   negative prints as \"0.0\", not \"-0.0\"."
+  [x]
+  (let [m (/ (Math/floor (+ (* (abs x) 100.0) 0.5)) 100.0)]
+    (cond (zero? m) 0.0
+          (neg? x)  (- m)
+          :else     m)))
+
 (defn human-bytes
-  "Render a byte count as a human string, e.g. 11901239296 -> \"11.1 GiB\".
-   nil -> \"n/a\"."
+  "Render a byte count as a human string, e.g. 11901239296 -> \"11.08 GiB\".
+   nil -> \"n/a\". Negative counts (e.g. a heap that grew) scale by magnitude
+   and keep their sign: -2048 -> \"-2.0 KiB\". Non-finite input renders
+   honestly: NaN -> \"NaN B\", +Inf -> \"Inf B\", -Inf -> \"-Inf B\"."
   [n]
   (if (nil? n)
     "n/a"
-    (loop [v (double n) us units]
-      (if (or (< v 1024.0) (nil? (next us)))
-        (str (-> (* v 100) Math/round (/ 100.0)) " " (first us))
-        (recur (/ v 1024.0) (next us))))))
+    (let [v (double n)]
+      (cond
+        (not= v v)    "NaN B"
+        (== v ##Inf)  "Inf B"
+        (== v ##-Inf) "-Inf B"
+        :else
+        (loop [m (abs v) us units]
+          (if (or (< m 1024.0) (nil? (next us)))
+            (str (round2 (if (neg? v) (- m) m)) " " (first us))
+            (recur (/ m 1024.0) (next us))))))))
+
+(m/=> human-bytes [:=> [:cat [:maybe number?]] :string])
