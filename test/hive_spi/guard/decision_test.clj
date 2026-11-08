@@ -28,7 +28,7 @@
 (hst/deftrifecta-from-schema rank-follows-verdict-order
   hive-spi.guard.decision/rank
   {:in  [:cat d/GuardDecision]
-   :out [:int {:min 0 :max 2}]
+   :out [:int {:min 0 :max 3}]
    :rel (fn [[dec] out]
           (= out (.indexOf ^java.util.List d/verdict-order (:guard/verdict dec))))})
 

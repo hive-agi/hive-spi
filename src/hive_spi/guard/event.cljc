@@ -124,11 +124,11 @@
                      :explanation (explain m)}))))
 
 ;;; ===========================================================================
-;;; Contracts
+;;; Function contracts
 ;;; ===========================================================================
 
 (m/=> phase? [:=> [:cat :any] :boolean])
 (m/=> tool-phase? [:=> [:cat :any] :boolean])
 (m/=> valid? [:=> [:cat :any] :boolean])
 (m/=> explain [:=> [:cat :any] [:maybe :map]])
-(m/=> guard-event [:=> [:cat [:maybe :map]] GuardEvent])
+(m/=> guard-event [:=> [:cat :any] GuardEvent])

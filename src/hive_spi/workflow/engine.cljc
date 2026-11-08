@@ -7,8 +7,8 @@
    `defprotocol` mints a DISTINCT protocol; records implementing the original
    then fail `satisfies?` silently. Alias with `def`, always."
 
-  ;; Intentionally NO :require. SPI is a pure-contract leaf.
-  )
+  ;; Only malli, for the m/=> contracts. SPI is a pure-contract leaf.
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -69,3 +69,6 @@
   "True if x satisfies IWorkflowPersistence."
   [x]
   (satisfies? IWorkflowPersistence x))
+
+(m/=> workflow-engine? [:=> [:cat :any] :boolean])
+(m/=> persistent-engine? [:=> [:cat :any] :boolean])
