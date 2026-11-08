@@ -10,7 +10,8 @@
 
    The host never names a contributor: it calls `compose` with a context
    and receives every registered block's value keyed by id."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -74,3 +75,23 @@
                 (assoc-in acc [:failed id] (or (ex-message t) (str (class t)))))))
           {:blocks {} :failed {}}
           (registered-blocks)))
+
+;; Contracts
+
+(def GenBlock
+  "Block, generating: a block answering its generated id."
+  [:map
+   [:block/id :keyword]
+   [:block/fn [:fn {:error/message "must be a fn"
+                    :gen/schema    :nil
+                    :gen/fmap      (fn [_] (fn [ctx] {:ctx ctx}))}
+               fn?]]
+   [:block/order :int]])
+
+(m/=> block? [:=> [:cat :any] :boolean])
+(m/=> register-block! [:=> [:cat GenBlock] GenBlock])
+(m/=> unregister-block! [:=> [:cat :any] :nil])
+(m/=> registered-blocks [:=> [:cat] [:vector GenBlock]])
+(m/=> registered? [:=> [:cat :any] :boolean])
+(m/=> reset-registry! [:=> [:cat] :nil])
+(m/=> compose [:=> [:cat :any] [:map [:blocks [:map-of :keyword :any]] [:failed [:map-of :keyword :string]]]])

@@ -226,6 +226,49 @@
   (every? (fn [[_ v]] (and (:profile-valid? v) (:implements-port? v)))
           (conformance reg opts)))
 
+;; =============================================================================
+;; contracts for the rest of the surface
+;; =============================================================================
+
+(def Entry
+  "A registry entry as `entry` builds it. The profile is checked at
+   registration, not here, so a profile without an id is still an entry."
+  [:map [:profile [:maybe :map]] [:impl :any]])
+
+(def Registry
+  "A registry value: provider id -> entry. Open in its key type because `add`
+   and `without` accept any registry a caller built by hand."
+  [:map-of :any Entry])
+
+(def ^:private Reg [:maybe Registry])
+
+(def ^:private Entries [:or [:sequential Entry] [:set Entry]])
+
+(m/=> entry [:=> [:cat [:maybe :map] :any] Entry])
+(m/=> registry [:function
+                [:=> [:cat Entries] Registry]
+                [:=> [:cat Entries [:maybe :map]] Registry]])
+(m/=> profile [:=> [:cat Reg :any] [:maybe :map]])
+(m/=> implementation [:=> [:cat Reg :any] :any])
+(m/=> registered? [:=> [:cat Reg :any] :boolean])
+(m/=> add [:function
+           [:=> [:cat Reg Entry] Registry]
+           [:=> [:cat Reg Entry [:maybe :map]] Registry]])
+(m/=> without [:=> [:cat Reg :any] Reg])
+(m/=> behaviour [:function
+                 [:=> [:cat Reg :any :any] :any]
+                 [:=> [:cat Reg :any :any :any] :any]])
+(m/=> capabilities [:=> [:cat Reg :any] [:set :keyword]])
+(m/=> profiles-by [:=> [:cat Reg :any] [:map-of :any [:vector [:maybe :map]]]])
+(m/=> subject-id [:=> [:cat :any ifn?] :any])
+(m/=> for-subject [:=> [:cat Reg :any ifn?] [:maybe Entry]])
+(m/=> via [:=> [:cat Reg :any ifn? ifn?] :any])
+(m/=> via-capable [:=> [:cat Reg :any ifn? :keyword ifn?] :any])
+(m/=> conformance [:=> [:cat Reg [:maybe :map]]
+                   [:map-of :any [:map
+                                  [:profile-valid? :boolean]
+                                  [:implements-port? :boolean]]]])
+
 (m/=> profile-schema [:=> [:cat [:sequential :any]] :any])
 (m/=> ids [:=> [:cat [:maybe :map]] [:set :keyword]])
 (m/=> capable? [:=> [:cat [:maybe :map] :keyword :keyword] :boolean])

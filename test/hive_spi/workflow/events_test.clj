@@ -2,7 +2,8 @@
   "Contract tests for hive-spi.workflow.events — the 8-variant WorkflowEvent
    ADT + valid-transition? lifecycle FSM."
   (:require [clojure.test :refer [deftest is testing]]
-            [hive-spi.workflow.events :as ev]))
+            [hive-spi.workflow.events :as ev]
+            [hive-schemas.test :as hst]))
 
 ;; ---------------------------------------------------------------------------
 ;; ADT variant surface
@@ -104,3 +105,28 @@
                                            :op :wf.op/call :ts 1 :payload {}})]
       (is (ev/valid-transition? started step-started))
       (is (ev/valid-transition? nil started)))))
+
+;;; ===========================================================================
+;;; Facets: the FSM against its own transition table
+;;; ===========================================================================
+
+(def ^:private Variant
+  "Every variant, the pre-run nil and one stranger, so every row of the
+   transition table is reached."
+  [:enum nil :workflow/started :workflow/step-started :workflow/step-completed
+   :workflow/step-failed :workflow/wave-dispatched :workflow/wave-completed
+   :workflow/completed :workflow/failed :workflow/bogus])
+
+(hst/deftrifecta-from-schema valid-transition?-reads-the-table
+  hive-spi.workflow.events/valid-transition?
+  {:in  [:cat Variant Variant]
+   :out :boolean
+   :rel (fn [[p n] out] (= out (contains? (get ev/transitions p #{}) n)))})
+
+(hst/deftrifecta-from-schema terminal?-is-completed-or-failed
+  hive-spi.workflow.events/terminal?
+  {:in  [:cat [:or Variant [:map [:adt/variant Variant]]]]
+   :out :boolean
+   :rel (fn [[x] out]
+          (= out (contains? #{:workflow/completed :workflow/failed}
+                            (if (map? x) (:adt/variant x) x))))})

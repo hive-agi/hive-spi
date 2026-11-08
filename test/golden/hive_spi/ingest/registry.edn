@@ -1,0 +1,30 @@
+[{:ok {:key "notion", :owner "addon-a", :replaced? false}}
+ {:ok {:key "notion", :owner "addon-a", :replaced? true}}
+ {:error :source-registry/owner-conflict,
+  :key "notion",
+  :owner "addon-b",
+  :registered-owner "addon-a"}
+ {:ok {:key "jira", :owner "addon-b", :replaced? false}}
+ [{:source-id "jira",
+   :owner "addon-b",
+   :description nil,
+   :params {:limit "max"}}
+  {:source-id "notion",
+   :owner "addon-a",
+   :description "Notion v2",
+   :params nil}]
+ true
+ {:error :source-registry/owner-conflict,
+  :key "notion",
+  :owner "addon-b",
+  :registered-owner "addon-a"}
+ {:ok {:key ":r/late", :owner "addon-a", :replaced? false}}
+ {:ok {:key ":r/early", :owner "addon-b", :replaced? false}}
+ {:error :source-registry/invalid-rule, :rule-id :r/none}
+ ["rule-2" "rule-1"]
+ {:ok {:owner "addon-a", :sources ["notion"], :rules [":r/late"]}}
+ [{:source-id "jira",
+   :owner "addon-b",
+   :description nil,
+   :params {:limit "max"}}]
+ ["rule-2"]]

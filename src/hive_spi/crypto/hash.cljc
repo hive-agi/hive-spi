@@ -17,7 +17,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -80,3 +81,27 @@
     (digest-hex hasher :sha256 text)
     (throw (ex-info "No IHasher installed"
                     {:error :hash/no-hasher :algorithm :sha256}))))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Hasher
+  "An IHasher implementation. Generates a hasher answering one generated
+   lowercase-hex digest for every input."
+  [:fn {:error/message "must satisfy IHasher"
+        :gen/schema    [:re #"^[0-9a-f]{64}$"]
+        :gen/fmap      (fn [digest]
+                         (reify IHasher
+                           (digest-hex [_ _ _] digest)
+                           (hasher-algorithms [_] #{:sha256})))}
+   #(satisfies? IHasher %)])
+
+(m/=> set-hasher! [:=> [:cat Hasher] Hasher])
+(m/=> get-hasher [:=> [:cat] [:maybe Hasher]])
+(m/=> clear-hasher! [:=> [:cat] :nil])
+(m/=> hasher-set? [:=> [:cat] :boolean])
+;; The output is whatever the active hasher renders: the port DOCUMENTS
+;; lowercase hex, but it passes an installed hasher's answer through
+;; unchecked, so the contract states the string the port actually returns.
+(m/=> sha256 [:=> [:cat :string] :string])

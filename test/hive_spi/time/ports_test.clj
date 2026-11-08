@@ -4,7 +4,8 @@
    clock, corrupts ordering and dedup across the ecosystem."
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [hive-spi.time.clock-portable :as portable]
-            [hive-spi.time.ports :as time]))
+            [hive-spi.time.ports :as time]
+            [hive-schemas.test :as hst]))
 
 ;; =============================================================================
 ;; Fixtures
@@ -90,3 +91,15 @@
 (deftest an-implementation-that-is-not-a-clock-is-rejected-test
   (is (thrown? AssertionError (time/set-clock! {:not :a-clock})))
   (is (false? (time/clock-set?)) "a rejected install leaves the slot empty"))
+
+;; =============================================================================
+;; Facets: the slot over the schema-generated clock
+;; =============================================================================
+
+(hst/deftrifecta-from-schema set-clock-returns-what-it-installed
+  hive-spi.time.ports/set-clock!
+  {:in  [:cat time/Clock]
+   :out time/Clock
+   :rel (fn [[clock] out] (and (identical? clock out)
+                               (identical? clock (time/get-clock))
+                               (= (time/clock-millis clock) (time/now-millis))))})

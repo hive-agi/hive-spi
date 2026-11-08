@@ -36,7 +36,8 @@
             [hive-spi.memory.ids :as ids]
             [hive-spi.memory.ports :as ports]
             [hive-spi.memory.contract :as contract]
-            [hive-spi.memory.decorate :as decorate])
+            [hive-spi.memory.decorate :as decorate]
+            [malli.core :as m])
   (:import [java.time Duration Instant]))
 
 ;; SPDX-License-Identifier: MIT
@@ -805,6 +806,53 @@
                 (assoc-in acc [:skipped id] (:reason r)))))
           {:ran [] :skipped {}}
           case-ids))
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+(def CaseId
+  "A conformance case id."
+  (into [:enum] case-ids))
+
+(def MakeStore
+  "A zero-arg fn returning a CONNECTED store."
+  [:fn {:error/message "must be a zero-arg fn"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] (requiring-resolve 'hive-spi.memory.stub/create-store))}
+   ifn?])
+
+(def RunOpts
+  "The OPTS the runners read."
+  [:maybe [:map
+           [:connect-config {:optional true} [:maybe :map]]
+           [:skip {:optional true} [:maybe [:map-of :keyword :string]]]]])
+
+(m/=> make-entry [:function
+                  [:=> [:cat] [:map [:id :string] [:content-hash :string]]]
+                  [:=> [:cat [:maybe :map]] [:map [:content-hash :string]]]])
+(m/=> run-case [:=> [:cat MakeStore RunOpts CaseId]
+                [:or [:= :ran] [:map [:skipped CaseId] [:reason :string]]]])
+(m/=> run-conformance [:=> [:cat MakeStore RunOpts]
+                       [:map [:ran [:vector CaseId]] [:skipped [:map-of CaseId :string]]]])
+
+(def SealRequirement
+  "A key of `seal-requirements`."
+  (into [:enum] (keys seal-requirements)))
+
+(def SealReadiness
+  "What `seal-readiness` answers."
+  [:map
+   [:seal-ready? :boolean]
+   [:missing [:set SealRequirement]]
+   [:reasons [:map-of SealRequirement :string]]])
+
+(m/=> seal-readiness [:function
+                      [:=> [:cat ports/MemoryStore] SealReadiness]
+                      [:=> [:cat ports/MemoryStore [:maybe :map]] SealReadiness]])
+(m/=> seal-readiness-report [:=> [:cat [:maybe [:map-of :any ports/MemoryStore]]]
+                             [:map-of :any SealReadiness]])
+(m/=> assert-seal-ready [:=> [:cat ports/MemoryStore] SealReadiness])
 
 (defmacro defconformance
   "Emit one clojure.test deftest per case, named PREFIX-<case-id>, each

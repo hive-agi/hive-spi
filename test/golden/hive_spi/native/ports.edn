@@ -1,0 +1,9 @@
+{:ok? [true false false false],
+ :names ["craft_ops" "craft_a_b_c" "x_"],
+ :port
+ ["craft"
+  :native/unavailable
+  {:ok false,
+   :error "Native library unavailable",
+   :error/type :native/unavailable}
+  nil]}

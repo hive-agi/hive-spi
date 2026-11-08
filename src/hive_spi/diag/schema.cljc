@@ -232,4 +232,32 @@
             (str (round2 (if (neg? v) (- m) m)) " " (first us))
             (recur (/ m 1024.0) (next us))))))))
 
+;; ---------------------------------------------------------------------------
+;; Contracts
+;; ---------------------------------------------------------------------------
+
+(def SchemaLike
+  "Anything `m/schema` accepts: a schema value or its vector form.
+   Generates the named schemas of this namespace."
+  [:fn {:error/message "must be a malli schema"
+        :gen/elements  [NonNegLong MemoryPool HeapSnapshot HistogramEntry
+                        CacheStore RetainerRoot]}
+   (fn [x] (try (some? (m/schema x))
+                (catch #?(:clj Exception :cljs :default) _not-a-schema false)))])
+
+;; The constructors validate whatever they are handed and throw on a miss, so
+;; the input is any map (or nil); the output is the named value object.
+(def ^:private Candidate [:maybe :map])
+
+(m/=> valid? [:=> [:cat SchemaLike :any] :boolean])
+(m/=> explain [:=> [:cat SchemaLike :any] [:maybe :map]])
+(m/=> build [:=> [:cat SchemaLike :keyword Candidate] :map])
+(m/=> ->heap-snapshot [:=> [:cat Candidate] HeapSnapshot])
+(m/=> ->class-histogram [:=> [:cat Candidate] ClassHistogram])
+(m/=> ->allocation [:=> [:cat Candidate] AllocationProfile])
+(m/=> ->flamegraph [:=> [:cat Candidate] FlamegraphArtifact])
+(m/=> ->cache-occupancy [:=> [:cat Candidate] CacheOccupancy])
+(m/=> ->reclamation [:=> [:cat Candidate] Reclamation])
+(m/=> ->retainer-report [:=> [:cat Candidate] RetainerReport])
+(m/=> ->diagnosis [:=> [:cat Candidate] DiagnosisReport])
 (m/=> human-bytes [:=> [:cat [:maybe number?]] :string])

@@ -1,0 +1,4 @@
+{:skipped {:skipped :reset-empties, :reason "not here"},
+ :needs
+ {:skipped :disconnect-then-connect,
+  :reason "opts lack :connect-config"}}

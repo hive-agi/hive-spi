@@ -1,0 +1,11 @@
+{:before {:valid? false, :enum ["claude" "vterm" "headless"]},
+ :returned :tmux,
+ :during
+ {:valid? true,
+  :slot-limit 3,
+  :io-model :buffer,
+  :caps [:dispatch :kill],
+  :kill? true,
+  :enum ["claude" "vterm" "headless" "tmux"]},
+ :deregistered :tmux,
+ :after {:valid? false, :enum ["claude" "vterm" "headless"]}}

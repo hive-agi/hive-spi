@@ -6,7 +6,8 @@
    into an AbstractMethodError."
   (:require [clojure.test :refer [deftest is use-fixtures]]
             [hive-spi.editor.ports :as ports]
-            [hive-spi.editor.registry :as reg]))
+            [hive-spi.editor.registry :as reg]
+            [hive-schemas.test :as hst]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -146,3 +147,21 @@
             [:switch-buffer {"buffer" "*scratch*"}]
             [:kill-daemon {"name" "dev"}]]
            @(:calls p)))))
+
+(hst/deftrifecta-from-schema surfaces-agrees-with-supports
+  hive-spi.editor.registry/surfaces
+  {:in  [:cat reg/EditorPort]
+   :out [:set reg/Surface]
+   :rel (fn [[port] out]
+          (= out (set (filter #(reg/supports? port %) [:buffer :docs :daemon]))))})
+
+(hst/deftrifecta-from-schema supports?-is-false-off-the-known-surfaces
+  hive-spi.editor.registry/supports?
+  {:in  [:cat reg/EditorPort [:enum :buffer :docs :daemon :bogus nil]]
+   :out :boolean
+   :rel (fn [[port surface] out]
+          (= out (case surface
+                   :buffer (satisfies? ports/IEditorBufferPort port)
+                   :docs   (satisfies? ports/IEditorDocsPort port)
+                   :daemon (satisfies? ports/IEditorDaemonPort port)
+                   false)))})

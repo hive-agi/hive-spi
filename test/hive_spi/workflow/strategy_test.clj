@@ -6,7 +6,8 @@
    it with `adt-case`. If that stops working the :method seam breaks silently."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-dsl.adt :refer [adt-case]]
-            [hive-spi.workflow.strategy :as s]))
+            [hive-spi.workflow.strategy :as s]
+            [hive-schemas.test :as hst]))
 
 ;; ---------------------------------------------------------------------------
 ;; IDispatchStrategy
@@ -70,3 +71,17 @@
       (is (= [:registered :saa]
              (adt-case WorkflowStrategyEntry entry
                :wf/strategy [:registered (:method entry)]))))))
+
+(def ^:private Candidate
+  "Strategies and non-strategies, both reached by the generator."
+  [:or
+   [:fn {:gen/schema :keyword
+         :gen/fmap (fn [k] (reify s/IDispatchStrategy (dispatch [_ _ _] {:ok k})))}
+    #(satisfies? s/IDispatchStrategy %)]
+   :keyword :map :nil])
+
+(hst/deftrifecta-from-schema dispatch-strategy?-is-satisfaction
+  hive-spi.workflow.strategy/dispatch-strategy?
+  {:in  [:cat Candidate]
+   :out :boolean
+   :rel (fn [[x] out] (= out (satisfies? s/IDispatchStrategy x)))})

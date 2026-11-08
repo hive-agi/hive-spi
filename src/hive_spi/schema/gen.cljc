@@ -10,7 +10,9 @@
    derivation lever: every subsequent compile-op bundle carries the test facet."
   (:require [malli.generator :as mg]
             [hive-spi.schema.registry :as reg]
-            [hive-spi.schema.derive :as derive]))
+            [hive-spi.schema.derive :as derive]
+            [malli.core :as m]
+            [clojure.test.check.generators :as tcg]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -42,6 +44,30 @@
   (into (sorted-map)
         (map-indexed (fn [i v] [(keyword (str "case-" i)) v]))
         (sample ?schema {:size n :seed seed})))
+
+;; Contracts. A generator is a test.check generator record; generated values
+;; conform to the ref, which is :any at the type level.
+(def Generator
+  "A test.check generator."
+  [:fn {:error/message "must be a test.check generator"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] (tcg/return nil))}
+   tcg/generator?])
+
+(def GenOpts
+  "malli.generator opts the wrappers pass through."
+  [:maybe [:map [:seed {:optional true} :int] [:size {:optional true} nat-int?]]])
+
+(m/=> generator [:function
+                 [:=> [:cat reg/SchemaRef] Generator]
+                 [:=> [:cat reg/SchemaRef GenOpts] Generator]])
+(m/=> generate [:function
+                [:=> [:cat reg/SchemaRef] :any]
+                [:=> [:cat reg/SchemaRef GenOpts] :any]])
+(m/=> sample [:function
+              [:=> [:cat reg/SchemaRef] [:sequential :any]]
+              [:=> [:cat reg/SchemaRef GenOpts] [:sequential :any]]])
+(m/=> seeded-cases [:=> [:cat reg/SchemaRef :int nat-int?] [:map-of :keyword :any]])
 
 (derive/register-projection! :generator generator)
 

@@ -15,7 +15,8 @@
    A host resolves capabilities through `invoke` (or `capability` when it
    wants to check first). An unregistered capability is an explicit
    :editor/capability-unavailable result — never a NullPointerException, and
-   never a silent nil that a caller mistakes for a legitimate empty answer.")
+   never a silent nil that a caller mistakes for a legitimate empty answer."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -95,3 +96,37 @@
   []
   (reset! services {})
   nil)
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Capabilities
+  "A capability map: keyword -> fn. Generates maps of constant fns."
+  [:map-of :keyword [:fn {:gen/schema :int :gen/fmap constantly} ifn?]])
+
+(def Unavailable
+  "`unavailable`'s explicit failure value."
+  [:map
+   [:success [:= false]]
+   [:success? [:= false]]
+   [:error [:= :editor/capability-unavailable]]
+   [:capability :any]
+   [:registry-key :any]
+   [:available [:vector :keyword]]])
+
+;; register-services! validates its own input and throws on a malformed map,
+;; so the contract states the accepted shape (permissive key, strict caps).
+(m/=> register-services! [:function
+                          [:=> [:cat Capabilities] Capabilities]
+                          [:=> [:cat :any Capabilities] Capabilities]])
+(m/=> unregister-services! [:function [:=> [:cat] :nil] [:=> [:cat :any] :nil]])
+(m/=> registered [:=> [:cat] [:map-of :any Capabilities]])
+(m/=> capabilities [:function [:=> [:cat] [:set :keyword]] [:=> [:cat :any] [:set :keyword]]])
+(m/=> capability [:function [:=> [:cat :any] [:maybe ifn?]] [:=> [:cat :any :any] [:maybe ifn?]]])
+(m/=> available? [:function [:=> [:cat :any] :boolean] [:=> [:cat :any :any] :boolean]])
+(m/=> unavailable [:=> [:cat :any :any] Unavailable])
+;; invoke returns whatever the registered capability returns, or Unavailable.
+(m/=> invoke [:=> [:cat :any :any [:* :any]] :any])
+(m/=> invoke-default [:=> [:cat :any [:* :any]] :any])
+(m/=> reset-services! [:=> [:cat] :nil])

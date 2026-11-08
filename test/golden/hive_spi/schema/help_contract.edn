@@ -1,0 +1,24 @@
+{:rows
+ [{:param :qn,
+   :required? true,
+   :type "string",
+   :description "Qualified name",
+   :enum nil,
+   :default nil,
+   :aliases [:function]}
+  {:param :limit,
+   :required? false,
+   :type "integer",
+   :description nil,
+   :enum nil,
+   :default 50,
+   :aliases []}
+  {:param :mode,
+   :required? false,
+   :type "string",
+   :description nil,
+   :enum ["fast" "full"],
+   :default nil,
+   :aliases []}],
+ :scalar [],
+ :unresolved nil}

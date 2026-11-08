@@ -42,7 +42,8 @@
    guarded the way hive-spi.time.ports and hive-spi.swarm.ports.memory-scope
    do — re-evaluating this namespace never orphans existing implementations.
    Consumers must NOT re-defprotocol these names."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -262,3 +263,15 @@
   "True iff a port is explicitly installed. The Noop fallback does not count."
   []
   (slot/present? port-slot))
+
+(def Events
+  "Any IEventDispatch implementation (the Noop included)."
+  [:fn {:error/message "an IEventDispatch"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] noop)}
+   #(satisfies? IEventDispatch %)])
+
+(m/=> set-events! [:=> [:cat Events] Events])
+(m/=> get-events [:=> [:cat] Events])
+(m/=> clear-events! [:=> [:cat] :nil])
+(m/=> events-set? [:=> [:cat] :boolean])

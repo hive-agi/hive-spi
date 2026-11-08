@@ -105,3 +105,25 @@
                             (r/err :parse/schema-violation
                                    {:explanation (me/humanize (m/explain s d))}))))}
      @projections*)))
+
+;; ---------------------------------------------------------------------------
+;; Contracts
+;; ---------------------------------------------------------------------------
+
+(def OpBundle
+  "What `compile-op` answers: the core artifacts, plus one key per projection
+   (open), plus :projection-errors when a projection threw."
+  [:map
+   [:schema reg/CompiledSchema]
+   [:input-schema :map]
+   [:validate reg/FnValue]
+   [:explain reg/FnValue]
+   [:coerce reg/FnValue]
+   [:coerce->result reg/FnValue]
+   [:projection-errors {:optional true} [:map-of :keyword :any]]])
+
+(m/=> input-schema [:=> [:cat reg/SchemaRef] :map])
+(m/=> register-projection! [:=> [:cat :keyword reg/FnValue] :keyword])
+(m/=> deregister-projection! [:=> [:cat :any] :any])
+(m/=> projections [:=> [:cat] [:map-of :keyword reg/FnValue]])
+(m/=> compile-op [:=> [:cat reg/SchemaRef] OpBundle])

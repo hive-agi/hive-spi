@@ -13,7 +13,8 @@
    `clock-iso` is local and carries no zone — the host this implementation
    exists for has no zone database. On a JVM the port prefers
    `hive-spi.time.clock-jvm`, whose rendering is zoned."
-  (:require [hive-spi.time.ports :as time]))
+  (:require [hive-spi.time.ports :as time]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -76,3 +77,10 @@
   "Install the portable clock as the explicitly active one. Returns it."
   []
   (time/set-clock! (default-clock)))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(m/=> default-clock [:=> [:cat] time/Clock])
+(m/=> install! [:=> [:cat] time/Clock])

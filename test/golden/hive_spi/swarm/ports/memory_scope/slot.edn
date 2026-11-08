@@ -1,0 +1,28 @@
+{:noop
+ {:set? false,
+  :readings
+  {:project-id ["global" "global"],
+   :inferred "global",
+   :warnings nil,
+   :formatted nil,
+   :kg-first
+   {:kg-known [],
+    :needs-read [],
+    :stale [],
+    :summary {:total 0, :known 0, :needs-read 0, :stale 0}},
+   :changed nil}},
+ :installed-returns-impl? true,
+ :stub
+ {:set? true,
+  :readings
+  {:project-id ["hive-spi" "global"],
+   :inferred "hive",
+   :warnings ({:message "stale.clj is stale"}),
+   :formatted "stale.clj is stale",
+   :kg-first
+   {:kg-known [],
+    :needs-read ["a.clj"],
+    :stale [],
+    :summary {:total 1, :known 0, :needs-read 1, :stale 0}},
+   :changed nil}},
+ :cleared [nil false]}

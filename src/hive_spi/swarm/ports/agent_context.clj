@@ -24,7 +24,8 @@
    Reload-safety: `defprotocol` is not idempotent, so each declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol these names."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -127,3 +128,17 @@
       (try
         (-current-caller-id ctx)
         (catch Throwable _ nil)))))
+
+(def AgentContext
+  "Any IAgentCallContext implementation (the Noop included)."
+  [:fn {:error/message "an IAgentCallContext"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] noop)}
+   #(satisfies? IAgentCallContext %)])
+
+(m/=> set-agent-context! [:=> [:cat AgentContext] AgentContext])
+(m/=> get-agent-context [:=> [:cat] AgentContext])
+(m/=> clear-agent-context! [:=> [:cat] :nil])
+(m/=> agent-context-set? [:=> [:cat] :boolean])
+;; The host owns the id's shape; the reader only promises it never throws.
+(m/=> current-caller-id [:=> [:cat] :any])

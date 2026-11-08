@@ -1,0 +1,3 @@
+{:single [:fallback false :impl :impl nil :fallback],
+ :watch [[nil :impl] [:impl nil]],
+ :multi [1 [:missing :b] [:b :c] {:a 1, :b 2, :c 3} nil {:b 2, :c 3}]}

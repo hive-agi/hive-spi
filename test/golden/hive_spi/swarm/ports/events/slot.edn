@@ -1,0 +1,36 @@
+{:noop
+ {:set? false,
+  :readings
+  {:dispatch nil,
+   :registered [false false],
+   :publish [nil nil],
+   :hooks [],
+   :gauge nil,
+   :dag
+   [{:active false, :plan-id "plan-1", :reason :no-scheduler}
+    {:active false}
+    nil],
+   :emit nil,
+   :vessel [nil nil]}},
+ :installed-returns-impl? true,
+ :stub
+ {:set? true,
+  :readings
+  {:dispatch [:ling/spawned {:id 1}],
+   :registered [true false],
+   :publish [nil nil],
+   :hooks [{:result :task-complete}],
+   :gauge nil,
+   :dag
+   [{:active true, :plan-id "plan-1"}
+    {:active true, :plan-id "p"}
+    {:stopped true, :plan-id "p", :completed-count 0}],
+   :emit nil,
+   :vessel [{:project-id "hive", :cwd "/w", :session-id "s"} nil]},
+  :log
+  [[:dispatch [:ling/spawned {:id 1}]]
+   [:event :agent-spawn]
+   [:shout :progress]
+   [:gauge 3]
+   [:emit :agent-spawned]]},
+ :cleared [nil false true]}

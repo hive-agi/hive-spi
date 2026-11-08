@@ -5,7 +5,8 @@
    double is held to the same `hive-spi.kanban/conformance` cases the real
    provider passes. Every call is appended to `:calls` as [method argument]."
   (:require [hive-spi.kanban :as k]
-            [hive-spi.kanban.registry :as r]))
+            [hive-spi.kanban.registry :as r]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -70,3 +71,20 @@
   (r/unregister! :IKanbanRead)
   (r/unregister! :IKanbanWrite)
   nil)
+
+;; Contracts
+
+(def Stub
+  "A RecordingKanban."
+  [:fn {:error/message "must be a RecordingKanban"
+        :gen/schema    [:vector {:max 3} k/Task]
+        :gen/fmap      (fn [tasks] (recording-kanban tasks))}
+   #(instance? RecordingKanban %)])
+
+(m/=> recording-kanban [:function
+                        [:=> [:cat] Stub]
+                        [:=> [:cat [:sequential k/Task]] Stub]])
+(m/=> board [:=> [:cat Stub] [:map-of :string k/Task]])
+(m/=> calls [:=> [:cat Stub] [:vector [:tuple :keyword :any]]])
+(m/=> install! [:=> [:cat Stub] Stub])
+(m/=> uninstall! [:=> [:cat] :nil])

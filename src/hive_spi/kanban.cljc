@@ -154,3 +154,18 @@
       (check :create/blank-title-is-err
              (and (map? bad-cr) (m/validate CreateResult bad-cr) (contains? bad-cr :err))
              bad-cr)])))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def CaseResult
+  [:map [:case :keyword] [:ok? :boolean] [:detail :any]])
+
+;; The impls are probed through the protocols inside `attempt`, so any value
+;; is accepted: a non-impl fails its cases, it never throws.
+(m/=> conformance [:function
+                   [:=> [:cat :any :any] [:vector CaseResult]]
+                   [:=> [:cat :any :any [:maybe [:map [:missing-id {:optional true} :string]
+                                                  [:directory {:optional true} [:maybe :string]]]]]
+                    [:vector CaseResult]]])

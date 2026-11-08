@@ -12,7 +12,8 @@
             [hive-spi.ingest.model :as model]
             [hive-spi.ingest.ports :as ports]
             [hive-spi.ingest.registry :as registry]
-            [hive-spi.ingest.tck :as tck]))
+            [hive-spi.ingest.tck :as tck]
+            [hive-schemas.test :as hst]))
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
@@ -167,3 +168,12 @@
       (is (contains? (set (:passes (tck/conform community fixtures)))
                      :memo/ids-are-single-letters))
       (finally (tck/unregister-law! :memo/ids-are-single-letters)))))
+
+(hst/deftrifecta-from-schema an-empty-conventional-source-conforms
+  hive-spi.ingest.tck/conform
+  {:in  [:cat tck/Source]
+   :out tck/Report
+   :rel (fn [[_] report]
+          (and (:ok report)
+               (= (count (tck/laws)) (count (:results report)))
+               (contains? (:rungs-measured report) :rung/descriptor)))})

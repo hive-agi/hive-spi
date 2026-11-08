@@ -11,7 +11,8 @@
    Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.string :as str]
             [hive-spi.ingest.model :as model]
-            [hive-spi.ingest.ports :as ports]))
+            [hive-spi.ingest.ports :as ports]
+            [malli.core :as m]))
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
@@ -282,3 +283,55 @@
        (when (seq skips)
          (cons "  skips:"
                (map #(str "    " (:law/id %) " " (:reason %)) skips))))))))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Law
+  "One law (see `What a law is` above)."
+  [:map
+   [:law/id :qualified-keyword]
+   [:law/rung (into [:enum] rungs)]
+   [:law/summary {:optional true} :string]
+   [:law/needs {:optional true} [:set :keyword]]
+   [:law/inputs {:optional true} [:set :keyword]]
+   [:law/check [:=> [:cat :map] :any]]])
+
+(def Source
+  "An ISource. Generates a fixed source returning no documents."
+  [:fn {:error/message "must satisfy ISource"
+        :gen/schema    [:re #"^[a-z]{1,6}(-[a-z]{1,4})?$"]
+        :gen/fmap      (fn [id] (reify ports/ISource
+                                  (source-id [_] id)
+                                  (fetch-documents [_ _] {:ok []})))}
+   #(satisfies? ports/ISource %)])
+
+(def LawResult
+  [:map [:law/id :qualified-keyword] [:law/rung :keyword]
+   [:status [:enum :pass :fail :skip]] [:reason {:optional true} :string]])
+
+(def Report
+  [:map
+   [:ok :boolean]
+   [:results [:vector LawResult]]
+   [:passes [:vector :qualified-keyword]]
+   [:failures [:vector :map]]
+   [:skips [:vector :map]]
+   [:rungs-measured [:set :keyword]]])
+
+(def Ctx [:maybe [:map {:closed false} [:opts {:optional true} [:maybe :map]]
+                  [:limit-opts {:optional true} [:maybe :map]]]])
+
+(m/=> ok-result? [:=> [:cat :any] :boolean])
+(m/=> err-result? [:=> [:cat :any] :boolean])
+(m/=> result? [:=> [:cat :any] :boolean])
+(m/=> payload [:=> [:cat :any] :any])
+;; register-law! keys by :law/id and stores whatever it is handed.
+(m/=> register-law! [:=> [:cat [:map [:law/id :any]]] :any])
+(m/=> unregister-law! [:=> [:cat :any] :any])
+(m/=> laws [:=> [:cat] [:vector :map]])
+(m/=> satisfied? [:=> [:cat :any :any] :boolean])
+(m/=> run-law [:=> [:cat :map :map] LawResult])
+(m/=> conform [:function [:=> [:cat Source] Report] [:=> [:cat Source Ctx] Report]])
+(m/=> explain [:function [:=> [:cat Source] :string] [:=> [:cat Source Ctx] :string]])

@@ -152,3 +152,31 @@
   "{schema-key validator-type} for every schema currently in the hive registry."
   []
   (into {} (map (fn [k] [k (schema->type k)])) (keys (reg/registered))))
+
+;; ---------------------------------------------------------------------------
+;; Contracts
+;; ---------------------------------------------------------------------------
+
+(def TypeSyntax
+  "Typed Clojure type syntax as data: a symbol, a list form, or a fn-type
+   vector."
+  [:or :symbol [:sequential :any] :keyword])
+
+(def FnType
+  "`[ArgT :-> ResultT]`."
+  [:tuple TypeSyntax [:= :->] TypeSyntax])
+
+(m/=> schema->type [:=> [:cat reg/SchemaRef] TypeSyntax])
+(m/=> schema->parser-type [:=> [:cat reg/SchemaRef] [:cat [:= 'typed.clojure/U] :any :any]])
+(m/=> op-fn-type [:function
+                  [:=> [:cat reg/SchemaRef] FnType]
+                  [:=> [:cat reg/SchemaRef reg/SchemaRef] FnType]])
+(m/=> ann-form [:function
+                [:=> [:cat :symbol reg/SchemaRef] [:cat [:= 'typed.clojure/ann] :symbol FnType]]
+                [:=> [:cat :symbol reg/SchemaRef reg/SchemaRef] [:cat [:= 'typed.clojure/ann] :symbol FnType]]])
+(m/=> defalias-form [:=> [:cat :symbol reg/SchemaRef] [:cat [:= 'typed.clojure/defalias] :symbol TypeSyntax]])
+;; The schemas are copied into the form unresolved: any value is accepted.
+(m/=> =>-form [:function
+               [:=> [:cat :symbol :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]
+               [:=> [:cat :symbol :any :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]])
+(m/=> registered-types [:=> [:cat] [:map-of :keyword TypeSyntax]])

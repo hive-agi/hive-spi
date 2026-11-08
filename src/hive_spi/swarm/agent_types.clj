@@ -8,7 +8,8 @@
    Adding a new agent type = adding one entry here. All downstream
    validation, MCP schemas, depth mappings, and capabilities derive automatically.
 
-   Sum type variants: coordinator, ling.")
+   Sum type variants: coordinator, ling."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -211,3 +212,33 @@
   "Get the description for an agent type."
   [agent-type]
   (get-in registry [(keyword agent-type) :description]))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def TypeRef
+  "How callers name an agent type or a capability: keyword, string or symbol
+   (each goes through `keyword`), or nil, which names no type. Generates the
+   registered types in every spelling, plus unknown names and nil, so a
+   generated case reaches both sides of every lookup."
+  [:maybe {:gen/elements [:coordinator :ling "coordinator" "ling" 'ling
+                          :drone "unknown" 'ghost nil :read "spawn"]}
+   [:or :keyword :string :symbol]])
+
+(def ModelTier
+  "Default model cost tiers."
+  [:enum :free :economy :standard :premium])
+
+(m/=> valid-type? [:=> [:cat :any] :boolean])
+(m/=> type-depth [:=> [:cat TypeRef] :int])
+(m/=> depth->agent-type [:=> [:cat :any] :keyword])
+(m/=> spawnable? [:=> [:cat TypeRef] :boolean])
+(m/=> valid-spawn-mode? [:=> [:cat TypeRef TypeRef] :boolean])
+(m/=> has-capability? [:=> [:cat TypeRef TypeRef] :boolean])
+(m/=> has-permission? [:=> [:cat TypeRef :any] :boolean])
+(m/=> can-chain-tools? [:=> [:cat TypeRef] :boolean])
+(m/=> slot-limit [:=> [:cat TypeRef] [:maybe :int]])
+(m/=> default-model-tier [:=> [:cat TypeRef] ModelTier])
+(m/=> mcp-enum [:=> [:cat] [:vector :string]])
+(m/=> describe [:=> [:cat TypeRef] [:maybe :string]])

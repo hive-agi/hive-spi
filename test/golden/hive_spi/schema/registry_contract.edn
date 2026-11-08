@@ -1,0 +1,6 @@
+{:result [true true false false false false],
+ :ok true,
+ :register :covf/a,
+ :uses-ref [true false],
+ :removed [:covf/a],
+ :explain 1}

@@ -6,7 +6,8 @@
    defined against an ALIASED protocol var still satisfies the original, and a
    second `defprotocol` does NOT."
   (:require [clojure.test :refer [deftest is testing]]
-            [hive-spi.workflow.engine :as e]))
+            [hive-spi.workflow.engine :as e]
+            [hive-test.golden :refer [deftest-golden]]))
 
 ;; ---------------------------------------------------------------------------
 ;; Helpers (mirrors hive-spi.workflow.ports-test)
@@ -108,3 +109,20 @@
           (is (not (satisfies? trap (->StubEngine))))
           (is (satisfies? e/IWorkflowEngine (->StubEngine))))
         (finally (remove-ns (ns-name trap-ns)))))))
+
+(deftest-golden predicates-over-engines-and-strangers
+  "test/golden/hive_spi/workflow/engine.edn"
+  (let [engine (reify e/IWorkflowEngine
+                 (load-workflow [_ _ _] nil) (validate-workflow [_ _] nil)
+                 (execute-step [_ _ _ _] nil) (execute-workflow [_ _ _] nil)
+                 (get-status [_ _] nil) (cancel-workflow [_ _ _] nil))
+        durable (reify
+                  e/IWorkflowEngine
+                  (load-workflow [_ _ _] nil) (validate-workflow [_ _] nil)
+                  (execute-step [_ _ _ _] nil) (execute-workflow [_ _ _] nil)
+                  (get-status [_ _] nil) (cancel-workflow [_ _ _] nil)
+                  e/IWorkflowPersistence
+                  (save-state [_ _ _] nil) (load-state [_ _] nil)
+                  (list-workflows [_ _] nil))]
+    (mapv (fn [[label x]] [label (e/workflow-engine? x) (e/persistent-engine? x)])
+          [["engine" engine] ["durable" durable] ["map" {}] ["nil" nil]])))

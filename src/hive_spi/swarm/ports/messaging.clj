@@ -49,7 +49,8 @@
    this ns must not mint fresh protocol classes and orphan installed
    adapters. IInboxSink's delivery method is -deliver!, and the public
    deliver! below is the router over the registered sinks."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -415,3 +416,39 @@
    does not count."
   []
   (slot/present? port-slot))
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+(def Messaging
+  "Any IEventBus implementation (the noop included)."
+  [:fn {:error/message "an IEventBus"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] noop)}
+   #(satisfies? IEventBus %)])
+
+(def InboxSink
+  "Any IInboxSink implementation."
+  [:fn {:error/message "an IInboxSink"} #(satisfies? IInboxSink %)])
+
+(def Envelope
+  "The message envelope `deliver!` routes. Permissive in: an invalid envelope
+   is a value deliver! answers, not a contract violation."
+  [:maybe :map])
+
+(def DeliveryResult
+  "What `deliver!` answers: a sink's result, or the port's own refusal."
+  [:map
+   [:delivered? :boolean]
+   [:sink [:maybe :keyword]]
+   [:reason {:optional true} :keyword]])
+
+(m/=> register-sink! [:=> [:cat InboxSink] InboxSink])
+(m/=> unregister-sink! [:=> [:cat :any] :nil])
+(m/=> sinks [:=> [:cat] [:maybe [:sequential InboxSink]]])
+(m/=> deliver! [:=> [:cat Envelope] DeliveryResult])
+(m/=> set-messaging! [:=> [:cat Messaging] Messaging])
+(m/=> get-messaging [:=> [:cat] Messaging])
+(m/=> clear-messaging! [:=> [:cat] :nil])
+(m/=> messaging-set? [:=> [:cat] :boolean])

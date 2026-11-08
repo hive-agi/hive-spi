@@ -4,7 +4,9 @@
    quoting per type and the not-loaded fallback of every call form."
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
-            [hive-spi.editor.elisp :as el]))
+            [hive-spi.editor.elisp :as el]
+            [hive-schemas.test :as hst]
+            [hive-test.golden :refer [deftest-golden]]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -69,3 +71,46 @@
 (deftest emit-falls-back-without-clojure-elisp
   (is (string? (el/emit '(buffer-name))))
   (is (string? (el/emit-forms ['(a) '(b)]))))
+
+;; =============================================================================
+;; Facets
+;; =============================================================================
+
+(def ^:private Scalar
+  [:or :nil :boolean [:string {:max 6}] :int :keyword :symbol [:vector {:max 3} :int]])
+
+(hst/deftrifecta-from-schema elisp-quote-renders-by-type
+  hive-spi.editor.elisp/elisp-quote
+  {:in  [:cat Scalar]
+   :out :string
+   :rel (fn [[v] out]
+          (cond
+            (nil? v)     (= "nil" out)
+            (true? v)    (= "t" out)
+            (false? v)   (= "nil" out)
+            (string? v)  (= (pr-str v) out)
+            (number? v)  (= (str v) out)
+            (keyword? v) (= (str ":" (name v)) out)
+            (symbol? v)  (= (str "'" v) out)
+            (vector? v)  (and (clojure.string/starts-with? out "'(")
+                              (clojure.string/ends-with? out ")"))))})
+
+(hst/deftrifecta-from-schema format-args-has-no-trailing-space
+  hive-spi.editor.elisp/format-args
+  {:in  [:cat [:vector {:max 4} [:or :int :keyword]]]
+   :out :string
+   :rel (fn [[args] out]
+          (if (empty? args)
+            (= "" out)
+            (= out (str " " (clojure.string/join " " (map el/elisp-quote args))))))})
+
+(deftest-golden call-builders
+  "test/golden/hive_spi/editor/elisp.edn"
+  {:json       (el/require-and-call-json 'hive-mcp-magit 'hive-mcp-magit-api-log 10)
+   :json-bare  (el/require-and-call-json 'f 'g)
+   :plist      (el/require-and-call-plist-json 'f 'g (sorted-map :a 1 :b nil :c "x"))
+   :text       (el/require-and-call-text 'f 'g :k)
+   :call       (el/require-and-call 'f 'g true false)
+   :fboundp    (el/fboundp-call-json 'g [1 2])
+   :progn      (el/wrap-progn "(a)" "(b)")
+   :template   (el/format-elisp "(goto-line %d)" 42)})

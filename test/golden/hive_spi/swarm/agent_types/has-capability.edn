@@ -1,0 +1,8 @@
+{:case-0 {:out false, :in (nil :read)},
+ :case-1 {:out false, :in (:read :dag)},
+ :case-2 {:out true, :in (:coordinator "spawn")},
+ :case-3 {:out false, :in (:drone :delegate)},
+ :case-4 {:out false, :in (:coordinator :eval)},
+ :case-5 {:out false, :in (:ling :kill)},
+ :case-6 {:out true, :in ("ling" :eval)},
+ :case-7 {:out false, :in ("spawn" :kill)}}

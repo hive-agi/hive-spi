@@ -4,7 +4,9 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [hive-spi.swarm.dispatch-context :as dc]))
+            [hive-spi.swarm.dispatch-context :as dc]
+            [hive-schemas.test :as hst]
+            [hive-test.golden :refer [deftest-golden]]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -80,3 +82,35 @@
       (and (str/ends-with? (:prompt resolved) prompt)
            (= (boolean (seq ctx-refs)) (contains? resolved :refs))
            (= (boolean (seq kg-node-ids)) (contains? resolved :kg-nodes))))))
+
+;; -----------------------------------------------------------------------------
+;; Trifecta over the contracted coercion (cov-fleet)
+;; -----------------------------------------------------------------------------
+;; No :golden-path: the output is a record; the golden below snapshots what an
+;; agent actually receives, its resolved map.
+
+(def ^:private PromptOrContext
+  [:or :string :int :keyword :nil dc/DispatchContext])
+
+(hst/deftrifecta-from-schema ensure-context-contract
+  hive-spi.swarm.dispatch-context/ensure-context
+  {:in  PromptOrContext
+   :out dc/DispatchContext
+   :rel (fn [x out]
+          (if (satisfies? dc/IDispatchContext x)
+            (identical? x out)
+            (= {:prompt (str x)} (dc/resolve-context out))))
+   :num-tests 200})
+
+(deftest-golden resolved-contexts-golden
+  "test/golden/hive_spi/swarm/dispatch_context/resolved.edn"
+  (into (sorted-map)
+        {:text      (dc/resolve-context (dc/->text-context "t"))
+         :coerced   (dc/resolve-context (dc/ensure-context :kw))
+         :ref-bare  (dc/resolve-context (dc/->ref-context "t" nil))
+         :ref-full  (dc/resolve-context
+                     (dc/->ref-context "t" {:ctx-refs {:axioms "c1" :decisions "c2"}
+                                            :kg-node-ids '("n1")
+                                            :reconstruct-fn (fn [r n s] (str (count r) (count n) s))
+                                            :scope "hive"}))
+         :types     (mapv dc/context-type [(dc/->text-context "t") (dc/->ref-context "t" {})])}))
