@@ -132,6 +132,15 @@
 
 ;; The store installed is the DECORATED one: a decorator may answer any
 ;; IMemoryStore, so the output is the port, not STORE itself.
+(def MemoryStore
+  "Any IMemoryStore implementation (decorated or bare): the port's schema,
+   re-published under the name cov2/spi gave it."
+  ports/MemoryStore)
+
+(def Decorator
+  "A store decorator, as hive-spi.memory.decorate/add! accepts it."
+  decorate/Decorator)
+
 (m/=> register-store! [:=> [:cat :any ports/MemoryStore] ports/MemoryStore])
 (m/=> redecorate! [:=> [:cat] :nil])
 (m/=> add-decorator! [:=> [:cat decorate/Decorator] :nil])

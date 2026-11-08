@@ -141,6 +141,18 @@
    [:sweeps [:maybe [:map-of :any Sweeper]]]
    [:owners [:maybe [:map-of :any ResourceOwner]]]])
 
+(def Sweepable
+  "Published name of `Sweeper` (cov2/spi); kept so the release stays additive."
+  Sweeper)
+
+(def RegistrySnapshot
+  "What `restore-all!` accepts: `Snapshot` with every kind optional, since
+   `restore-all!` treats a missing kind as empty."
+  [:map
+   [:shutdown {:optional true} [:maybe [:map-of :any ShutdownHook]]]
+   [:sweeps   {:optional true} [:maybe [:map-of :any Sweeper]]]
+   [:owners   {:optional true} [:maybe [:map-of :any ResourceOwner]]]])
+
 (m/=> register-shutdown! [:=> [:cat :any ShutdownHook] ShutdownHook])
 (m/=> unregister-shutdown! [:=> [:cat :any] :nil])
 (m/=> registered-shutdown-hooks [:=> [:cat] [:vector ShutdownHook]])
