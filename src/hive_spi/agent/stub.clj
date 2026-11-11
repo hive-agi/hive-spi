@@ -24,19 +24,30 @@
 (defn- status-of [run]
   {:run/state (:state run) :run/cursor {:turn (:turn run)}})
 
-(defn- new-handle [state run-spec]
-  (let [id (str "stub-run-" (count (:runs @state)))
-        h  (merge (rc/correlation run-spec)
-                  {:run/id id
-                   :run/adapter (:run/adapter run-spec :stub)
-                   :run/transcript-ref {:agent-id (:run/agent-id run-spec)
-                                        :cursor (:run/resume-from run-spec {:turn 0})}})]
-    (swap! state assoc-in [:runs id]
-           {:handle h :state :queued :closed? false
-            :turn (get-in h [:run/transcript-ref :cursor :turn])
-            :agent-id (:run/agent-id run-spec)
-            :host {:resources :held}})
-    h))
+(defn- run-id [n] (str "stub-run-" n))
+
+(defn- new-handle
+  "Mint a run for RUN-SPEC and answer its handle. The id comes from the :seq
+   counter read and bumped in the same swap that files the run, so concurrent
+   callers never share an id."
+  [state run-spec]
+  (let [st (swap! state
+                  (fn [st]
+                    (let [n  (:seq st 0)
+                          id (run-id n)
+                          h  (merge (rc/correlation run-spec)
+                                    {:run/id id
+                                     :run/adapter (:run/adapter run-spec :stub)
+                                     :run/transcript-ref {:agent-id (:run/agent-id run-spec)
+                                                          :cursor (:run/resume-from run-spec {:turn 0})}})]
+                      (-> st
+                          (assoc :seq (inc n))
+                          (assoc-in [:runs id]
+                                    {:handle h :state :queued :closed? false
+                                     :turn (get-in h [:run/transcript-ref :cursor :turn])
+                                     :agent-id (:run/agent-id run-spec)
+                                     :host {:resources :held}})))))]
+    (get-in st [:runs (run-id (dec (:seq st))) :handle])))
 
 (defn- entries-of [state agent-id]
   (->> (:entries @state)
@@ -86,22 +97,24 @@
 
   rc/IRunAwait
   (await-run [_ handle timeout-ms]
-    (let [deadline (+ (System/currentTimeMillis) (long timeout-ms))]
-      (loop []
-        (let [run (run-of state handle)]
-          (cond
-            (nil? run) (unknown handle)
+    (if-not (number? timeout-ms)
+      (r/err :run/invalid-timeout {:run/id (:run/id handle) :timeout-ms timeout-ms})
+      (let [deadline (+ (System/currentTimeMillis) (long timeout-ms))]
+        (loop []
+          (let [run (run-of state handle)]
+            (cond
+              (nil? run) (unknown handle)
 
-            (rc/terminal? {:run/state (:state run)})
-            (r/ok (cond-> (assoc (status-of run) :run/final-cursor {:turn (:turn run)})
-                    (= :failed (:state run))
-                    (assoc :run/error {:error/type (:error-type run :run/stub-failure)})))
+              (rc/terminal? {:run/state (:state run)})
+              (r/ok (cond-> (assoc (status-of run) :run/final-cursor {:turn (:turn run)})
+                      (= :failed (:state run))
+                      (assoc :run/error {:error/type (:error-type run :run/stub-failure)})))
 
-            (< (System/currentTimeMillis) deadline)
-            (do (Thread/sleep 1) (recur))
+              (< (System/currentTimeMillis) deadline)
+              (do (Thread/sleep 1) (recur))
 
-            :else
-            (r/err :run/timeout {:run/id (:run/id handle) :timeout-ms timeout-ms}))))))
+              :else
+              (r/err :run/timeout {:run/id (:run/id handle) :timeout-ms timeout-ms})))))))
 
   rc/IRunCancel
   (cancel! [this handle]
@@ -139,7 +152,7 @@
   "A fresh StubRunControl with no runs and no transcript entries. OPTS is
    reserved and ignored."
   ([] (create {}))
-  ([_opts] (->StubRunControl (atom {:runs {} :entries [] :cleaned #{}}))))
+  ([_opts] (->StubRunControl (atom {:runs {} :entries [] :cleaned #{} :seq 0}))))
 
 (defn advance!
   "Move the run of HANDLE forward one turn: write one transcript entry under
@@ -163,10 +176,17 @@
 
 (defn finish!
   "Terminate the run of HANDLE in TERMINAL, one of `rc/terminal-states`:
-   close its transcript, then publish the state, in one swap. Returns STUB."
+   close its transcript, then publish the state, in one swap. A run that is
+   already terminal keeps its state, and an unknown HANDLE changes nothing.
+   Returns STUB."
   [stub handle terminal]
-  (swap! (:state stub) update-in [:runs (:run/id handle)]
-         (fn [run] (when run (assoc run :closed? true :state terminal))))
+  (swap! (:state stub)
+         (fn [st]
+           (let [id  (:run/id handle)
+                 run (get-in st [:runs id])]
+             (if (or (nil? run) (rc/terminal? {:run/state (:state run)}))
+               st
+               (assoc-in st [:runs id] (assoc run :closed? true :state terminal))))))
   stub)
 
 (defn harness

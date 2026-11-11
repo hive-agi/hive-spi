@@ -44,6 +44,26 @@ contribute a version conflict to a consumer's tree.
   adapter in another repo can run it (`defconformance`, `run-conformance`).
   `hive-spi.agent.stub` is the in-memory reference implementation that passes
   it.
+- `hive-spi.agent.conformance`: the `:await-ms` option (default
+  `default-await-ms`, 1000) sets how long a case waits in `await-run` for a
+  run it has ended or cancelled.
+
+### Changed
+
+- `hive-spi.agent.conformance`: the await and cancel cases now require
+  `:run/final-cursor` to be the cursor of the last transcript entry, so an
+  outcome pointing past the transcript no longer passes. A case about an
+  optional port (`IRunCancel`, `IRunCleanup`, `IRunContinue`) that the
+  implementation does not satisfy is reported under `:skipped` with a reason,
+  not under `:ran`.
+
+### Fixed
+
+- `hive-spi.agent.stub`: concurrent `submit!` calls get distinct run ids (the
+  id is minted in the swap that files the run); `finish!` leaves an already
+  terminal run as it is and files nothing for an unknown handle; `await-run`
+  with a non-numeric timeout answers the err `:run/invalid-timeout` instead of
+  throwing.
 
 ## [1.4.2] - 2026-10-01
 

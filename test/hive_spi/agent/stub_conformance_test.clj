@@ -2,7 +2,7 @@
   "The reference stub runs the same run-control/transcript conformance suite
    every real adapter runs, and the published shapes reject what the contract
    rules out."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :as t :refer [deftest is testing]]
             [hive-dsl.result :as r]
             [hive-spi.agent.conformance :as conformance]
             [hive-spi.agent.run-control :as rc]
@@ -28,18 +28,111 @@
                rc/IRunCancel rc/IRunCleanup tx/ITranscriptQuery]]
       (is (satisfies? p s) (str p)))))
 
-(deftest a-provider-without-optional-ports-passes-vacuously
-  (testing "an implementation offering only submit/observe/await is still conformant"
-    (let [make (fn []
-                 (let [s (stub/create)
-                       ctl (reify
-                             rc/IRunSubmit (submit! [_ spec] (rc/submit! s spec))
-                             rc/IRunObserve (observe-run [_ h] (rc/observe-run s h))
-                             rc/IRunAwait (await-run [_ h t] (rc/await-run s h t)))]
-                   (assoc (stub/harness) :ctl ctl :transcripts s
-                          :drive! #(stub/advance! s %)
-                          :end! #(stub/finish! s %1 %2))))]
-      (is (= conformance/case-ids (:ran (conformance/run-conformance make {})))))))
+(def ^:private optional-case-ids
+  [:cancel-flushes-before-cancelled :cleanup-keeps-transcript :continue-one-successor])
+
+(defn- harness-over
+  "A harness whose :ctl is (WRAP stub) and whose other parts are the stub's."
+  [wrap]
+  (let [s (stub/create)]
+    {:ctl (wrap s) :transcripts s
+     :drive! #(stub/advance! s %)
+     :end! #(stub/finish! s %1 %2)}))
+
+(defn- required-ports-only [s]
+  (reify
+    rc/IRunSubmit (submit! [_ spec] (rc/submit! s spec))
+    rc/IRunObserve (observe-run [_ h] (rc/observe-run s h))
+    rc/IRunAwait (await-run [_ h t] (rc/await-run s h t))))
+
+(defn- reports-of
+  "The clojure.test report events F emits, captured instead of counted."
+  [f]
+  (let [events (atom [])]
+    (binding [t/report #(swap! events conj %)]
+      (f))
+    @events))
+
+(deftest a-provider-without-optional-ports-has-them-skipped-not-ran
+  (testing "an implementation offering only submit/observe/await is conformant, and its optional cases are not reported as run"
+    (let [res (conformance/run-conformance #(harness-over required-ports-only) {})]
+      (is (= (remove (set optional-case-ids) conformance/case-ids) (:ran res)))
+      (is (= (set optional-case-ids) (set (keys (:skipped res)))))
+      (is (= "optional port IRunCancel is not satisfied"
+             (get-in res [:skipped :cancel-flushes-before-cancelled]))))))
+
+(deftest a-final-cursor-past-the-last-entry-fails-the-suite
+  (let [lying (fn [s]
+                (reify
+                  rc/IRunSubmit (submit! [_ spec] (rc/submit! s spec))
+                  rc/IRunObserve (observe-run [_ h] (rc/observe-run s h))
+                  rc/IRunAwait
+                  (await-run [_ h t]
+                    (let [res (rc/await-run s h t)]
+                      (cond-> res (r/ok? res) (assoc-in [:ok :run/final-cursor] {:turn 999999}))))))
+        failed? (fn [make] (some #(= :fail (:type %))
+                                 (reports-of #(conformance/run-case make {} :await-flush-before-terminal))))]
+    (is (failed? #(harness-over lying)) "a final cursor no entry carries is refused")
+    (is (not (failed? stub/harness)) "the honest stub still passes the same case")))
+
+(deftest await-ms-is-an-option-with-the-old-default
+  (let [seen (atom [])
+        recording (fn [s]
+                    (reify
+                      rc/IRunSubmit (submit! [_ spec] (rc/submit! s spec))
+                      rc/IRunObserve (observe-run [_ h] (rc/observe-run s h))
+                      rc/IRunCancel (cancel! [_ h] (rc/cancel! s h))
+                      rc/IRunAwait (await-run [_ h t] (swap! seen conj t) (rc/await-run s h t))))
+        make #(harness-over recording)]
+    (is (= 1000 conformance/default-await-ms))
+    (is (= :ran (conformance/run-case make {} :cancel-flushes-before-cancelled)))
+    (is (= [1000] @seen) "the default is the value that used to be hard-coded")
+    (reset! seen [])
+    (is (= :ran (conformance/run-case make {:await-ms 250} :cancel-flushes-before-cancelled)))
+    (is (= [250] @seen))))
+
+(deftest concurrent-submits-yield-distinct-runs
+  (let [n     64
+        s     (stub/create)
+        start (java.util.concurrent.CountDownLatch. 1)
+        futs  (mapv (fn [i]
+                      (future
+                        (.await start)
+                        (rc/submit! s {:run/agent-id (str "agent-" i) :run/task "t"})))
+                    (range n))
+        _     (.countDown start)
+        hs    (mapv #(:ok (deref % 5000 nil)) futs)]
+    (is (every? rc/valid-run-handle? hs))
+    (is (= n (count (set (map :run/id hs)))) "no two submits share a run id")
+    (is (= (set (map #(str "agent-" %) (range n)))
+           (set (map #(get-in % [:run/transcript-ref :agent-id]) hs)))
+        "no run was overwritten by another")
+    (is (every? #(r/ok? (rc/observe-run s %)) hs))))
+
+(deftest finish-never-rewrites-a-terminal-state
+  (let [s (stub/create)
+        h (:ok (rc/submit! s {:run/agent-id "a" :run/task "t"}))]
+    (stub/advance! s h)
+    (rc/cancel! s h)
+    (stub/finish! s h :succeeded)
+    (is (= :cancelled (get-in (rc/observe-run s h) [:ok :run/state])))
+    (stub/finish! s h :failed)
+    (is (= :cancelled (:run/state (:ok (rc/await-run s h 50)))))))
+
+(deftest finish-of-an-unknown-run-changes-nothing
+  (let [s      (stub/create)
+        before @(:state s)
+        ghost  {:run/id "never-issued"}]
+    (is (identical? s (stub/finish! s ghost :succeeded)))
+    (is (= before @(:state s)) "no run is filed under the unknown id")
+    (is (= :run/unknown (:error (rc/observe-run s ghost))))))
+
+(deftest await-with-a-non-numeric-timeout-is-an-err
+  (let [s (stub/create)
+        h (:ok (rc/submit! s {:run/agent-id "a" :run/task "t"}))]
+    (is (= :run/invalid-timeout (:error (rc/await-run s h nil))))
+    (is (= :run/invalid-timeout (:error (rc/await-run s h "soon"))))
+    (is (= :run/timeout (:error (rc/await-run s h 0))) "a numeric timeout still times out")))
 
 (deftest run-spec-refuses-what-the-contract-rules-out
   (is (not (rc/valid-run-spec? {:run/task "no agent id"})))

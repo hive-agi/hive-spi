@@ -18,8 +18,9 @@
    MAKE-HARNESS is a zero-arg fn returning a FRESH harness for each case:
      :ctl          the run-control implementation (IRunSubmit, IRunObserve
                    and IRunAwait are required; IRunCancel, IRunCleanup and
-                   IRunContinue are optional, and their cases pass vacuously
-                   when the protocol is not satisfied)
+                   IRunContinue are optional, and their cases are reported
+                   under :skipped, never under :ran, when the protocol is
+                   not satisfied)
      :transcripts  an ITranscriptQuery over the transcripts :ctl writes
      :drive!       (fn [handle]) moves the run on by one turn, writing one
                    transcript entry
@@ -28,7 +29,9 @@
    :drive! and :end! are test hooks. A real adapter wires them to a scripted
    model or a fake LLM, never to production state.
 
-   OPTS: :skip {case-id \"reason\"}."
+   OPTS: :skip {case-id \"reason\"}; :await-ms, how long a case waits in
+   await-run for a run it has ended or cancelled (default
+   `default-await-ms`)."
   (:require [clojure.test :as t :refer [is testing]]
             [hive-dsl.result :as r]
             [hive-spi.agent.run-control :as rc]
@@ -47,6 +50,22 @@
 
 (defn- since [{:keys [transcripts]} aid cursor]
   (:ok (tx/transcript-since transcripts {:agent-id aid :cursor cursor})))
+
+(def default-await-ms
+  "How long a case waits in await-run for a run it has ended or cancelled,
+   unless OPTS carries :await-ms."
+  1000)
+
+(defn- await-ms [h] (::await-ms h default-await-ms))
+
+(defn- final-cursor-is-last-entry
+  "Assert that :run/final-cursor of OUT is the cursor of the last entry in the
+   transcript of handle HD, or the cursor the run started from when it wrote
+   none."
+  [h hd out]
+  (let [{aid :agent-id start :cursor} (:run/transcript-ref hd)]
+    (is (= (tx/last-cursor start (since h aid start)) (:run/final-cursor out))
+        ":run/final-cursor is the cursor of the last transcript entry")))
 
 (def cases
   "Every conformance case, in run order."
@@ -101,15 +120,16 @@
              (is (not (rc/terminal? (:ok (rc/observe-run (:ctl h) hd)))))))}
 
    {:id :await-flush-before-terminal :section :await
-    :doc "await-run answers a valid terminal RunOutcome, and transcript-since at :run/final-cursor returns nothing new."
+    :doc "await-run answers a valid terminal RunOutcome whose :run/final-cursor is the last transcript entry's, and transcript-since at it returns nothing new."
     :run (fn [h]
            (let [hd (submit h (spec))]
              ((:drive! h) hd)
              ((:drive! h) hd)
              ((:end! h) hd :succeeded)
-             (let [out (:ok (rc/await-run (:ctl h) hd 1000))]
+             (let [out (:ok (rc/await-run (:ctl h) hd (await-ms h)))]
                (is (rc/valid-run-outcome? out) (pr-str out))
                (is (= :succeeded (:run/state out)))
+               (final-cursor-is-last-entry h hd out)
                (is (empty? (since h agent-id (:run/final-cursor out)))
                    "the transcript was closed BEFORE the terminal state was published"))))}
 
@@ -119,8 +139,9 @@
            (let [hd (submit h (spec))]
              ((:drive! h) hd)
              ((:end! h) hd :failed)
-             (let [out (:ok (rc/await-run (:ctl h) hd 1000))]
+             (let [out (:ok (rc/await-run (:ctl h) hd (await-ms h)))]
                (is (= :failed (:run/state out)))
+               (final-cursor-is-last-entry h hd out)
                (is (keyword? (get-in out [:run/error :error/type]))))))}
 
    ;; ---- transcript --------------------------------------------------------
@@ -158,46 +179,44 @@
              (is (= (r/ok []) (tx/query-by-agent (:transcripts h) "agent-with-no-entries")))))}
 
    ;; ---- optional: cancel --------------------------------------------------
-   {:id :cancel-flushes-before-cancelled :section :cancel
-    :doc "IRunCancel: cancel! of a running run publishes :cancelled, and nothing follows its final cursor; cancelling again reports the state found."
+   {:id :cancel-flushes-before-cancelled :section :cancel :requires #'rc/IRunCancel
+    :doc "IRunCancel: cancel! of a running run publishes :cancelled, its final cursor is the last transcript entry's and nothing follows it; cancelling again reports the state found."
     :run (fn [h]
-           (when (satisfies? rc/IRunCancel (:ctl h))
-             (let [hd (submit h (spec))]
-               ((:drive! h) hd)
-               (rc/cancel! (:ctl h) hd)
-               (let [out (:ok (rc/await-run (:ctl h) hd 1000))]
-                 (is (= :cancelled (:run/state out)) (pr-str out))
-                 (is (empty? (since h agent-id (:run/final-cursor out)))))
-               (let [again (rc/cancel! (:ctl h) hd)]
-                 (is (r/ok? again))
-                 (is (= :cancelled (get-in again [:ok :run/state])))))))}
+           (let [hd (submit h (spec))]
+             ((:drive! h) hd)
+             (rc/cancel! (:ctl h) hd)
+             (let [out (:ok (rc/await-run (:ctl h) hd (await-ms h)))]
+               (is (= :cancelled (:run/state out)) (pr-str out))
+               (final-cursor-is-last-entry h hd out)
+               (is (empty? (since h agent-id (:run/final-cursor out)))))
+             (let [again (rc/cancel! (:ctl h) hd)]
+               (is (r/ok? again))
+               (is (= :cancelled (get-in again [:ok :run/state]))))))}
 
    ;; ---- optional: cleanup -------------------------------------------------
-   {:id :cleanup-keeps-transcript :section :cleanup
+   {:id :cleanup-keeps-transcript :section :cleanup :requires #'rc/IRunCleanup
     :doc "IRunCleanup: cleanup! answers (ok nil), is idempotent, and leaves the transcript readable."
     :run (fn [h]
-           (when (satisfies? rc/IRunCleanup (:ctl h))
-             (let [hd (submit h (spec))]
-               ((:drive! h) hd)
-               ((:end! h) hd :succeeded)
-               (is (= (r/ok nil) (rc/cleanup! (:ctl h) hd)))
-               (is (= (r/ok nil) (rc/cleanup! (:ctl h) hd)) "idempotent")
-               (is (seq (since h agent-id {:turn 0})) "the transcript outlives the run"))))}
+           (let [hd (submit h (spec))]
+             ((:drive! h) hd)
+             ((:end! h) hd :succeeded)
+             (is (= (r/ok nil) (rc/cleanup! (:ctl h) hd)))
+             (is (= (r/ok nil) (rc/cleanup! (:ctl h) hd)) "idempotent")
+             (is (seq (since h agent-id {:turn 0})) "the transcript outlives the run")))}
 
    ;; ---- optional: continue ------------------------------------------------
-   {:id :continue-one-successor :section :continue
+   {:id :continue-one-successor :section :continue :requires #'rc/IRunContinue
     :doc "IRunContinue: a completed parent admits one successor under a fresh agent-id; a second continue of the same parent is an err."
     :run (fn [h]
-           (when (satisfies? rc/IRunContinue (:ctl h))
-             (let [parent (submit h (spec))]
-               ((:drive! h) parent)
-               ((:end! h) parent :succeeded)
-               (rc/await-run (:ctl h) parent 1000)
-               (let [child (rc/continue! (:ctl h) parent (spec "successor-agent"))]
-                 (is (r/ok? child) (pr-str child))
-                 (is (= "successor-agent" (get-in child [:ok :run/transcript-ref :agent-id]))))
-               (is (r/err? (rc/continue! (:ctl h) parent (spec "second-successor")))
-                   "a reserved successor is never replayed"))))}])
+           (let [parent (submit h (spec))]
+             ((:drive! h) parent)
+             ((:end! h) parent :succeeded)
+             (rc/await-run (:ctl h) parent (await-ms h))
+             (let [child (rc/continue! (:ctl h) parent (spec "successor-agent"))]
+               (is (r/ok? child) (pr-str child))
+               (is (= "successor-agent" (get-in child [:ok :run/transcript-ref :agent-id]))))
+             (is (r/err? (rc/continue! (:ctl h) parent (spec "second-successor")))
+                 "a reserved successor is never replayed")))}])
 
 (def case-ids
   "The case ids, in run order."
@@ -209,14 +228,20 @@
 
 (defn run-case
   "Run case ID against a fresh (MAKE-HARNESS) in the current clojure.test
-   context. Answers :ran, or {:skipped id :reason r} when OPTS skips it."
+   context. Answers :ran, or {:skipped id :reason r} when OPTS skips it or
+   when the harness's :ctl does not satisfy the optional port the case is
+   about; such a case asserts nothing."
   [make-harness opts id]
-  (let [{:keys [run doc]} (case-by-id id)]
+  (let [{:keys [run doc requires]} (case-by-id id)]
     (if-let [reason (get-in opts [:skip id])]
       {:skipped id :reason reason}
-      (do (testing (str (name id) ": " doc)
-            (run (make-harness)))
-          :ran))))
+      (let [h (assoc (make-harness) ::await-ms (:await-ms opts default-await-ms))]
+        (if (and requires (not (satisfies? @requires (:ctl h))))
+          {:skipped id
+           :reason (str "optional port " (name (symbol requires)) " is not satisfied")}
+          (do (testing (str (name id) ": " doc)
+                (run h))
+              :ran))))))
 
 (defn run-conformance
   "Run every case against fresh harnesses from MAKE-HARNESS. Answers
@@ -256,7 +281,9 @@
 
 (def RunOpts
   "What run-case and run-conformance read."
-  [:maybe [:map [:skip {:optional true} [:map-of CaseId :string]]]])
+  [:maybe [:map
+           [:skip {:optional true} [:map-of CaseId :string]]
+           [:await-ms {:optional true} [:int {:min 0}]]]])
 
 (m/=> run-case [:=> [:cat MakeHarness RunOpts CaseId]
                 [:or [:= :ran] [:map [:skipped CaseId] [:reason :string]]]])
