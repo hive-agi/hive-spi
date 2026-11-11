@@ -29,6 +29,21 @@ contribute a version conflict to a consumer's tree.
   tool call in flight (the identity enclave scoping keys on), and the
   `current-caller-id` reader, which answers nil for the Noop, for a context
   without the extension, and when the host's lookup throws.
+- `hive-spi.agent.run-control`: host-neutral run-control ports, one
+  capability per protocol (`IRunSubmit`, `IRunContinue`, `IRunAwait`,
+  `IRunObserve`, `IRunCancel`, `IRunCleanup`), with malli shapes (`RunSpec`,
+  `RunHandle`, `RunStatus`, `RunOutcome`, `Cursor`, `TranscriptRef`) and
+  optional `:run/task-id` / `:run/attempt` correlation that a handle echoes
+  unchanged. The shapes and arities are those of
+  `hive-agent.ports.run-control`, so hive-agent can adopt the ports without
+  changing a caller.
+- `hive-spi.agent.transcript`: `ITranscriptQuery`, the read-only, path-blind
+  side of an agent transcript (`transcript-since`, `query-by-agent`), plus
+  `evidence?`, which is false for an entry marked `:transcript/truncated?`.
+- `hive-spi.agent.conformance`: the TCK for both ports, shipped in src so an
+  adapter in another repo can run it (`defconformance`, `run-conformance`).
+  `hive-spi.agent.stub` is the in-memory reference implementation that passes
+  it.
 
 ## [1.4.2] - 2026-10-01
 
