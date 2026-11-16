@@ -24,6 +24,12 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- `hive-spi.swarm.dispatch`: `ITaskDispatcher` (`dispatch-task!`,
+  `capabilities`), the optional `IDispatcherHealth`, and a priority registry
+  (`register-dispatcher!`, `unregister-dispatcher!`, `registered`). With
+  `hive-spi.swarm.dispatch.stub` and `hive-spi.swarm.dispatch.conformance`, a
+  suite an outside dispatcher runs against itself.
+
 - `hive-spi.swarm.ports.agent-context`: `ICallerIdContext`, an optional
   extension of the installed agent context answering the caller id of the
   tool call in flight (the identity enclave scoping keys on), and the
