@@ -13,7 +13,8 @@
        runs every case in the current clojure.test context, answers the ids."
   (:require [clojure.test :as t :refer [is testing]]
             [hive-dsl.result :as r]
-            [hive-spi.swarm.dispatch :as d]))
+            [hive-spi.swarm.dispatch :as d]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -85,6 +86,18 @@
   "Run every case against fresh harnesses. Answers the ids that ran."
   [make-harness]
   (mapv #(run-case make-harness %) case-ids))
+
+(def MakeHarness
+  "A zero-arg fn returning a fresh harness. Generates one over the stub."
+  [:fn {:error/message "a zero-arg harness constructor"
+        :gen/schema    [:enum :stub]
+        :gen/fmap      (fn [_] (requiring-resolve 'hive-spi.swarm.dispatch.stub/harness))}
+   ifn?])
+
+(def CaseId (into [:enum] case-ids))
+
+(m/=> run-case [:=> [:cat MakeHarness CaseId] CaseId])
+(m/=> run-conformance [:=> [:cat MakeHarness] [:vector CaseId]])
 
 (defmacro defconformance
   "Emit one deftest per case, named PREFIX-<case-id>, each running that case

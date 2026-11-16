@@ -23,7 +23,8 @@
    preferred). `registered` answers them in preference order; the host decides
    which one serves a call (hive-mcp does it through its :task-dispatch
    transport chain). Leaf namespace: no host dependency."
-  (:require [hive-dsl.result :as r]))
+  (:require [hive-dsl.result :as r]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -147,3 +148,18 @@
         (r/err :dispatch/health-exception
                {:error/kind :unavailable :message (ex-message e)})))
     (r/ok {:probe? false})))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(m/=> valid-task? [:=> [:cat :any] :boolean])
+(m/=> valid-dispatched? [:=> [:cat :any] :boolean])
+(m/=> invalid-task [:=> [:cat :any] :map])
+(m/=> register-dispatcher! [:=> [:cat :keyword :any :int] :keyword])
+(m/=> unregister-dispatcher! [:=> [:cat :keyword] :keyword])
+(m/=> reset-dispatchers! [:=> [:cat] :nil])
+(m/=> registered [:=> [:cat] [:vector [:map [:id :keyword] [:impl :any] [:priority :int]]]])
+(m/=> dispatcher [:=> [:cat :keyword] :any])
+(m/=> registered? [:=> [:cat :keyword] :boolean])
+(m/=> dispatcher-health [:=> [:cat :any] :map])
