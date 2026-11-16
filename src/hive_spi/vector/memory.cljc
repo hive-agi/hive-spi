@@ -16,7 +16,8 @@
      that returned insertion order would never catch it.
    - `-create-collection` without `:get-or-create?` REFUSES an existing name
      rather than silently returning it."
-  (:require [hive-spi.vector.ports :as vp]))
+  (:require [hive-spi.vector.ports :as vp]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -105,3 +106,5 @@
    fixture can hand every test its own."
   []
   (->InMemoryVectorStore (atom {})))
+
+(m/=> in-memory-store [:=> [:cat] vp/Store])

@@ -81,3 +81,9 @@
     (throw (ex-info "Invalid native envelope"
                     {:error :native/malformed
                      :explanation (m/explain Envelope envelope)}))))
+
+;; Contracts. The schema argument of `valid?` is any malli schema form.
+(m/=> valid? [:=> [:cat [:any {:gen/elements [:int :string [:map [:ok :boolean]]]}] :any] :boolean])
+;; Both throw on an invalid value, so the input states what they accept.
+(m/=> ->library-spec [:=> [:cat LibrarySpec] LibrarySpec])
+(m/=> ->envelope [:=> [:cat Envelope] Envelope])

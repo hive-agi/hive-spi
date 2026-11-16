@@ -17,7 +17,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -99,3 +100,35 @@
   "The current instant as an ISO-8601 string, through the active clock."
   []
   (clock-iso (active)))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Stamp
+  "The 14-digit `yyyyMMddHHmmss` wall-clock stamp."
+  [:re #"^\d{14}$"])
+
+(def IsoTimestamp
+  "An ISO-8601 instant: date, `T`, time to the second, then any fraction,
+   zone or offset the host provides."
+  [:re #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*$"])
+
+(def Clock
+  "An IClock implementation. Generates a frozen clock at a generated instant."
+  [:fn {:error/message "must satisfy IClock"
+        :gen/schema    [:int {:min 0 :max 4102444800000}]
+        :gen/fmap      (fn [millis]
+                         (reify IClock
+                           (clock-millis [_] millis)
+                           (clock-stamp [_] "19700101000000")
+                           (clock-iso [_] "1970-01-01T00:00:00Z")))}
+   #(satisfies? IClock %)])
+
+(m/=> set-clock! [:=> [:cat Clock] Clock])
+(m/=> get-clock [:=> [:cat] [:maybe Clock]])
+(m/=> clear-clock! [:=> [:cat] :nil])
+(m/=> clock-set? [:=> [:cat] :boolean])
+(m/=> now-millis [:=> [:cat] :int])
+(m/=> entry-stamp [:=> [:cat] Stamp])
+(m/=> iso-timestamp [:=> [:cat] IsoTimestamp])

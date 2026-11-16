@@ -9,7 +9,8 @@
      (require '[hive-spi.editor.elisp :as el])
      (el/require-and-call-json 'hive-mcp-magit 'hive-mcp-magit-api-status)
      ;; => \"(progn (require 'hive-mcp-magit nil t) ...)\""
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [malli.core :as m]))
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
 ;; SPDX-License-Identifier: MIT
@@ -149,3 +150,37 @@
      (format-elisp \"(goto-line %d)\" 42)"
   [template & args]
   (apply format template args))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Quotable
+  "Values `elisp-quote` renders by branch; anything else falls to pr-str."
+  [:or :nil :boolean :string number? :keyword :symbol [:vector [:or :int :string :keyword]] :any])
+
+(def Feature
+  "An elisp feature or function name, rendered with `%s`."
+  [:or :symbol :string])
+
+(def ElispCall
+  "Generated elisp source: one parenthesised form."
+  [:re {:gen/schema [:string {:max 12}]
+        :gen/fmap   (fn [s] (str "(progn\n  " (pr-str s) ")"))}
+   #"(?s)^\(.*\)$"])
+
+(m/=> elisp-quote [:=> [:cat Quotable] :string])
+(m/=> format-args [:=> [:cat [:maybe [:sequential Quotable]]] :string])
+(m/=> require-and-call-json [:=> [:cat Feature Feature [:* Quotable]] ElispCall])
+(m/=> require-and-call-plist-json [:=> [:cat Feature Feature [:maybe [:map-of [:or :keyword :string] Quotable]]] ElispCall])
+(m/=> require-and-call-text [:=> [:cat Feature Feature [:* Quotable]] ElispCall])
+(m/=> require-and-call [:=> [:cat Feature Feature [:* Quotable]] ElispCall])
+(m/=> fboundp-call-json [:=> [:cat Feature [:* Quotable]] ElispCall])
+(m/=> emit [:=> [:cat :any] :string])
+(m/=> emit-forms [:=> [:cat [:maybe [:sequential :any]]] :string])
+(m/=> wrap-progn [:=> [:cat [:* :string]]
+                  [:re {:gen/schema [:string {:max 12}]
+                        :gen/fmap   (fn [s] (str "(progn\n  " (pr-str s) ")"))}
+                   #"(?s)^\(progn\n.*\)$"]])
+;; A format template with matching args: the arity check is java.util.Formatter's.
+(m/=> format-elisp [:=> [:cat :string [:* :any]] :string])

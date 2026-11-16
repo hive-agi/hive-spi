@@ -99,6 +99,50 @@
   (m/explain ?schema x {:registry registry}))
 
 ;; ---------------------------------------------------------------------------
+;; Contracts
+;; ---------------------------------------------------------------------------
+
+(def ^:private sample-refs
+  "Refs that resolve, for generation: seeded keys, inline forms, a closed map."
+  [:hive/result :hive/ok :hive/err :string [:map [:qn :string] [:limit {:optional true} :int]]
+   [:enum :a :b] [:maybe :keyword] [:vector :int]])
+
+(def SchemaRef
+  "A registry key, an inline malli form or a compiled schema that RESOLVES
+   against the hive registry (what `schema` accepts without throwing)."
+  [:fn {:error/message "must resolve against the hive registry"
+        :gen/elements  sample-refs}
+   #(try (some? (m/schema % {:registry registry})) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ false))])
+
+(def AnyRef
+  "Anything a TOTAL projection takes as a schema ref: resolvable or not.
+   Generates resolvable refs, plus an unregistered key."
+  [:any {:gen/elements (conj sample-refs :hive/not-registered)}])
+
+(def CompiledSchema
+  "A compiled malli schema. Compiled at generation time: the seeded :hive/*
+   keys are registered below this form."
+  [:fn {:error/message "must be a compiled malli schema"
+        :gen/schema    [:int {:min 0 :max 7}]
+        :gen/fmap      (fn [i] (m/schema (nth sample-refs i) {:registry registry}))}
+   m/schema?])
+
+(def FnValue
+  "A function value (a bundle artifact, a projection)."
+  [:fn {:error/message "must be callable"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] identity)}
+   ifn?])
+
+(m/=> register! [:=> [:cat :qualified-keyword :any] :qualified-keyword])
+(m/=> register-all! [:=> [:cat [:map-of :qualified-keyword :any]] [:vector :qualified-keyword]])
+(m/=> deregister-all! [:=> [:cat [:or [:sequential :keyword] [:set :keyword]]] [:vector :keyword]])
+(m/=> registered [:=> [:cat] [:map-of :keyword :any]])
+(m/=> schema [:=> [:cat SchemaRef] CompiledSchema])
+(m/=> validate [:=> [:cat SchemaRef :any] :boolean])
+(m/=> explain [:=> [:cat SchemaRef :any] [:maybe :map]])
+
+;; ---------------------------------------------------------------------------
 ;; Seeded core-op schemas — Result / error taxonomy bridge (hive-dsl)
 ;; ---------------------------------------------------------------------------
 

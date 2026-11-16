@@ -32,7 +32,9 @@
   (:require [clojure.set :as set]
             [clojure.string :as str]
             [hive-spi.schema.derive :as der]
-            [hive-spi.schema.help :as help]))
+            [hive-spi.schema.help :as help]
+            [malli.core :as m]
+            [hive-spi.schema.registry :as reg]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -372,3 +374,83 @@
       :required   ["command"]
       :x-hive/commands (catalog manifest)
       :x-hive/coverage (coverage manifest)})))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def CommandSpec
+  "One duck-typed CommandSpec (hive-addon.capability owns the real schema)."
+  [:map
+   [:command :string]
+   [:summary {:optional true} [:maybe :string]]
+   [:schema {:optional true} reg/AnyRef]
+   [:examples {:optional true} [:maybe [:sequential :any]]]
+   [:stability {:optional true} [:maybe :keyword]]
+   [:effects {:optional true} [:maybe [:set :keyword]]]
+   [:group {:optional true} [:maybe :keyword]]])
+
+(def Manifest
+  "A duck-typed capability manifest, as the projections read it."
+  [:map
+   [:tool {:optional true} [:maybe :string]]
+   [:all-commands {:optional true} [:maybe [:set :string]]]
+   [:commands {:optional true} [:maybe [:sequential CommandSpec]]]
+   [:envelope {:optional true} [:maybe [:set :keyword]]]])
+
+(def ResolvedParams
+  "What `resolve-params` answers for a resolvable ref."
+  [:map
+   [:properties :map]
+   [:required [:vector :any]]
+   [:rows [:vector help/HelpRow]]])
+
+(def Coverage
+  "What `coverage` answers."
+  [:map
+   [:tool [:maybe :string]]
+   [:total nat-int?] [:declared nat-int?] [:schematized nat-int?]
+   [:undeclared [:vector :string]]
+   [:declared-pct :double] [:schematized-pct :double]])
+
+(def CatalogEntry
+  [:map
+   [:summary [:maybe :string]]
+   [:required [:vector :any]]
+   [:optional [:vector :any]]
+   [:status [:enum :capability/declared :capability/undeclared]]
+   [:stability :keyword]
+   [:effects [:set :keyword]]
+   [:group [:maybe :keyword]]])
+
+(def FlatOpts
+  [:maybe [:map
+           [:properties-mode {:optional true} [:maybe [:enum :merged :envelope-only]]]
+           [:envelope-properties {:optional true} [:maybe [:map-of :keyword :map]]]
+           [:extra-properties {:optional true} [:maybe [:map-of [:or :keyword :string] :map]]]
+           [:command-description {:optional true} [:maybe :string]]]])
+
+(m/=> resolve-params [:=> [:cat reg/AnyRef] [:maybe ResolvedParams]])
+(m/=> alias-map [:=> [:cat reg/AnyRef] [:maybe [:map-of :keyword :any]]])
+;; `params` passes through unchanged when it is not a map, so it is :any.
+(m/=> fold-aliases [:=> [:cat reg/AnyRef :any] :any])
+(m/=> coverage [:=> [:cat Manifest] Coverage])
+(m/=> catalog [:=> [:cat Manifest] [:map-of :string CatalogEntry]])
+(m/=> command-contract [:=> [:cat Manifest :string]
+                        [:maybe [:map
+                                 [:command :string]
+                                 [:status [:enum :capability/declared :capability/undeclared]]
+                                 [:accepted [:maybe [:map [:required [:vector help/HelpRow]]
+                                                     [:optional [:vector help/HelpRow]]]]]
+                                 [:examples [:vector :any]]]]])
+(m/=> merge-params [:=> [:cat Manifest]
+                    [:map
+                     [:properties [:map-of :any :map]]
+                     [:conflicts [:vector [:map [:param :any] [:winner :any] [:losers [:vector :any]]]]]
+                     [:description-regressions [:vector [:map [:param :any] [:winner :any] [:sources [:vector :any]]]]]
+                     [:undescribed [:vector :any]]]])
+(m/=> flat-input-schema [:function
+                         [:=> [:cat Manifest] [:map [:type [:= "object"]] [:properties [:map-of :string :map]]
+                                               [:required [:= ["command"]]]]]
+                         [:=> [:cat Manifest FlatOpts] [:map [:type [:= "object"]] [:properties [:map-of :string :map]]
+                                                        [:required [:= ["command"]]]]]])

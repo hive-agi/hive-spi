@@ -13,7 +13,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -58,3 +59,24 @@
   "True iff a signer is installed."
   []
   (slot/present? signer-slot))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Signer
+  "An ISigner implementation. Generates a signer of a generated algorithm
+   that signs every payload with one constant and verifies nothing."
+  [:fn {:error/message "must satisfy ISigner"
+        :gen/schema    [:enum :ed25519 :ecdsa :rsa]
+        :gen/fmap      (fn [algorithm]
+                         (reify ISigner
+                           (sign-detached [_ _ _] "c2lnbmF0dXJl")
+                           (verify-detached [_ _ _ _] false)
+                           (signer-algorithm [_] algorithm)))}
+   #(satisfies? ISigner %)])
+
+(m/=> set-signer! [:=> [:cat Signer] Signer])
+(m/=> get-signer [:=> [:cat] [:maybe Signer]])
+(m/=> clear-signer! [:=> [:cat] :nil])
+(m/=> signer-set? [:=> [:cat] :boolean])

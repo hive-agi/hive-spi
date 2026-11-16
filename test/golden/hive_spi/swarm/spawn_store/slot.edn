@@ -1,0 +1,8 @@
+{:empty-before nil,
+ :install-returns-store? true,
+ :claims [["src/a.clj"] []],
+ :calls
+ [[:add "ling-1" {:cwd "/tmp"}]
+  [:update "ling-1" {:status :working}]
+  [:remove "ling-1"]],
+ :cleared [nil nil]}

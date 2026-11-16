@@ -1,0 +1,3 @@
+{:registry [:cap/budget :cap/checkpointing :cap/hooks :cap/subagents],
+ :plain [],
+ :both [:cap/checkpointing :cap/hooks]}

@@ -1,0 +1,29 @@
+{:input-schema
+ {:type "object",
+  :properties
+  {:limit {:type "integer"},
+   :mode {:type "string", :enum [:fast :slow]}},
+  :required [:limit :mode]},
+ :coerced {:limit 30, :mode :fast},
+ :ok {:ok {:limit 3, :mode :slow}},
+ :violation :parse/schema-violation,
+ :thrown :schema/invalid,
+ :type
+ (typed.clojure/HMap
+  :mandatory
+  {:limit typed.clojure/AnyInteger,
+   :mode
+   (typed.clojure/U
+    (typed.clojure/Val :fast)
+    (typed.clojure/Val :slow))}),
+ :keys
+ [:cases
+  :coerce
+  :coerce->result
+  :explain
+  :generator
+  :help
+  :input-schema
+  :schema
+  :type
+  :validate]}

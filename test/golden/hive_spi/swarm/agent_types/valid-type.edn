@@ -1,0 +1,8 @@
+{:case-0 {:out true, :in :coordinator},
+ :case-1 {:out false, :in nil},
+ :case-2 {:out false, :in ling},
+ :case-3 {:out true, :in "ling"},
+ :case-4 {:out true, :in :ling},
+ :case-5 {:out false, :in :read},
+ :case-6 {:out false, :in "unknown"},
+ :case-7 {:out true, :in "coordinator"}}

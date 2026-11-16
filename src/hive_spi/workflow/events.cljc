@@ -9,7 +9,8 @@
    carries {:adt/type :WorkflowEvent :adt/variant :workflow/...} on top of a
    common envelope so a single literal key (:adt/variant) is enough for
    filtering at any sink."
-  (:require [hive-dsl.adt :refer [defadt]]))
+  (:require [hive-dsl.adt :refer [defadt]]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -171,3 +172,15 @@
    :workflow/wave-completed
    :workflow/completed
    :workflow/failed])
+
+;;; ===========================================================================
+;;; Contracts
+;;; ===========================================================================
+
+(def EventOrVariant
+  "What the FSM predicates accept: nil (pre-run), a :workflow/* variant kw or
+   an event map. Anything else coerces to itself and matches no transition."
+  [:or :nil (into [:enum] variants) [:map [:adt/variant (into [:enum] variants)]] :any])
+
+(m/=> valid-transition? [:=> [:cat EventOrVariant EventOrVariant] :boolean])
+(m/=> terminal? [:=> [:cat EventOrVariant] :boolean])

@@ -6,7 +6,8 @@
 
    Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.string :as str]
-            [hive-dsl.result :as r]))
+            [hive-dsl.result :as r]
+            [malli.core :as m]))
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
@@ -123,3 +124,37 @@
     (locking sources (swap! sources #(apply dissoc % source-keys)))
     (locking rules (swap! rules #(apply dissoc % rule-keys)))
     (r/ok {:owner owner :sources source-keys :rules rule-keys})))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def RegistryError
+  [:map [:error [:enum :source-registry/invalid-owner :source-registry/invalid-source
+                 :source-registry/invalid-rule :source-registry/owner-conflict]]])
+
+(def PutResult
+  [:or [:map [:ok [:map [:key :any] [:owner :any] [:replaced? :boolean]]]] RegistryError])
+
+(def DropResult
+  [:or [:map [:ok [:map [:key :string] [:owner :any] [:removed? :boolean]]]] RegistryError])
+
+(def Registry
+  "One of the private registry atoms."
+  [:fn {:gen/fmap (fn [_] (atom {})) :gen/schema :nil}
+   #(instance? clojure.lang.IAtom %)])
+
+(m/=> valid-owner? [:=> [:cat :any] :boolean])
+(m/=> put! [:=> [:cat Registry :keyword :any :any [:maybe :map]] PutResult])
+(m/=> drop! [:=> [:cat Registry :any :any] DropResult])
+(m/=> register-source! [:=> [:cat :any :any [:maybe :map]] PutResult])
+(m/=> unregister-source! [:=> [:cat :any :any] DropResult])
+(m/=> source-factory [:=> [:cat :any] [:maybe ifn?]])
+(m/=> registered-sources [:=> [:cat] [:vector [:map [:source-id :string] [:owner :any]
+                                                [:description :any] [:params :any]]]])
+(m/=> register-parser-rule! [:=> [:cat :any :any [:maybe :map]] PutResult])
+(m/=> unregister-parser-rule! [:=> [:cat :any :any] DropResult])
+(m/=> registered-rules [:=> [:cat] [:vector some?]])
+(m/=> retract-all! [:=> [:cat :any] [:map [:ok [:map [:owner :any]
+                                               [:sources [:vector :string]]
+                                               [:rules [:vector :string]]]]]])

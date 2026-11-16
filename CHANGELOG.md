@@ -24,11 +24,52 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- `hive-spi.swarm.dispatch`: `ITaskDispatcher` (`dispatch-task!`,
+  `capabilities`), the optional `IDispatcherHealth`, and a priority registry
+  (`register-dispatcher!`, `unregister-dispatcher!`, `registered`). With
+  `hive-spi.swarm.dispatch.stub` and `hive-spi.swarm.dispatch.conformance`, a
+  suite an outside dispatcher runs against itself.
+
 - `hive-spi.swarm.ports.agent-context`: `ICallerIdContext`, an optional
   extension of the installed agent context answering the caller id of the
   tool call in flight (the identity enclave scoping keys on), and the
   `current-caller-id` reader, which answers nil for the Noop, for a context
   without the extension, and when the host's lookup throws.
+- `hive-spi.agent.run-control`: host-neutral run-control ports, one
+  capability per protocol (`IRunSubmit`, `IRunContinue`, `IRunAwait`,
+  `IRunObserve`, `IRunCancel`, `IRunCleanup`), with malli shapes (`RunSpec`,
+  `RunHandle`, `RunStatus`, `RunOutcome`, `Cursor`, `TranscriptRef`) and
+  optional `:run/task-id` / `:run/attempt` correlation that a handle echoes
+  unchanged. The shapes and arities are those of
+  `hive-agent.ports.run-control`, so hive-agent can adopt the ports without
+  changing a caller.
+- `hive-spi.agent.transcript`: `ITranscriptQuery`, the read-only, path-blind
+  side of an agent transcript (`transcript-since`, `query-by-agent`), plus
+  `evidence?`, which is false for an entry marked `:transcript/truncated?`.
+- `hive-spi.agent.conformance`: the TCK for both ports, shipped in src so an
+  adapter in another repo can run it (`defconformance`, `run-conformance`).
+  `hive-spi.agent.stub` is the in-memory reference implementation that passes
+  it.
+- `hive-spi.agent.conformance`: the `:await-ms` option (default
+  `default-await-ms`, 1000) sets how long a case waits in `await-run` for a
+  run it has ended or cancelled.
+
+### Changed
+
+- `hive-spi.agent.conformance`: the await and cancel cases now require
+  `:run/final-cursor` to be the cursor of the last transcript entry, so an
+  outcome pointing past the transcript no longer passes. A case about an
+  optional port (`IRunCancel`, `IRunCleanup`, `IRunContinue`) that the
+  implementation does not satisfy is reported under `:skipped` with a reason,
+  not under `:ran`.
+
+### Fixed
+
+- `hive-spi.agent.stub`: concurrent `submit!` calls get distinct run ids (the
+  id is minted in the swap that files the run); `finish!` leaves an already
+  terminal run as it is and files nothing for an unknown handle; `await-run`
+  with a non-numeric timeout answers the err `:run/invalid-timeout` instead of
+  throwing.
 
 ## [1.4.2] - 2026-10-01
 

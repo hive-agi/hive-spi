@@ -7,7 +7,8 @@
 
    `edn-param` validates both forms but publishes only the string form."
   (:require [clojure.edn :as edn]
-            [hive-dsl.result :as r]))
+            [hive-dsl.result :as r]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -61,3 +62,30 @@
     (r/err :edn/unsupported
            {:got  (type x)
             :hint "EDN params travel as a string of EDN source text."})))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def WireOpts
+  "Options `wire-json-schema` / `edn-param` read."
+  [:maybe [:map {:closed false}
+           [:description {:optional true} [:maybe :string]]
+           [:example {:optional true} :any]]])
+
+(def WireJsonSchema
+  "The JSON Schema an EDN param publishes: always a string."
+  [:map {:closed true}
+   [:type [:= "string"]]
+   [:contentMediaType [:= edn-media-type]]
+   [:description [:string {:min 1}]]])
+
+(def ParamResult
+  "A hive-dsl Result: {:ok value} or {:error category ...}."
+  [:or [:map [:ok :any]] [:map [:error [:enum :edn/unreadable :edn/unsupported]]]])
+
+(m/=> wire-json-schema [:=> [:cat WireOpts] WireJsonSchema])
+(m/=> edn-param [:function
+                 [:=> [:cat] [:cat [:= :maybe] [:map [:json-schema WireJsonSchema]] :any]]
+                 [:=> [:cat WireOpts] [:cat [:= :maybe] [:map [:json-schema WireJsonSchema]] :any]]])
+(m/=> read-edn-param [:=> [:cat :any] ParamResult])

@@ -4,7 +4,8 @@
    losing the :default fails at exactly the wrong moment."
   (:require [clojure.test :refer [deftest is use-fixtures]]
             [hive-spi.cider.ports :as ports]
-            [hive-spi.cider.registry :as reg]))
+            [hive-spi.cider.registry :as reg]
+            [hive-schemas.test :as hst]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -83,3 +84,13 @@
             [:kill-session {"session_name" "x"}]
             [:ensure-connected "/tmp/proj"]]
            @(:calls p)))))
+
+(hst/deftrifecta-from-schema set-port-installs-the-default
+  hive-spi.cider.registry/set-port!
+  {:in  [:cat reg/CiderPort]
+   :out reg/CiderPort
+   :rel (fn [[port] out]
+          (and (identical? port out)
+               (identical? port (reg/get-port))
+               (identical? port (reg/get-port :default))
+               (true? (reg/port-set?))))})

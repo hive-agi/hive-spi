@@ -1,0 +1,14 @@
+{:json
+ "(progn\n  (require 'hive-mcp-magit nil t)\n  (if (fboundp 'hive-mcp-magit-api-log)\n      (json-encode (hive-mcp-magit-api-log 10))\n    (json-encode (list :error \"hive-mcp-magit not loaded\"))))",
+ :json-bare
+ "(progn\n  (require 'f nil t)\n  (if (fboundp 'g)\n      (json-encode (g))\n    (json-encode (list :error \"f not loaded\"))))",
+ :plist
+ "(progn\n  (require 'f nil t)\n  (if (fboundp 'g)\n      (json-encode (g (list :a 1 :c \"x\")))\n    (json-encode (list :error \"f not loaded\"))))",
+ :text
+ "(progn\n  (require 'f nil t)\n  (if (fboundp 'g)\n      (g :k)\n    \"Error: f not loaded\"))",
+ :call
+ "(progn\n  (require 'f nil t)\n  (if (fboundp 'g)\n      (g t nil)\n    (error \"f not loaded\")))",
+ :fboundp
+ "(if (fboundp 'g)\n    (json-encode (g '(1 2)))\n  (json-encode (list :error \"g not available\")))",
+ :progn "(progn\n  (a)\n  (b))",
+ :template "(goto-line 42)"}

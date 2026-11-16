@@ -1,0 +1,13 @@
+{:case-0
+ {:out #{:interactive :kill :dispatch :emacs-visible :interrupt},
+  :in :claude},
+ :case-1 {:out #{}, :in :ghost},
+ :case-2 {:out #{}, :in "claude"},
+ :case-3
+ {:out #{:stdin :kill :subagents :dispatch :stdout-ring},
+  :in :agent-sdk},
+ :case-4
+ {:out #{:interactive :kill :dispatch :emacs-visible}, :in :vterm},
+ :case-5 {:out #{}, :in "nope"},
+ :case-6 {:out #{}, :in vterm},
+ :case-7 {:out #{:stdin :kill :dispatch :stdout-ring}, :in :headless}}

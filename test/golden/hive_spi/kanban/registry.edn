@@ -1,0 +1,15 @@
+{:degraded
+ {:list [],
+  :get nil,
+  :create
+  {:err
+   {:error :kanban/provider-unavailable,
+    :message "no provider registered for :IKanbanWrite"}},
+  :noop? true},
+ :registered [true true],
+ :list [{:id "t1", :title "one", :status "todo"}],
+ :move {:ok {:id "t1", :title "one", :status "done"}},
+ :miss {:err {:error :kanban/not-found, :message "no task zz"}},
+ :create {:ok {:id "stub-2"}},
+ :unknown :refused,
+ :after []}

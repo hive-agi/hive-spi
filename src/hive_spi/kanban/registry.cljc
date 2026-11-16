@@ -12,7 +12,8 @@
    (an addon at initialize!, a test fixture) is what the next call answers
    from. A captured value would freeze the seam."
   (:require [hive-spi.kanban :as kanban]
-            [hive-spi.log.ports :as log]))
+            [hive-spi.log.ports :as log]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -124,3 +125,30 @@
   "See hive-spi.kanban/IKanbanWrite."
   [request]
   (kanban/create-task! (provider :IKanbanWrite) request))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Port
+  "A kanban port key."
+  (into [:enum] (keys port->protocol)))
+
+(def Provider
+  "An implementation of either kanban port. Generates a Noop."
+  [:fn {:error/message "must satisfy IKanbanRead or IKanbanWrite"
+        :gen/elements  (vec (vals noops))}
+   #(or (satisfies? kanban/IKanbanRead %) (satisfies? kanban/IKanbanWrite %))])
+
+(m/=> noop? [:=> [:cat :any] :boolean])
+;; Throws on an unknown port or an impl of the wrong protocol.
+(m/=> register! [:=> [:cat Port Provider] Provider])
+(m/=> unregister! [:=> [:cat :any] :nil])
+(m/=> reset-providers! [:=> [:cat] :nil])
+(m/=> registered? [:=> [:cat :any] :boolean])
+(m/=> provider [:=> [:cat Port] Provider])
+;; The facade passes the provider's answer through: the port's own schemas.
+(m/=> list-tasks [:=> [:cat [:maybe kanban/ListQuery]] [:sequential kanban/Task]])
+(m/=> get-task [:=> [:cat :any] [:maybe kanban/Task]])
+(m/=> transition! [:=> [:cat kanban/TransitionRequest] kanban/TransitionResult])
+(m/=> create-task! [:=> [:cat kanban/CreateRequest] kanban/CreateResult])

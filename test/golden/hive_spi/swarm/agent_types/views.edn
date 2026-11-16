@@ -1,0 +1,28 @@
+{":coordinator"
+ {:spawnable? false,
+  :slot-limit 1,
+  :chain? true,
+  :can-spawn? true,
+  :describe "Hivemind coordinator/orchestrator — human-in-the-loop",
+  :claude-mode? false},
+ ":ghost"
+ {:spawnable? false,
+  :slot-limit nil,
+  :chain? false,
+  :can-spawn? false,
+  :describe nil,
+  :claude-mode? false},
+ ":ling"
+ {:spawnable? true,
+  :slot-limit 6,
+  :chain? true,
+  :can-spawn? false,
+  :describe "Worker agent spawned by coordinator",
+  :claude-mode? true},
+ "ling"
+ {:spawnable? true,
+  :slot-limit 6,
+  :chain? true,
+  :can-spawn? false,
+  :describe "Worker agent spawned by coordinator",
+  :claude-mode? true}}

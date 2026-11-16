@@ -15,7 +15,8 @@
    Reload-safety: `defprotocol` is not idempotent, so each declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol these names."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -134,3 +135,16 @@
       (try
         (-content-changed! port path cause)
         (catch Throwable _ nil)))))
+
+(def MemoryScope
+  "Any IProjectScope implementation (the Noop included)."
+  [:fn {:error/message "an IProjectScope"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] noop)}
+   #(satisfies? IProjectScope %)])
+
+(m/=> set-memory-scope! [:=> [:cat MemoryScope] MemoryScope])
+(m/=> get-memory-scope [:=> [:cat] MemoryScope])
+(m/=> clear-memory-scope! [:=> [:cat] :nil])
+(m/=> memory-scope-set? [:=> [:cat] :boolean])
+(m/=> content-changed! [:=> [:cat :any :any] [:maybe :map]])

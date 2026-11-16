@@ -7,7 +7,8 @@
    its `:require` or its deps.edn.
 
    Extension point: (defmethod backend->store :my-backend [_ opts] <IKGStore>)."
-  (:require [hive-dsl.result :as r]))
+  (:require [hive-dsl.result :as r]
+            [malli.core :as m]))
 
 (defn resolve-sym
   "Resolve `sym`, loading its namespace on demand.
@@ -67,3 +68,26 @@
   "The production factory: resolves backends through `backend->store`."
   []
   (->LateBoundFactory))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def MakeStoreResult
+  "`make-store`'s Result: ok carries the store (only `backend->store` knows its
+   type), err names the backend and what is registered."
+  [:or
+   [:map [:ok some?]]
+   [:map [:error [:= :kg.factory/backend-unavailable]]
+    [:backend :any]
+    [:supported [:set :keyword]]]])
+
+(m/=> resolve-sym [:=> [:cat :qualified-symbol]
+                   [:maybe [:fn {:gen/return #'clojure.core/identity} var?]]])
+(m/=> from-artifact [:=> [:cat :qualified-symbol :any] :any])
+(m/=> supported-backends [:=> [:cat] [:set :keyword]])
+(m/=> make-store [:function
+                  [:=> [:cat :any] MakeStoreResult]
+                  [:=> [:cat :any :any] MakeStoreResult]])
+(m/=> late-bound-factory [:=> [:cat] [:fn {:gen/return (->LateBoundFactory)}
+                                      #(satisfies? IStoreFactory %)]])

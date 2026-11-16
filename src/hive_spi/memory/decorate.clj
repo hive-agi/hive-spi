@@ -20,7 +20,8 @@
    in (:capabilities (store-status s)) embeds an entry's :embed-text instead
    of its :content when one is given, and never persists :embed-text.
    Decorators that change content at rest (encryption) need it, or the
-   backend would index what they wrote.")
+   backend would index what they wrote."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -94,3 +95,33 @@
   []
   (reset! -decorators {})
   nil)
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+(def Decorator
+  "A store decorator as `add!` accepts it. Generates an opt-out decorator."
+  [:map
+   [:id :keyword]
+   [:order number?]
+   [:decorate [:fn {:error/message "must be a fn"
+                    :gen/schema    :nil
+                    :gen/fmap      (fn [_] (fn [_key store] store))}
+               fn?]]])
+
+(def Chain
+  "The decorator chain keyed by :id."
+  [:map-of :keyword Decorator])
+
+(m/=> decorator? [:=> [:cat :any] :boolean])
+;; Peels decorators off; any value that is not a decorator is the base.
+(m/=> base-store [:=> [:cat :any] :any])
+(m/=> embed-text-capable? [:=> [:cat [:maybe :map]] :boolean])
+;; Throws on an invalid decorator, so the input states only what it accepts.
+(m/=> add! [:=> [:cat Decorator] Chain])
+(m/=> remove! [:=> [:cat :any] Chain])
+(m/=> chain [:=> [:cat] [:sequential Decorator]])
+;; Each decorator may return any store, so the result is what the chain built.
+(m/=> apply-chain [:=> [:cat :any :any] :any])
+(m/=> reset-chain! [:=> [:cat] :nil])

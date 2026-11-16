@@ -1,7 +1,8 @@
 (ns hive-spi.native.conformance
   "Portable observations for an INativePort and a sequence of expected calls."
   (:require [hive-spi.native.ports :as ports]
-            [hive-spi.native.schema :as schema]))
+            [hive-spi.native.schema :as schema]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -29,3 +30,15 @@
   "True when every observation has a valid envelope matching its expectation."
   [results]
   (every? #(and (:valid-envelope? %) (:matches? %)) results))
+
+;; Contracts
+
+(def Expectation
+  [:map [:op :string] [:request {:optional true} [:maybe :map]] [:expected {:optional true} :any]])
+
+(def Observation
+  [:map [:actual :any] [:valid-envelope? :boolean] [:matches? :boolean]])
+
+(m/=> observe [:=> [:cat ports/NativePort Expectation] Observation])
+(m/=> observations [:=> [:cat ports/NativePort [:sequential Expectation]] [:vector Observation]])
+(m/=> conformant? [:=> [:cat [:sequential [:maybe :map]]] :boolean])

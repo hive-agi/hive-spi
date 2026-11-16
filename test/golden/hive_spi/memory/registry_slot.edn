@@ -1,0 +1,10 @@
+{:unknown {:store-key :nope, :available [:aux :default]},
+ :connect {:success? true, :errors [], :backend "stub"},
+ :after-unregister [:default],
+ :empty [false nil nil],
+ :after-reset false,
+ :healthy {:healthy? true, :backend "stub", :errors []},
+ :keys [:aux :default],
+ :status
+ {:backend "stub", :entry-count 0, :capabilities [:embed-text]},
+ :disconnected? true}

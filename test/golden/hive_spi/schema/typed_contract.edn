@@ -1,0 +1,12 @@
+{:scalars
+ "[typed.clojure/Str typed.clojure/AnyInteger typed.clojure/Bool typed.clojure/Kw (typed.clojure/Nilable typed.clojure/AnyInteger) (typed.clojure/U (typed.clojure/Val :a) (typed.clojure/Val :b))]",
+ :map
+ "(typed.clojure/HMap :mandatory {:a typed.clojure/AnyInteger} :optional {:b typed.clojure/Str})",
+ :result
+ "(typed.clojure/U (typed.clojure/HMap :mandatory {:ok typed.clojure/Any}) (typed.clojure/HMap :mandatory {:error typed.clojure/Kw}))",
+ :parser
+ "(typed.clojure/U (typed.clojure/Val :malli.core/invalid) (typed.clojure/U (quote [(typed.clojure/Val :i) typed.clojure/AnyInteger]) (quote [(typed.clojure/Val :s) typed.clojure/Str])))",
+ :ann
+ "(typed.clojure/ann handler [(typed.clojure/HMap :mandatory {:q typed.clojure/Str}) :-> (typed.clojure/U (typed.clojure/HMap :mandatory {:ok typed.clojure/Any}) (typed.clojure/HMap :mandatory {:error typed.clojure/Kw}))])",
+ :=> "(malli.core/=> handler [:=> [:cat :int] :hive/result])",
+ :types? "true"}

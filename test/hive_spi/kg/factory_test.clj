@@ -3,7 +3,8 @@
   (:require [clojure.test :refer [deftest is testing]]
             [hive-dsl.result :as r]
             [hive-spi.kg.factory :as factory]
-            [hive-spi.kg.protocol :as kg]))
+            [hive-spi.kg.protocol :as kg]
+            [hive-schemas.test :as hst]))
 
 (defrecord StubStore [opts]
   kg/IKGStore
@@ -70,3 +71,13 @@
       (let [res (factory/create (factory/late-bound-factory) ::stub {:db-path "x"})]
         (is (r/ok? res))
         (is (= {:db-path "x"} (:opts (:ok res))))))))
+
+(hst/deftrifecta-from-schema an-unregistered-backend-is-unavailable
+  hive-spi.kg.factory/make-store
+  {:in  [:cat [:enum :no-such-backend :sqlite :mongo]]
+   :out factory/MakeStoreResult
+   :rel (fn [[backend] out]
+          (= {:error :kg.factory/backend-unavailable
+              :backend backend
+              :supported (factory/supported-backends)}
+             (select-keys out [:error :backend :supported])))})

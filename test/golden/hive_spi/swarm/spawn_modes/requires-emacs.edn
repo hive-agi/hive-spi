@@ -1,0 +1,8 @@
+{:case-0 {:out true, :in :claude},
+ :case-1 {:out false, :in :ghost},
+ :case-2 {:out false, :in "claude"},
+ :case-3 {:out false, :in :agent-sdk},
+ :case-4 {:out true, :in :vterm},
+ :case-5 {:out false, :in "nope"},
+ :case-6 {:out false, :in vterm},
+ :case-7 {:out false, :in :headless}}

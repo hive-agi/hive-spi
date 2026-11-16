@@ -1,0 +1,10 @@
+{:calls
+ [[:list-tasks {:status :todo}]
+  [:get-task "a"]
+  [:create-task! {:title ""}]
+  [:create-task! {:title "c", :priority "high"}]],
+ :board
+ {"a" {:id "a", :status "todo"},
+  "b" {:id "b", :status "done"},
+  "stub-3"
+  {:id "stub-3", :title "c", :status "todo", :priority "high"}}}

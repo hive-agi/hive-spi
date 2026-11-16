@@ -4,7 +4,8 @@
    Loadable only on a host that carries java.security; the port resolves this
    namespace softly, so a runtime without it degrades to \"no hasher\" rather
    than to a load failure."
-  (:require [hive-spi.crypto.hash :as hash])
+  (:require [hive-spi.crypto.hash :as hash]
+            [malli.core :as m])
   (:import (java.nio.charset StandardCharsets)
            (java.security MessageDigest)))
 
@@ -40,3 +41,10 @@
   "Install the MessageDigest hasher as the explicitly active one. Returns it."
   []
   (hash/set-hasher! (default-hasher)))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(m/=> default-hasher [:=> [:cat] hash/Hasher])
+(m/=> install! [:=> [:cat] hash/Hasher])

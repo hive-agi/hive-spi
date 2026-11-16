@@ -1,0 +1,9 @@
+{:no-sinks {:delivered? false, :sink nil, :reason :no-sink},
+ :invalid {:delivered? false, :sink nil, :reason :invalid-envelope},
+ :specific
+ {:delivered? true, :sink :a-specific, :receipt "coordinator:1"},
+ :other {:delivered? true, :sink :b-fallback, :receipt "ling-2"},
+ :fall-through
+ {:delivered? true, :sink :a-specific, :receipt "coordinator:1"},
+ :last-failure {:delivered? false, :sink :c-broken, :reason :refused},
+ :sink-ids [:c-broken :d-thrower]}

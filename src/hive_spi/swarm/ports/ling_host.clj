@@ -23,7 +23,8 @@
    Reload-safety: `defprotocol` is not idempotent, so each declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol these names."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -101,3 +102,19 @@
   "True iff a port is explicitly installed. The Noop does not count."
   []
   (slot/present? port-slot))
+
+(def LingHost
+  "Any ILingReadiness implementation (the Noop included)."
+  [:fn {:error/message "an ILingReadiness"
+        :gen/schema    :nil
+        :gen/fmap      (fn [_] noop)}
+   #(satisfies? ILingReadiness %)])
+
+(def Readiness
+  "What `wait-for-ling-ready` answers, at least."
+  [:map [:ready? :boolean] [:phase :keyword] [:elapsed-ms :int] [:attempts :int]])
+
+(m/=> set-ling-host! [:=> [:cat LingHost] LingHost])
+(m/=> get-ling-host [:=> [:cat] LingHost])
+(m/=> clear-ling-host! [:=> [:cat] :nil])
+(m/=> ling-host-set? [:=> [:cat] :boolean])

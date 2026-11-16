@@ -4,7 +4,8 @@
    projection. No I/O. A store that filters or orders post-fetch uses these
    so its semantics equal the reference in-memory store's."
   (:require [clojure.string :as str]
-            [hive-spi.memory.ids :as ids])
+            [hive-spi.memory.ids :as ids]
+            [malli.core :as m])
   (:import [java.time Duration Instant LocalDateTime OffsetDateTime ZoneId ZonedDateTime]))
 
 ;; SPDX-License-Identifier: MIT
@@ -114,3 +115,84 @@
          (#(order-by % (:order-by opts)))
          (take limit)
          (mapv #(project % output-fields)))))
+
+;;; ============================================================================
+;;; Contracts
+;;; ============================================================================
+
+(def Timestamp
+  "An ISO-8601 instant string, as stores stamp :created / :updated / :expires."
+  [:re {:gen/fmap (fn [n] (str (Instant/ofEpochSecond n)))
+        :gen/schema [:int {:min 0 :max 4102444800}]}
+   #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*$"])
+
+(def InstantValue
+  "A java.time.Instant."
+  [:fn {:error/message "must be a java.time.Instant"
+        :gen/schema    [:int {:min 0 :max 4102444800}]
+        :gen/fmap      (fn [n] (Instant/ofEpochSecond n))}
+   #(instance? Instant %)])
+
+(def TypeToken
+  "An entry :type as callers hand it: a keyword, a string, or anything
+   `str` renders."
+  [:or :keyword :string :symbol])
+
+(def Entry
+  "A memory-entry map as the helpers read it (open). Tags are any
+   collection (set semantics, compared by `str`); :project-id is compared
+   as given; :content is anything `embed-text` renders."
+  [:map
+   [:id {:optional true} [:maybe :string]]
+   [:type {:optional true} [:maybe TypeToken]]
+   [:content {:optional true} :any]
+   [:tags {:optional true} [:maybe [:or [:sequential :any] [:set :any]]]]
+   [:project-id {:optional true} [:maybe :string]]
+   [:created {:optional true} [:maybe Timestamp]]
+   [:updated {:optional true} [:maybe Timestamp]]
+   [:expires {:optional true} [:maybe Timestamp]]])
+
+(def NormalizedEntry
+  "What `normalize` answers: the store-side defaults filled."
+  [:map
+   [:id :string]
+   [:type :keyword]
+   [:tags [:vector :string]]
+   [:content-hash :string]
+   [:created :any]
+   [:updated :any]])
+
+(def OrderBy
+  "A [field direction] pair; any direction but :desc sorts ascending."
+  [:maybe [:tuple :keyword :keyword]])
+
+(def QueryOpts
+  "The filter opts of query-entries. Ids, tags and project ids are compared
+   through `str`, so any value is accepted; collections may be sets."
+  [:map
+   [:type {:optional true} [:maybe TypeToken]]
+   [:project-id {:optional true} :any]
+   [:project-ids {:optional true} [:maybe [:or [:sequential :any] [:set :any]]]]
+   [:tags {:optional true} [:maybe [:or [:sequential :any] [:set :any]]]]
+   [:exclude-tags {:optional true} [:maybe [:or [:sequential :any] [:set :any]]]]
+   [:include-expired? {:optional true} :any]
+   [:limit {:optional true} nat-int?]
+   [:order-by {:optional true} OrderBy]
+   [:output-fields {:optional true} [:maybe [:sequential [:or :keyword :string]]]]])
+
+;; nil for nil; keywords by name, anything else by `str`.
+(m/=> type-name [:=> [:cat :any] [:maybe :string]])
+(m/=> type-keyword [:=> [:cat :any] [:maybe :keyword]])
+;; Total: anything that is not a parseable timestamp string answers nil.
+(m/=> parse-instant [:=> [:cat :any] [:maybe InstantValue]])
+(m/=> expired? [:function
+                [:=> [:cat [:maybe :map]] :boolean]
+                [:=> [:cat [:maybe :map] InstantValue] :boolean]])
+(m/=> expires-within? [:=> [:cat [:maybe :map] :int InstantValue] :boolean])
+(m/=> embed-text [:=> [:cat :any] [:maybe :string]])
+(m/=> normalize [:=> [:cat [:maybe Entry]] NormalizedEntry])
+(m/=> matches? [:=> [:cat [:maybe Entry] [:maybe QueryOpts] InstantValue] :boolean])
+;; ENTRIES may be nil (a store's (vals {})): every seq fn here accepts it.
+(m/=> order-by [:=> [:cat [:maybe [:sequential :map]] OrderBy] [:vector :map]])
+(m/=> project [:=> [:cat :map [:maybe [:sequential [:or :keyword :string]]]] :map])
+(m/=> query [:=> [:cat [:maybe [:sequential Entry]] [:maybe QueryOpts]] [:vector :map]])

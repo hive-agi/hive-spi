@@ -10,7 +10,8 @@
    dispatching a verb from one of them, so a partial adapter degrades into a
    smaller tool surface instead of an AbstractMethodError."
   (:require [hive-spi.editor.ports :as ports]
-            [hive-spi.slot :as slot]))
+            [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -81,3 +82,44 @@
   "Remove every registered port. Returns nil."
   []
   (slot/reg-clear! port-slot))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Surface
+  "An optional editor surface `supports?` knows."
+  [:enum :buffer :docs :daemon])
+
+(def EditorPort
+  "An IEditorPort implementation. Generates a substrate-only port, or one
+   that also implements the docs surface, so `surfaces` sees both shapes."
+  [:fn {:error/message "must satisfy IEditorPort"
+        :gen/schema    :boolean
+        :gen/fmap      (fn [docs?]
+                         (let [resp {:content [] :isError false}]
+                           (if docs?
+                             (reify
+                               ports/IEditorPort
+                               (editor-eval [_ _] resp) (editor-notify [_ _] resp)
+                               (editor-status [_ _] resp) (editor-capabilities [_ _] resp)
+                               ports/IEditorDocsPort
+                               (describe-function [_ _] resp) (describe-variable [_ _] resp)
+                               (docs-apropos [_ _] resp) (package-functions [_ _] resp)
+                               (package-commentary [_ _] resp) (find-keybindings [_ _] resp)
+                               (list-packages [_ _] resp))
+                             (reify ports/IEditorPort
+                               (editor-eval [_ _] resp) (editor-notify [_ _] resp)
+                               (editor-status [_ _] resp) (editor-capabilities [_ _] resp)))))}
+   #(satisfies? ports/IEditorPort %)])
+
+(m/=> register-port! [:=> [:cat :any EditorPort] EditorPort])
+(m/=> unregister-port! [:=> [:cat :any] :nil])
+(m/=> registered-ports [:=> [:cat] [:map-of :any EditorPort]])
+(m/=> get-port [:function [:=> [:cat] EditorPort] [:=> [:cat :any] EditorPort]])
+(m/=> set-port! [:=> [:cat EditorPort] EditorPort])
+(m/=> port-set? [:=> [:cat] :boolean])
+;; Total over any value and any surface name: unknown surfaces are false.
+(m/=> supports? [:=> [:cat :any :any] :boolean])
+(m/=> surfaces [:=> [:cat :any] [:set Surface]])
+(m/=> reset-registry! [:=> [:cat] :nil])

@@ -3,7 +3,8 @@
    hashing, entry-id generation, timestamps."
   (:require [clojure.string]
             [hive-spi.crypto.hash :as hash]
-            [hive-spi.time.ports :as time]))
+            [hive-spi.time.ports :as time]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -45,3 +46,18 @@
    active `hive-spi.time.ports` IClock knows one."
   []
   (time/iso-timestamp))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def EntryId
+  "An entry id as `generate-id` mints it: the clock's 14-digit stamp, a dash,
+   eight lowercase hex digits."
+  [:re #"^\d{14}-[0-9a-f]{8}$"])
+
+;; Any value hashes (non-strings are pr-str'ed); the digest is whatever the
+;; active IHasher renders, so the output is the port's string.
+(m/=> content-hash [:=> [:cat :any] :string])
+(m/=> generate-id [:=> [:cat] EntryId])
+(m/=> iso-timestamp [:=> [:cat] time/IsoTimestamp])

@@ -1,0 +1,18 @@
+[{:ok {:a 1}}
+ {:ok [1 2 3]}
+ {:ok nil}
+ {:error :edn/unreadable, :input "{:a", :cause "EOF while reading"}
+ {:error :edn/unreadable,
+  :input "#foo 1",
+  :cause "No reader function for tag foo"}
+ {:error :edn/unreadable,
+  :input "#=(+ 1 2)",
+  :cause "No dispatch macro for: ="}
+ {:ok nil}
+ {:ok [1 2]}
+ {:error :edn/unsupported,
+  :got "class java.lang.Long",
+  :hint "EDN params travel as a string of EDN source text."}
+ {:error :edn/unsupported,
+  :got "class clojure.lang.Keyword",
+  :hint "EDN params travel as a string of EDN source text."}]

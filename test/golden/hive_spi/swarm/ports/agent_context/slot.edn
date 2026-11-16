@@ -1,0 +1,14 @@
+{:noop
+ {:set? false,
+  :noop? true,
+  :readings
+  {:agent-id nil, :directory nil, :register nil, :deregister nil}},
+ :installed-returns-impl? true,
+ :stub
+ {:set? true,
+  :readings
+  {:agent-id "ling-7",
+   :directory "/work/hive",
+   :register {:agent-id "ling-7", :max-usd 2.0, :model "m"},
+   :deregister {:agent-id "ling-7", :max-usd 2.0, :model "m"}}},
+ :cleared [nil false true]}

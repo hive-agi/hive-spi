@@ -1,0 +1,7 @@
+[{:enabled? true, :mode :warn, :coordinator-running? false}
+ {:enabled? true, :mode :block, :coordinator-running? false}
+ {:enabled? true, :mode :block, :coordinator-running? false}
+ {:enabled? false, :mode :block, :coordinator-running? false}
+ [true {:enabled? false, :mode :block, :coordinator-running? true}]
+ nil
+ :ran]

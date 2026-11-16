@@ -1,0 +1,13 @@
+{:id "e1",
+ :plain-hits [],
+ :plain-why
+ #:hive-spi.memory{:degraded {:reason :no-embedder, :backend "stub"}},
+ :sem-ids ["e1" "e2"],
+ :batch ["e2" "e1"],
+ :status
+ {:backend "stub",
+  :configured? true,
+  :connected? true,
+  :entry-count 2,
+  :supports-search? true,
+  :capabilities [:embed-text]}}

@@ -6,6 +6,8 @@
    relies on when it returns a value object."
   (:require [clojure.test :refer [deftest is testing]]
             [hive-spi.diag.schema :as s]
+            [hive-schemas.test :as hst]
+            [hive-test.golden :refer [deftest-golden]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.properties :as prop]))
@@ -92,3 +94,41 @@
                (let [p (s/human-bytes (Math/abs v))
                      n (s/human-bytes (- (Math/abs v)))]
                  (or (= n p) (= n (str "-" p)))))))))
+
+;; ---------------------------------------------------------------------------
+;; Facets: every smart constructor over its own schema's generator
+;; ---------------------------------------------------------------------------
+
+(hst/deftrifecta-from-schema heap-snapshot-ctor-is-identity-on-conformant
+  hive-spi.diag.schema/->heap-snapshot
+  {:in [:cat s/HeapSnapshot] :out s/HeapSnapshot :rel (fn [[x] out] (= x out))})
+
+(hst/deftrifecta-from-schema class-histogram-ctor-is-identity-on-conformant
+  hive-spi.diag.schema/->class-histogram
+  {:in [:cat s/ClassHistogram] :out s/ClassHistogram :rel (fn [[x] out] (= x out))})
+
+(hst/deftrifecta-from-schema reclamation-ctor-is-identity-on-conformant
+  hive-spi.diag.schema/->reclamation
+  {:in [:cat s/Reclamation] :out s/Reclamation :rel (fn [[x] out] (= x out))})
+
+;; ->diagnosis is not a trifecta: DiagnosisReport nests three levels of
+;; vectors of maps and its generator stalls at test.check's default size.
+;; smart-ctors-happy-path covers it; the allocation ctor stands in here.
+(hst/deftrifecta-from-schema allocation-ctor-is-identity-on-conformant
+  hive-spi.diag.schema/->allocation
+  {:in [:cat s/AllocationProfile] :out s/AllocationProfile :rel (fn [[x] out] (= x out))})
+
+(hst/deftrifecta-from-schema human-bytes-renders-a-unit
+  hive-spi.diag.schema/human-bytes
+  {:in  [:cat [:maybe [:int {:min 0}]]]
+   :out :string
+   :rel (fn [[n] out]
+          (if (nil? n)
+            (= "n/a" out)
+            (boolean (re-matches #"\d+\.\d+ (B|KiB|MiB|GiB|TiB)" out))))})
+
+(deftest-golden human-bytes-ladder-and-edges
+  "test/golden/hive_spi/diag/schema.edn"
+  (mapv (juxt identity s/human-bytes)
+        [nil 0 1 1023 1024 1536 (* 1024 1024) 11901239296
+         (* 1024 1024 1024 1024) (* 5000 1024 1024 1024 1024)]))

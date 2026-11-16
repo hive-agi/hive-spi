@@ -7,7 +7,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [hive-spi.slot :as slot]))
+  (:require [hive-spi.slot :as slot]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -48,3 +49,24 @@
   "Remove the active embedding provider. Returns nil."
   []
   (slot/clear! provider-slot))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Provider
+  "An EmbeddingProvider implementation. Generates a constant provider of a
+   generated dimension."
+  [:fn {:error/message "must satisfy EmbeddingProvider"
+        :gen/schema    [:int {:min 1 :max 16}]
+        :gen/fmap      (fn [dim]
+                         (reify EmbeddingProvider
+                           (embed-text [_ _] (vec (repeat dim 0.0)))
+                           (embed-batch [_ texts] (mapv (fn [_] (vec (repeat dim 0.0))) texts))
+                           (embedding-dimension [_] dim)))}
+   #(satisfies? EmbeddingProvider %)])
+
+(m/=> set-provider! [:=> [:cat Provider] Provider])
+(m/=> get-provider [:=> [:cat] [:maybe Provider]])
+(m/=> provider-set? [:=> [:cat] :boolean])
+(m/=> clear-provider! [:=> [:cat] :nil])

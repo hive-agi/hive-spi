@@ -8,7 +8,8 @@
 
    Reload-safety: `defprotocol` is not idempotent, so each declaration is
    guarded: re-evaluating this namespace will not orphan existing
-   implementations.")
+   implementations."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -90,3 +91,5 @@
   (into #{}
         (keep (fn [[cap proto]] (when (satisfies? proto backend) cap)))
         capability-protocols))
+
+(m/=> provided-capabilities [:=> [:cat :any] [:set (into [:enum] (keys capability-protocols))]])

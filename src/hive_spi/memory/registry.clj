@@ -127,33 +127,37 @@
     (ports/store-status (get-store :default))))
 
 ;;; ============================================================================
-;;; Function contracts
+;;; Contracts
 ;;; ============================================================================
 
+;; The store installed is the DECORATED one: a decorator may answer any
+;; IMemoryStore, so the output is the port, not STORE itself.
 (def MemoryStore
-  "Any IMemoryStore implementation (decorated or bare)."
-  [:fn {:error/message "an IMemoryStore"} #(satisfies? ports/IMemoryStore %)])
+  "Any IMemoryStore implementation (decorated or bare): the port's schema,
+   re-published under the name cov2/spi gave it."
+  ports/MemoryStore)
 
 (def Decorator
   "A store decorator, as hive-spi.memory.decorate/add! accepts it."
-  [:map {:closed false}
-   [:id keyword?]
-   [:order number?]
-   [:decorate fn?]])
+  decorate/Decorator)
 
-(m/=> register-store! [:=> [:cat :any MemoryStore] MemoryStore])
+(m/=> register-store! [:=> [:cat :any ports/MemoryStore] ports/MemoryStore])
 (m/=> redecorate! [:=> [:cat] :nil])
-(m/=> add-decorator! [:=> [:cat Decorator] :nil])
+(m/=> add-decorator! [:=> [:cat decorate/Decorator] :nil])
 (m/=> remove-decorator! [:=> [:cat :any] :nil])
 (m/=> unregister-store! [:=> [:cat :any] :nil])
-(m/=> registered-stores [:=> [:cat] [:map-of :any MemoryStore]])
+(m/=> registered-stores [:=> [:cat] [:map-of :any ports/MemoryStore]])
 (m/=> get-store [:function
-                 [:=> [:cat] MemoryStore]
-                 [:=> [:cat :any] MemoryStore]])
-(m/=> set-store! [:=> [:cat MemoryStore] MemoryStore])
+                 [:=> [:cat] ports/MemoryStore]
+                 [:=> [:cat :any] ports/MemoryStore]])
+(m/=> set-store! [:=> [:cat ports/MemoryStore] ports/MemoryStore])
 (m/=> store-set? [:=> [:cat] :boolean])
 (m/=> reset-registry! [:=> [:cat] :nil])
 (m/=> reset-active-store! [:=> [:cat] :nil])
-(m/=> connect-active-store! [:=> [:cat :any] :any])
+;; These pass the store's own answer through unchecked. The port documents
+;; :success? / :healthy? / :backend, but a store answering another map (the
+;; registries test double does) reaches the caller as-is: state that, not
+;; the documented ideal.
+(m/=> connect-active-store! [:=> [:cat :any] [:maybe :map]])
 (m/=> active-store-healthy? [:=> [:cat] [:maybe :map]])
 (m/=> active-store-status [:=> [:cat] [:maybe :map]])

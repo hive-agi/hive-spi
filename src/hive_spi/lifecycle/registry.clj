@@ -97,40 +97,76 @@
   (when (seq owners) (slot/reg-merge! owner-slot owners))
   nil)
 
-;;; ============================================================================
-;;; Function contracts
-;;; ============================================================================
+;; =============================================================================
+;; Contracts
+;; =============================================================================
 
 (def ShutdownHook
-  "Any IShutdownHook implementation."
-  [:fn {:error/message "an IShutdownHook"} #(satisfies? ports/IShutdownHook %)])
+  "An IShutdownHook. Generates a no-op hook at a generated priority."
+  [:fn {:error/message "must satisfy IShutdownHook"
+        :gen/schema    [:int {:min 0 :max 499}]
+        :gen/fmap      (fn [prio]
+                         (reify ports/IShutdownHook
+                           (shutdown-priority [_] prio)
+                           (shutdown-name [_] (str "hook-" prio))
+                           (shutdown! [_ _] nil)))}
+   #(satisfies? ports/IShutdownHook %)])
 
-(def Sweepable
-  "Any ISweepable implementation."
-  [:fn {:error/message "an ISweepable"} #(satisfies? ports/ISweepable %)])
+(def Sweeper
+  "An ISweepable. Generates a no-op sweeper at a generated cadence."
+  [:fn {:error/message "must satisfy ISweepable"
+        :gen/schema    [:int {:min 1 :max 3600}]
+        :gen/fmap      (fn [s]
+                         (reify ports/ISweepable
+                           (sweep-interval-s [_] s)
+                           (sweep-name [_] (str "sweep-" s))
+                           (sweep! [_ _] {:swept 0 :errors []})))}
+   #(satisfies? ports/ISweepable %)])
 
 (def ResourceOwner
-  "Any IResourceOwner implementation."
-  [:fn {:error/message "an IResourceOwner"} #(satisfies? ports/IResourceOwner %)])
+  "An IResourceOwner. Generates an owner of nothing under a generated id."
+  [:fn {:error/message "must satisfy IResourceOwner"
+        :gen/schema    [:string {:min 1 :max 8}]
+        :gen/fmap      (fn [id]
+                         (reify ports/IResourceOwner
+                           (owner-id [_] id)
+                           (owned-resources [_] {})
+                           (release-all! [_] nil)))}
+   #(satisfies? ports/IResourceOwner %)])
+
+(def Snapshot
+  "`registry-snapshot`'s value, and what `restore-all!` takes back."
+  [:map
+   [:shutdown [:maybe [:map-of :any ShutdownHook]]]
+   [:sweeps [:maybe [:map-of :any Sweeper]]]
+   [:owners [:maybe [:map-of :any ResourceOwner]]]])
+
+(def Sweepable
+  "Published name of `Sweeper` (cov2/spi); kept so the release stays additive."
+  Sweeper)
 
 (def RegistrySnapshot
-  "What `registry-snapshot` returns and `restore-all!` accepts: one
-   {key -> impl} map per kind. `restore-all!` treats a missing kind as empty."
+  "What `restore-all!` accepts: `Snapshot` with every kind optional, since
+   `restore-all!` treats a missing kind as empty."
   [:map
    [:shutdown {:optional true} [:maybe [:map-of :any ShutdownHook]]]
-   [:sweeps   {:optional true} [:maybe [:map-of :any Sweepable]]]
+   [:sweeps   {:optional true} [:maybe [:map-of :any Sweeper]]]
    [:owners   {:optional true} [:maybe [:map-of :any ResourceOwner]]]])
 
 (m/=> register-shutdown! [:=> [:cat :any ShutdownHook] ShutdownHook])
 (m/=> unregister-shutdown! [:=> [:cat :any] :nil])
 (m/=> registered-shutdown-hooks [:=> [:cat] [:vector ShutdownHook]])
-(m/=> register-sweep! [:=> [:cat :any Sweepable] Sweepable])
+(m/=> register-sweep! [:=> [:cat :any Sweeper] Sweeper])
 (m/=> unregister-sweep! [:=> [:cat :any] :nil])
-(m/=> registered-sweeps [:=> [:cat] [:map-of :any Sweepable]])
+(m/=> registered-sweeps [:=> [:cat] [:map-of :any Sweeper]])
 (m/=> register-resource-owner! [:=> [:cat :any ResourceOwner] ResourceOwner])
 (m/=> unregister-resource-owner! [:=> [:cat :any] :nil])
 (m/=> get-resource-owner [:=> [:cat :any] [:maybe ResourceOwner]])
 (m/=> registered-resource-owners [:=> [:cat] [:map-of :any ResourceOwner]])
-(m/=> registry-snapshot [:=> [:cat] RegistrySnapshot])
+(m/=> registry-snapshot [:=> [:cat] Snapshot])
 (m/=> reset-all! [:=> [:cat] :nil])
-(m/=> restore-all! [:=> [:cat [:maybe RegistrySnapshot]] :nil])
+(m/=> restore-all! [:=> [:cat [:maybe [:map {:closed false}
+                                     [:shutdown {:optional true} [:maybe [:map-of :any ShutdownHook]]]
+                                     [:sweeps {:optional true} [:maybe [:map-of :any Sweeper]]]
+                                     [:owners {:optional true} [:maybe [:map-of :any ResourceOwner]]]]]]
+                    :nil])

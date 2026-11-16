@@ -1,0 +1,26 @@
+{:noop
+ {:set? false,
+  :readings
+  {:ready-headless
+   {:ready? false, :phase :no-host, :elapsed-ms 0, :attempts 0},
+   :ready-vterm
+   {:ready? false, :phase :no-host, :elapsed-ms 0, :attempts 0},
+   :catchup [nil nil]}},
+ :installed-returns-impl? true,
+ :stub
+ {:set? true,
+  :readings
+  {:ready-headless
+   {:ready? true,
+    :phase :polled,
+    :elapsed-ms 5,
+    :attempts 1,
+    :slave #:slave{:id "ling-1"}},
+   :ready-vterm
+   {:ready? false,
+    :phase :polled,
+    :elapsed-ms 5,
+    :attempts 1,
+    :slave #:slave{:id "ling-1"}},
+   :catchup ["context for fix" nil]}},
+ :cleared [nil false]}

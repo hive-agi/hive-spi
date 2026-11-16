@@ -17,7 +17,8 @@
 
    NOTE: hive-mcp owns ONLY abstract/generic modes here. Concrete provider-
    or implementation-specific modes (e.g. :hive-agent, :tmux) are
-   contributed by addons via `register-mode!`.")
+   contributed by addons via `register-mode!`."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -220,3 +221,40 @@
   [mode-kw]
   (swap! addon-modes dissoc mode-kw)
   mode-kw)
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def ModeSpec
+  "A spawn mode's registry entry. Open: an addon may declare more keys, and
+   `register-mode!` only demands a map."
+  [:map
+   [:description {:optional true} :string]
+   [:requires-emacs? {:optional true} :boolean]
+   [:io-model {:optional true} :keyword]
+   [:slot-limit {:optional true} [:maybe :int]]
+   [:mcp? {:optional true} :boolean]
+   [:alias-of {:optional true} [:maybe :keyword]]
+   [:capabilities {:optional true} [:set :keyword]]])
+
+(def ModeRef
+  "A mode as callers pass it. `valid-mode?` coerces strings and symbols with
+   `keyword`; the lookups take the key as given, so anything is a (possibly
+   unregistered) mode there. Generates every core mode, in more than one
+   spelling, beside unregistered names and nil."
+  [:maybe {:gen/elements [:claude :vterm :headless :agent-sdk "claude" 'vterm
+                          :tmux :ghost "nope" nil]}
+   [:or :keyword :string :symbol]])
+
+(m/=> registry [:=> [:cat] [:map-of :keyword ModeSpec]])
+(m/=> valid-mode? [:=> [:cat ModeRef] :boolean])
+(m/=> resolve-alias [:=> [:cat :any] :any])
+(m/=> requires-emacs? [:=> [:cat :any] :boolean])
+(m/=> slot-limit [:=> [:cat :any] [:maybe :int]])
+(m/=> io-model [:=> [:cat :any] [:maybe :keyword]])
+(m/=> capabilities [:=> [:cat :any] [:set :keyword]])
+(m/=> has-capability? [:=> [:cat :any :any] :boolean])
+(m/=> mcp-enum [:=> [:cat] [:vector :string]])
+(m/=> register-mode! [:=> [:cat :keyword :map] :keyword])
+(m/=> deregister-mode! [:=> [:cat :any] :any])

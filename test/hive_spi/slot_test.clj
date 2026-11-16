@@ -3,7 +3,9 @@
    invalid implementation or loses one silently breaks dependency inversion
    for the whole ecosystem."
   (:require [clojure.test :refer [deftest is testing]]
-            [hive-spi.slot :as slot]))
+            [hive-spi.slot :as slot]
+            [hive-schemas.test :as hst]
+            [hive-test.golden :refer [deftest-golden]]))
 
 ;; =============================================================================
 ;; single-slot
@@ -111,3 +113,47 @@
       (is (= :first (:name (consumer))))
       (slot/install! s {:name :second})
       (is (= :second (:name (consumer)))))))
+
+;; =============================================================================
+;; Trifectas over the constructor contracts (cov-fleet)
+;; =============================================================================
+;; No :golden-path on these two: the output is a record holding an atom, which
+;; does not print as readable EDN. The golden below snapshots its projection.
+
+(hst/deftrifecta-from-schema multi-slot-contract
+  hive-spi.slot/multi-slot
+  {:in  [:cat slot/MultiSlotConfig]
+   :out slot/Slot
+   :rel (fn [[cfg] out]
+          (and (= (or (:initial cfg) {}) (slot/reg-snapshot out))
+               (= (:validate cfg) (:validate out))))
+   :num-tests 200})
+
+(hst/deftrifecta-from-schema single-slot-contract
+  hive-spi.slot/single-slot
+  {:in  [:cat slot/SingleSlotConfig]
+   :out slot/Slot
+   :rel (fn [[cfg] out]
+          (and (= (some? (:initial cfg)) (slot/present? out))
+               (= (:teardown cfg) (:teardown out))))
+   :num-tests 200})
+
+(deftest-golden slot-lifecycle-golden
+  "test/golden/hive_spi/slot/lifecycle.edn"
+  (let [single (slot/single-slot {:on-empty (constantly :fallback)})
+        multi  (slot/multi-slot {:initial {:a 1} :on-missing (fn [k _] [:missing k])})
+        seen   (atom [])]
+    (slot/watch-slot! single ::w (fn [o n] (swap! seen conj [o n])))
+    {:single [(slot/current single)
+              (slot/present? single)
+              (slot/install! single :impl)
+              (slot/current single)
+              (slot/clear! single)
+              (slot/current single)]
+     :watch  (do (slot/unwatch-slot! single ::w) @seen)
+     :multi  [(slot/reg-get multi :a)
+              (slot/reg-get multi :b)
+              (vec (sort (slot/reg-merge! multi {:b 2 :c 3})))
+              (slot/reg-snapshot multi)
+              (slot/reg-remove! multi :a)
+              (slot/reg-snapshot multi)]}))

@@ -3,7 +3,8 @@
 
    A slot is the injection point for an SPI port: implementations install
    themselves at runtime, consumers read whatever is installed. `single-slot`
-   holds one active implementation; `multi-slot` holds a keyed map of them.")
+   holds one active implementation; `multi-slot` holds a keyed map of them."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -99,3 +100,49 @@
   [slot key]
   (remove-watch (:state slot) key)
   slot)
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def ^:private Hook
+  "A configured callback: absent, or anything invocable."
+  [:maybe ifn?])
+
+(def SingleSlotConfig
+  "What `single-slot` reads. Nil is an empty config."
+  [:maybe [:map
+           [:validate {:optional true} Hook]
+           [:on-empty {:optional true} Hook]
+           [:teardown {:optional true} Hook]
+           [:initial {:optional true} :any]]])
+
+(def MultiSlotConfig
+  "What `multi-slot` reads. Nil is an empty config; a nil :initial is {}."
+  [:maybe [:map
+           [:validate {:optional true} Hook]
+           [:on-missing {:optional true} Hook]
+           [:initial {:optional true} [:maybe :map]]]])
+
+(defn- slot-shaped?
+  "Structural, so a slot built before a reload of this namespace (an instance
+   of the previous record class) still satisfies the contract: what the
+   watch fns need is a map whose :state is an atom."
+  [x]
+  (and (map? x)
+       #?(:clj  (instance? clojure.lang.IAtom (:state x))
+          :cljs (instance? cljs.core/Atom (:state x)))))
+
+(def Slot
+  "A slot as the constructors build it: a record whose :state is an atom."
+  [:fn {:error/message "a SingleSlot or MultiSlot"
+        :gen/schema    [:enum :single :multi]
+        :gen/fmap      (fn [k] (if (= k :single)
+                                 (->SingleSlot (atom nil) nil nil nil)
+                                 (->MultiSlot (atom {}) nil nil)))}
+   slot-shaped?])
+
+(m/=> single-slot [:=> [:cat SingleSlotConfig] Slot])
+(m/=> multi-slot [:=> [:cat MultiSlotConfig] Slot])
+(m/=> watch-slot! [:=> [:cat Slot :any ifn?] Slot])
+(m/=> unwatch-slot! [:=> [:cat Slot :any] Slot])

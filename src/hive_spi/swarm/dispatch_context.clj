@@ -21,7 +21,8 @@
 
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded. Re-evaluating this namespace will not orphan existing
-   implementations. Consumers must NOT re-defprotocol this name.")
+   implementations. Consumers must NOT re-defprotocol this name."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -89,3 +90,27 @@
   (if (satisfies? IDispatchContext prompt-or-context)
     prompt-or-context
     (->TextContext (str prompt-or-context))))
+
+;; -----------------------------------------------------------------------------
+;; Contracts
+;; -----------------------------------------------------------------------------
+
+(def DispatchContext
+  "Any value of the IDispatchContext protocol."
+  [:fn {:error/message "an IDispatchContext"
+        :gen/schema    :string
+        :gen/fmap      ->text-context}
+   #(satisfies? IDispatchContext %)])
+
+(def RefOpts
+  "What `->ref-context` reads from its options. :kg-node-ids goes through
+   `vec`, so any sequential or set collection is accepted."
+  [:maybe [:map
+           [:ctx-refs {:optional true} [:maybe [:map-of :any :any]]]
+           [:kg-node-ids {:optional true} [:maybe [:or [:sequential :any] [:set :any]]]]
+           [:scope {:optional true} :any]
+           [:reconstruct-fn {:optional true} [:maybe ifn?]]]])
+
+(m/=> ->text-context [:=> [:cat :string] DispatchContext])
+(m/=> ->ref-context [:=> [:cat :string RefOpts] DispatchContext])
+(m/=> ensure-context [:=> [:cat :any] DispatchContext])

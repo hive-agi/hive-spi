@@ -1,0 +1,8 @@
+{:case-0 {:out :premium, :in :coordinator},
+ :case-1 {:out :standard, :in nil},
+ :case-2 {:out :standard, :in ling},
+ :case-3 {:out :standard, :in "ling"},
+ :case-4 {:out :standard, :in :ling},
+ :case-5 {:out :standard, :in :read},
+ :case-6 {:out :standard, :in "unknown"},
+ :case-7 {:out :premium, :in "coordinator"}}

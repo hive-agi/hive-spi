@@ -1,0 +1,8 @@
+{:order [:m :a :z],
+ :built [:m :a :z],
+ :replaced [:a :z :m2],
+ :removed [:m :z],
+ :plain-base {:not :a-decorator},
+ :decorator? [false false],
+ :reset nil,
+ :empty []}

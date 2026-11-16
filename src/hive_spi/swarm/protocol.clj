@@ -13,7 +13,8 @@
 
    Design: Functional DDD Repository pattern.
    OCP via protocols + records (compiles to Java interfaces).
-   DIP: All consumer code depends on these abstractions, never on backends.")
+   DIP: All consumer code depends on these abstractions, never on backends."
+  (:require [malli.core :as m]))
 ;; SPDX-License-Identifier: MIT
 
 (defprotocol ISwarmRegistry
@@ -549,3 +550,33 @@
    (get-tasks-for-slave registry slave-id))
   ([registry slave-id status]
    (get-tasks-for-slave registry slave-id status)))
+
+;;; ---------------------------------------------------------------------------
+;;; Contracts
+;;; ---------------------------------------------------------------------------
+;;
+;; The wrappers pass through what the backend answers. Their schemas state the
+;; documented shapes; a backend's transaction report is open (its keys are the
+;; backend's), so it is a map, and every read may miss.
+
+(def Registry
+  "Any ISwarmRegistry implementation."
+  [:fn {:error/message "an ISwarmRegistry"} #(satisfies? ISwarmRegistry %)])
+
+(def ^:private Id [:string {:min 1}])
+(def ^:private TxReport [:maybe :map])
+(def ^:private Rows [:sequential :map])
+
+(m/=> add-slave!* [:=> [:cat Registry Id [:maybe :map]] TxReport])
+(m/=> get-slave* [:=> [:cat Registry :any] [:maybe :map]])
+(m/=> update-slave!* [:=> [:cat Registry :any :map] TxReport])
+(m/=> remove-slave!* [:=> [:cat Registry :any] TxReport])
+(m/=> get-all-slaves* [:=> [:cat Registry] Rows])
+(m/=> get-slaves-by-status* [:=> [:cat Registry :keyword] Rows])
+(m/=> get-slaves-by-project* [:=> [:cat Registry :any] Rows])
+(m/=> add-task!* [:=> [:cat Registry [:maybe Id] Id [:maybe :map]] TxReport])
+(m/=> get-task* [:=> [:cat Registry :any] [:maybe :map]])
+(m/=> update-task!* [:=> [:cat Registry :any :map] TxReport])
+(m/=> get-tasks-for-slave* [:function
+                            [:=> [:cat Registry :any] Rows]
+                            [:=> [:cat Registry :any [:maybe :keyword]] Rows]])

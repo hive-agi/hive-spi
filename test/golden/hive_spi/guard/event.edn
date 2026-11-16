@@ -1,0 +1,11 @@
+[[{:guard/phase :pre-tool, :guard/harness :eca, :tool/name "Bash"}
+  true]
+ [#:guard{:phase :pre-tool, :harness :eca} false]
+ [{:guard/phase :prompt-submit,
+   :guard/harness :claude-code,
+   :prompt "go"}
+  true]
+ [#:guard{:phase :prompt-submit, :harness :claude-code} false]
+ [#:guard{:phase :stop, :harness :mcp} true]
+ [#:guard{:phase :stop, :harness "mcp"} false]
+ [#:guard{:phase :on-compact, :harness :mcp} false]]

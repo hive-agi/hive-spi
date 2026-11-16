@@ -8,7 +8,8 @@
 
    Reload-safety: `defprotocol` is not idempotent, so each declaration is
    guarded — re-evaluating this namespace will not orphan existing
-   implementations.")
+   implementations."
+  (:require [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -84,3 +85,15 @@
   (if (satisfies? IHeadlessCapabilities backend)
     (declared-capabilities backend)
     default-capabilities))
+
+;; =============================================================================
+;; Contracts
+;; =============================================================================
+
+(def Protocol
+  "A Clojure protocol value (the map `defprotocol` binds)."
+  [:map [:on-interface any?] [:sigs :map]])
+
+(m/=> headless-backend? [:=> [:cat :any] :boolean])
+(m/=> headless-addon? [:=> [:cat Protocol :any] :boolean])
+(m/=> capabilities [:=> [:cat :any] [:set :qualified-keyword]])

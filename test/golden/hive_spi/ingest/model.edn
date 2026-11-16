@@ -1,0 +1,15 @@
+[{:ok
+  #:document{:id "d",
+             :source "/s",
+             :format :format/org,
+             :content "c",
+             :metadata {:k 1}}}
+ {:error :ingest/invalid-document,
+  :field :id,
+  :reason "blank document id"}
+ {:error :ingest/invalid-document,
+  :field :source,
+  :reason "blank source path"}
+ {:error :ingest/invalid-document,
+  :field :content,
+  :reason "nil content"}]

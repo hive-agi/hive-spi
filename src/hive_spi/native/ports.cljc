@@ -1,6 +1,7 @@
 (ns hive-spi.native.ports
   "Portable operation-and-JSON native seam; hosts implement transport, not addon policy."
-  (:require [hive-spi.native.schema :as schema]))
+  (:require [hive-spi.native.schema :as schema]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -49,3 +50,25 @@
      (host [_] :native/unavailable)
      (call-op [_ _op _request] (failure message :native/unavailable))
      (close! [_] nil))))
+
+;; Contracts
+
+(def NativePort
+  "An INativePort. Generates an unavailable port."
+  [:fn {:error/message "must satisfy INativePort"
+        :gen/schema    [:string {:min 1 :max 8}]
+        :gen/fmap      (fn [n] (unavailable-port n))}
+   #(satisfies? INativePort %)])
+
+(def FailureEnvelope
+  [:map [:ok [:= false]] [:error :any] [:error/type {:optional true} :any]])
+
+(m/=> ok? [:=> [:cat :any] :boolean])
+;; The message is not checked: whatever is given lands under :error.
+(m/=> failure [:function
+               [:=> [:cat :any] FailureEnvelope]
+               [:=> [:cat :any :any] FailureEnvelope]])
+(m/=> tool-name [:=> [:cat :any :any] [:re #"^[A-Za-z0-9_-]{1,64}$"]])
+(m/=> unavailable-port [:function
+                        [:=> [:cat :any] NativePort]
+                        [:=> [:cat :any :any] NativePort]])

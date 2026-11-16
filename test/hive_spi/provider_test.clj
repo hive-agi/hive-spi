@@ -4,7 +4,8 @@
    validation happens at registration, capability comes off the profile, and
    the subject selects its provider."
   (:require [clojure.test :refer [deftest is testing]]
-            [hive-spi.provider :as provider]))
+            [hive-spi.provider :as provider]
+            [hive-schemas.test :as hst]))
 
 (defprotocol IRail
   (charge! [this amount])
@@ -152,3 +153,44 @@
 
 (deftest a-registry-with-no-declared-port-conforms-vacuously-test
   (is (true? (provider/conforming? rails {:schema RailProfile}))))
+
+;; =============================================================================
+;; trifectas over the contracts (cov-fleet)
+;; =============================================================================
+
+(def ^:private Cap [:enum :poll :refund :charge])
+
+(def ^:private GenRegistry
+  "Registries as `registry` builds them: id -> {:profile :impl}, some profiles
+   declaring no capability set at all."
+  [:map-of {:gen/fmap (fn [ps]
+                        (into {} (map (fn [[id caps]]
+                                        [id {:profile (cond-> {:provider/id id}
+                                                        caps (assoc :provider/capabilities caps))
+                                             :impl id}]))
+                              ps))
+            :gen/schema [:vector {:max 5}
+                         [:tuple [:enum :chain :cards :manual :voucher]
+                          [:maybe [:set Cap]]]]}
+   :keyword provider/Entry])
+
+(defn- declares? [reg id cap]
+  (contains? (get-in reg [id :profile :provider/capabilities]) cap))
+
+(hst/deftrifecta-from-schema with-capability-contract
+  hive-spi.provider/with-capability
+  {:in          [:cat GenRegistry Cap]
+   :out         [:set :keyword]
+   :rel         (fn [[reg cap] out]
+                  (= out (set (filter #(declares? reg % cap) (keys reg)))))
+   :golden-path "test/golden/hive_spi/provider/with-capability.edn"
+   :num-tests   200})
+
+(hst/deftrifecta-from-schema capabilities-contract
+  hive-spi.provider/capabilities
+  {:in          [:cat GenRegistry [:enum :chain :cards :manual :voucher :ghost]]
+   :out         [:set :keyword]
+   :rel         (fn [[reg id] out]
+                  (= out (or (get-in reg [id :profile :provider/capabilities]) #{})))
+   :golden-path "test/golden/hive_spi/provider/capabilities.edn"
+   :num-tests   200})

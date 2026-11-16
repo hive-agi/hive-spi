@@ -3,7 +3,8 @@
    must become an explicit unavailable RESULT, never nil-as-data and never an
    exception. Registration must reject malformed maps at the registrar."
   (:require [clojure.test :refer [deftest is use-fixtures]]
-            [hive-spi.editor.services :as svc]))
+            [hive-spi.editor.services :as svc]
+            [hive-schemas.test :as hst]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -52,3 +53,20 @@
   (is (thrown? clojure.lang.ExceptionInfo (svc/register-services! [:not "a map"])))
   (is (thrown? clojure.lang.ExceptionInfo (svc/register-services! {"eval" identity})))
   (is (thrown? clojure.lang.ExceptionInfo (svc/register-services! {:eval "not a fn"}))))
+
+(hst/deftrifecta-from-schema unavailable-names-what-is-available
+  hive-spi.editor.services/unavailable
+  {:in  [:cat [:enum :default :other] :keyword]
+   :out svc/Unavailable
+   :rel (fn [[k cap] out]
+          (and (= cap (:capability out))
+               (= k (:registry-key out))
+               (= (vec (sort (svc/capabilities k))) (:available out))))})
+
+(hst/deftrifecta-from-schema register-services-merges-under-its-key
+  hive-spi.editor.services/register-services!
+  {:in  [:cat [:enum :covf-a :covf-b] svc/Capabilities]
+   :out svc/Capabilities
+   :rel (fn [[k caps] out]
+          (and (= out (get (svc/registered) k))
+               (every? #(svc/available? k %) (keys caps))))})
