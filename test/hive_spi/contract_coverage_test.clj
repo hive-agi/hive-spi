@@ -29,6 +29,7 @@
    "src/hive_spi/lifecycle"
    "src/hive_spi/log"
    "src/hive_spi/memory"
+   "src/hive_spi/projection"
    ;; schema/ minus typed_ann.clj: it holds macros only (no defn) and needs
    ;; typed.clojure, which lives on the :typed alias, not on :test.
    "src/hive_spi/schema/capability.cljc"

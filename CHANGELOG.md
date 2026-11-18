@@ -24,6 +24,15 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- `hive-spi.projection.ports`: `FloorProjection` (`project-floor`), the
+  floor-lane projection of a host's catchup drain, behind a single slot
+  (`set-projection!`, `get-projection`, `projection-set?`,
+  `clear-projection!`) and the host call site `project-or-identity`, which
+  sends the entry whole when nothing is installed. With
+  `hive-spi.projection.stub` and `hive-spi.projection.conformance`, a suite
+  checking the port's laws (address kept, never a pointer, never grows,
+  idempotent) that an outside projection runs against itself.
+
 - `hive-spi.swarm.dispatch`: `ITaskDispatcher` (`dispatch-task!`,
   `capabilities`), the optional `IDispatcherHealth`, and a priority registry
   (`register-dispatcher!`, `unregister-dispatcher!`, `registered`). With
