@@ -36,6 +36,7 @@ is part of the 1.0 contract.
 | `hive-spi.diag.ports`         | `IHeapProbe`, `IRetainedSizer`, `IAllocationSampler`, `IProfiler`, `ICacheProbe`, `IMemoryClinic`                             |
 | `hive-spi.lifecycle.ports`    | `IShutdownHook`, `ISweepable`, `IResourceOwner`, `IShutdownBudget`                                                            |
 | `hive-spi.embeddings.ports`   | `EmbeddingProvider`                                                                                                          |
+| `hive-spi.projection.ports`   | `FloorProjection` (floor-lane catchup drain projection); `.conformance` the public law suite, `.stub` the reference impls     |
 | `hive-spi.crypto.hash` / `.ports` | `IHasher`, `ISigner`                                                                                                     |
 | `hive-spi.log.ports`          | `ILogger`                                                                                                                    |
 | `hive-spi.time.ports`         | `IClock`                                                                                                                     |
