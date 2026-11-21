@@ -24,6 +24,22 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- `hive-spi.embeddings.space`: the EmbeddingSpace value layer, moved here
+  from hive-mcp.embeddings.space so a vector-store backend can stamp, admit
+  and audit collections with no host on the classpath (`->space`,
+  `space-id`, `check-compatible!`, `space->metadata`, `metadata->space`,
+  `admit`, `audit`, and the `EmbeddingSpace`, `SpaceId`, `Admission`,
+  `AuditRow` schemas). Pure; no dependencies beyond malli.
+
+- `hive-spi.vector.host-services`: what a vector-store backend asks of its
+  host, as data. The host publishes capability keyword -> fn
+  (`register-services!`); a backend calls through `soft` (resolved at call
+  time, with a declared fallback) or `invoke`. `catalog` documents the
+  contract: the active embedding provider, per-type routing and spaces,
+  query shaping, config lookup, federated ingest search, the process-wide
+  embedding gate, and the host's named-collection port. Lets a backend addon
+  depend on hive-spi alone instead of resolving host symbols by name.
+
 - `hive-spi.projection.ports`: `FloorProjection` (`project-floor`), the
   floor-lane projection of a host's catchup drain, behind a single slot
   (`set-projection!`, `get-projection`, `projection-set?`,
