@@ -16,7 +16,8 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol these names."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.log.ports :as log]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -127,14 +128,19 @@
   "Tell the host that file PATH's content changed, CAUSE naming how the caller
    knows (e.g. :hash-mismatch). Answers the host's propagation summary, or nil
    when the active port has no IDiscPropagation (the Noop, or a host with no
-   knowledge store) or when the host's propagation throws: a claim release
-   must never fail because knowledge could not be updated."
+   knowledge store) or when the host's propagation throws an Exception: a
+   claim release must never fail because knowledge could not be updated. A
+   throwing propagation is a host defect, so it is reported through the log
+   port rather than swallowed; an Error (OOM, linkage) is not caught at all."
   [path cause]
   (let [port (get-memory-scope)]
     (when (satisfies? IDiscPropagation port)
       (try
         (-content-changed! port path cause)
-        (catch Throwable _ nil)))))
+        (catch Exception e
+          (log/warn "hive-spi.swarm.ports.memory-scope: content-changed! propagation"
+                    "failed for" path cause ":" (.getName (class e)) (ex-message e))
+          nil)))))
 
 (def MemoryScope
   "Any IProjectScope implementation (the Noop included)."

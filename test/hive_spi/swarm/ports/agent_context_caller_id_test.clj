@@ -3,7 +3,8 @@
    `current-caller-id` answers the installed host's caller id, and nil for the
    Noop, for a host without the extension, and for a host whose lookup throws."
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
-            [hive-spi.swarm.ports.agent-context :as port]))
+            [hive-spi.swarm.ports.agent-context :as port]
+            [hive-spi.log.ports :as log]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -60,10 +61,27 @@
     (is (nil? (port/current-caller-id)))))
 
 (deftest a-host-whose-lookup-throws-degrades-to-no-caller
-  (port/set-agent-context! (caller-port #(throw (ex-info "host down" {}))))
-  (is (nil? (port/current-caller-id))))
+  (let [events (atom [])
+        prior  (when (log/logger-set?) (log/get-logger))]
+    (log/set-logger! (reify log/ILogger
+                       (log-event [_ level msg] (swap! events conj [level msg]) nil)
+                       (logger-levels [_] #{:warn})))
+    (try
+      (port/set-agent-context! (caller-port #(throw (ex-info "host down" {}))))
+      (is (nil? (port/current-caller-id)))
+      (testing "the host defect is reported, not swallowed"
+        (is (= [:warn] (mapv first @events)))
+        (is (re-find #"host down" (second (first @events)))))
+      (finally
+        (log/clear-logger!)
+        (when prior (log/set-logger! prior))))))
 
 (deftest clearing-the-context-drops-the-caller
   (port/set-agent-context! (caller-port (constantly "c")))
   (port/clear-agent-context!)
   (is (nil? (port/current-caller-id))))
+
+(deftest an-error-is-not-swallowed
+  (port/set-agent-context! (caller-port #(throw (AssertionError. "invariant"))))
+  (is (thrown? AssertionError (port/current-caller-id))
+      "only Exceptions degrade to no caller; Errors propagate"))
