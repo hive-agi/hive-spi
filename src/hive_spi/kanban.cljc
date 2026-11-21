@@ -123,8 +123,14 @@
 (defn- check [case-id ok? detail]
   {:case case-id :ok? (boolean ok?) :detail detail})
 
+(m/=> check [:=> [:cat :any :any :any]
+             [:map [:case :any] [:ok? :boolean] [:detail :any]]])
+
 (defn- attempt [thunk]
   (try (thunk) (catch #?(:clj Throwable :cljs :default :cljr Exception :lpy python/Exception :default :default) t t)))
+
+;; Answers the thunk's value, or the throwable it raised.
+(m/=> attempt [:=> [:cat ifn?] :any])
 
 (defn conformance
   "Run the contract cases against `read-impl` and `write-impl` and return a

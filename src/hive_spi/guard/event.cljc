@@ -56,6 +56,8 @@
   (into [:map {:closed false} [:guard/phase [:= phase]]]
         (concat common-entries entries)))
 
+(m/=> phase-map [:=> [:cat :keyword [:* :any]] [:cat [:= :map] [:* :any]]])
+
 (def GuardEvent
   "Malli schema for a normalized harness event.
 

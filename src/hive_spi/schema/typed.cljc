@@ -219,3 +219,23 @@
                [:=> [:cat :symbol :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]
                [:=> [:cat :symbol :any :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]])
 (m/=> registered-types [:=> [:cat] [:map-of :keyword TypeSyntax]])
+
+;; The walk's private stages.
+
+(def ^:private Mode
+  "Which type a walk derives: of validated values, or of m/parse results."
+  [:enum :validator :parser])
+
+(def ^:private Schema
+  "A resolved malli schema instance."
+  [:fn {:error/message "a malli schema"} m/schema?])
+
+(m/=> expand-keys [:=> [:cat [:map-of [:sequential :any] :any]] [:map-of :any :any]])
+(m/=> -walk [:=> [:cat reg/SchemaRef Mode] TypeSyntax])
+(m/=> -dispatch [:=> [:cat Schema Mode] TypeSyntax])
+(m/=> walk-children [:=> [:cat Schema Mode] [:vector TypeSyntax]])
+(m/=> walk-first [:=> [:cat Schema Mode] TypeSyntax])
+(m/=> wrap-first [:=> [:cat :symbol] [:=> [:cat Schema Mode] TypeSyntax]])
+(m/=> union-of [:=> [:cat [:sequential TypeSyntax]] TypeSyntax])
+(m/=> orn-branch [:=> [:cat Mode [:tuple :any :any :any]] TypeSyntax])
+(m/=> repeat-type [:=> [:cat Schema Mode] [:cat :symbol TypeSyntax]])

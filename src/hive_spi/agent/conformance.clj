@@ -46,10 +46,20 @@
   ([] (spec agent-id))
   ([aid] {:run/agent-id aid :run/task "conformance task"}))
 
+(m/=> spec [:function
+            [:=> [:cat] rc/RunSpec]
+            [:=> [:cat [:string {:min 1}]] rc/RunSpec]])
+
 (defn- submit [{:keys [ctl]} s] (:ok (rc/submit! ctl s)))
+
+;; The spec is passed through unchecked: cases submit malformed specs on purpose.
+(m/=> submit [:=> [:cat [:map [:ctl :some]] :any] [:maybe :map]])
 
 (defn- since [{:keys [transcripts]} aid cursor]
   (:ok (tx/transcript-since transcripts {:agent-id aid :cursor cursor})))
+
+;; The ok side of transcript-since: the entries after CURSOR.
+(m/=> since [:=> [:cat [:map [:transcripts :some]] :string :any] [:maybe [:sequential :map]]])
 
 (def default-await-ms
   "How long a case waits in await-run for a run it has ended or cancelled,
@@ -57,6 +67,8 @@
   1000)
 
 (defn- await-ms [h] (::await-ms h default-await-ms))
+
+(m/=> await-ms [:=> [:cat [:maybe :map]] [:int {:min 0}]])
 
 (defn- final-cursor-is-last-entry
   "Assert that :run/final-cursor of OUT is the cursor of the last entry in the
