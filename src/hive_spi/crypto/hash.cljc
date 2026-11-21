@@ -18,7 +18,9 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            #?@(:clj [[hive-spi.log.ports :as log]
+                      [hive-spi.resolve :as resolve]])))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -40,11 +42,13 @@
   (delay
     ;; `requiring-resolve` is a JVM-family primitive: ClojureScript loads its
     ;; namespaces at compile time and has no runtime require, so there is no
-    ;; host default to resolve there.
-    #?(:clj (try
-              (when-let [ctor (requiring-resolve 'hive-spi.crypto.hash-jvm/default-hasher)]
-                (ctor))
-              (catch Exception _ nil))
+    ;; host default to resolve there. An absent hasher yields nil quietly; a
+    ;; broken one is reported through the log port.
+    #?(:clj (let [{:keys [value failures]} (resolve/first-available
+                                            ['hive-spi.crypto.hash-jvm/default-hasher])]
+              (doseq [f failures]
+                (log/warn "hive-spi.crypto.hash:" (resolve/describe-failure f)))
+              value)
        :cljs nil)))
 
 (defonce ^:private hasher-slot

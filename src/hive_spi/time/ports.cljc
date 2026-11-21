@@ -18,7 +18,9 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            #?@(:clj [[hive-spi.log.ports :as log]
+                      [hive-spi.resolve :as resolve]])))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -47,13 +49,15 @@
       'hive-spi.time.clock-portable/default-clock]))
 
 (defonce ^:private host-default
+  ;; An absent adapter is skipped quietly; a broken one (present but failing
+  ;; to load or construct) is reported through the log port, so a defect
+  ;; never masquerades as 'not on this runtime'.
   (delay
-    #?(:clj (some (fn [ctor-sym]
-                    (try
-                      (when-let [ctor (requiring-resolve ctor-sym)]
-                        (ctor))
-                      (catch Exception _ nil)))
-                  host-default-candidates)
+    #?(:clj (let [{:keys [value failures]} (resolve/first-available
+                                            host-default-candidates)]
+              (doseq [f failures]
+                (log/warn "hive-spi.time.ports:" (resolve/describe-failure f)))
+              value)
        :cljs nil)))
 
 (defonce ^:private clock-slot

@@ -19,7 +19,8 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            #?(:clj [hive-spi.resolve :as resolve])))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -46,13 +47,17 @@
       'hive-spi.log.console/default-logger]))
 
 (defonce ^:private host-default
+  ;; An absent adapter is skipped quietly; a broken one (present but failing
+  ;; to load or construct) is reported through whichever logger the ladder
+  ;; did resolve, so a defect never masquerades as 'timbre not installed'.
   (delay
-    #?(:clj (some (fn [ctor-sym]
-                    (try
-                      (when-let [ctor (requiring-resolve ctor-sym)]
-                        (ctor))
-                      (catch Exception _ nil)))
-                  host-default-candidates)
+    #?(:clj (let [{:keys [value failures]} (resolve/first-available
+                                            host-default-candidates)]
+              (when value
+                (doseq [f failures]
+                  (log-event value :warn (str "hive-spi.log.ports: "
+                                              (resolve/describe-failure f)))))
+              value)
        :cljs nil)))
 
 (defonce ^:private logger-slot
