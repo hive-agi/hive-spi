@@ -25,7 +25,8 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol these names."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.log.ports :as log]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -120,14 +121,19 @@
   "Caller id of the tool call in flight, read through the active agent
    context. Answers nil when no context is in flight, when the active context
    has no ICallerIdContext (the Noop of an older release, or a host with no
-   caller identity), or when the host's lookup throws: a caller that scopes on
-   identity must degrade to 'no caller', never fail."
+   caller identity), or when the host's lookup throws an Exception: a caller
+   that scopes on identity must degrade to 'no caller', never fail. A
+   throwing lookup is a host defect, so it is reported through the log port
+   rather than swallowed; an Error (OOM, linkage) is not caught at all."
   []
   (let [ctx (get-agent-context)]
     (when (satisfies? ICallerIdContext ctx)
       (try
         (-current-caller-id ctx)
-        (catch Throwable _ nil)))))
+        (catch Exception e
+          (log/warn "hive-spi.swarm.ports.agent-context: caller-id lookup failed,"
+                    "degrading to no caller:" (.getName (class e)) (ex-message e))
+          nil)))))
 
 (def AgentContext
   "Any IAgentCallContext implementation (the Noop included)."

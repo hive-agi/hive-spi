@@ -50,56 +50,95 @@
   (let [[param ret] (m/children sch)]
     (conj (arg-vec param) :-> (-walk ret mode))))
 
-(defn- -dispatch
+(defn- expand-keys
+  "{[k ..] v} -> {k v ..}: a table row may name several schema types."
+  [rows]
+  (into {} (for [[ks v] rows, k ks] [k v])))
+
+(def ^:private scalar-types
+  "Leaf schema types whose Typed Clojure type ignores children and mode."
+  (expand-keys
+   {[:any 'any? :fn]                                     Any
+    [:string 'string?]                                   'typed.clojure/Str
+    [:int 'integer? 'int? 'pos-int? 'neg-int? 'nat-int?] 'typed.clojure/AnyInteger
+    [:double 'double?]                                   'Double
+    [:float 'float?]                                     (list 'typed.clojure/U 'Double 'Float)
+    [:> :< :>= :<= 'number? 'pos? 'neg? 'zero?
+     'rational? 'decimal? 'ratio?]                       'typed.clojure/Num
+    [:boolean 'boolean?]                                 'typed.clojure/Bool
+    [:keyword 'keyword? :qualified-keyword
+     'qualified-keyword? 'simple-keyword?]               'typed.clojure/Kw
+    [:symbol 'symbol? :qualified-symbol
+     'qualified-symbol? 'simple-symbol?]                 'typed.clojure/Sym
+    [:nil 'nil?]                                         (list 'typed.clojure/Val nil)
+    [:uuid]                                              'typed.clojure/UUID}))
+
+(defn- walk-children [sch mode] (mapv #(-walk % mode) (m/children sch)))
+
+(defn- walk-first [sch mode] (-walk (first (m/children sch)) mode))
+
+(defn- wrap-first
+  "Emitter for a one-child collection type: (Head ChildT)."
+  [head]
+  (fn [sch mode] (list head (walk-first sch mode))))
+
+(defn- union-of
+  "(t/U T..), or the sole T when there is one."
+  [ts]
+  (if (= 1 (count ts)) (first ts) (cons 'typed.clojure/U ts)))
+
+(defn- orn-branch
+  "One :orn branch: tagged '[(t/Val k) T] in parser mode, else T."
+  [mode [k _ s]]
+  (let [it (-walk s mode)]
+    (if (= mode :parser)
+      (list 'quote [(list 'typed.clojure/Val k) it])
+      it)))
+
+(defn- repeat-type
+  "A :* / :+ / :repeat: t/Vec of parsed items in parser mode, else t/Seqable."
   [sch mode]
-  (case (m/type sch)
-    (:any any?)                                                    Any
-    (:string string?)                                             'typed.clojure/Str
-    (:int integer? int?)                                          'typed.clojure/AnyInteger
-    (pos-int? neg-int? nat-int?)                                  'typed.clojure/AnyInteger
-    (:double double?)                                             'Double
-    (:float float?)                                               (list 'typed.clojure/U 'Double 'Float)
-    (:> :< :>= :<= number? pos? neg? zero?
-     rational? decimal? ratio?)                                   'typed.clojure/Num
-    (:boolean boolean?)                                           'typed.clojure/Bool
-    (:keyword keyword? :qualified-keyword qualified-keyword?
-     simple-keyword?)                                             'typed.clojure/Kw
-    (:symbol symbol? :qualified-symbol qualified-symbol?
-     simple-symbol?)                                              'typed.clojure/Sym
-    (:nil nil?)                                                   (list 'typed.clojure/Val nil)
-    :uuid                                                         'typed.clojure/UUID
-    :map                                                          (map->hmap sch mode)
-    :map-of                                                       (let [[k v] (map #(-walk % mode) (m/children sch))]
-                                                                    (list 'typed.clojure/Map k v))
-    :vector                                                       (list 'typed.clojure/Vec (-walk (first (m/children sch)) mode))
-    :sequential                                                   (list 'typed.clojure/SequentialColl (-walk (first (m/children sch)) mode))
-    :set                                                          (list 'typed.clojure/Set (-walk (first (m/children sch)) mode))
-    :tuple                                                        (list 'quote (mapv #(-walk % mode) (m/children sch)))
-    :enum                                                         (cons 'typed.clojure/U (map (fn [v] (list 'typed.clojure/Val v)) (m/children sch)))
-    :maybe                                                        (list 'typed.clojure/Nilable (-walk (first (m/children sch)) mode))
-    :or                                                           (let [ts (mapv #(-walk % mode) (m/children sch))]
-                                                                    (if (= 1 (count ts)) (first ts) (cons 'typed.clojure/U ts)))
-    :and                                                          (-walk (first (m/children sch)) mode)
-    :multi                                                        (let [ts (mapv (fn [c] (-walk (nth c 2) mode)) (m/children sch))]
-                                                                    (if (= 1 (count ts)) (first ts) (cons 'typed.clojure/U ts)))
-    :=                                                            (list 'typed.clojure/Val (first (m/children sch)))
-    :fn                                                           Any
-    :=>                                                           (fn-arity sch mode)
-    :function                                                     (let [as (mapv #(-walk % mode) (m/children sch))]
-                                                                    (if (= 1 (count as)) (first as) (cons 'typed.clojure/IFn as)))
-    :orn                                                          (cons 'typed.clojure/U
-                                                                        (mapv (fn [[k _ s]]
-                                                                                (let [it (-walk s mode)]
-                                                                                  (if (= mode :parser)
-                                                                                    (list 'quote [(list 'typed.clojure/Val k) it])
-                                                                                    it)))
-                                                                              (m/children sch)))
-    (:* :+ :repeat)                                               (let [it (-walk (first (m/children sch)) mode)]
-                                                                    (list (if (= mode :parser) 'typed.clojure/Vec 'typed.clojure/Seqable) it))
-    (:ref :schema ::m/schema)                                    (-walk (m/deref sch) mode)
-    (if (m/-ref-schema? sch)
-      (-walk (m/deref sch) mode)
-      Any)))
+  (list (if (= mode :parser) 'typed.clojure/Vec 'typed.clojure/Seqable)
+        (walk-first sch mode)))
+
+(def ^:private composite-emitters
+  "Schema type -> (fn [schema mode] type-syntax) for types built from their
+   children. Adding a malli type is one row here, not another `case` arm."
+  (expand-keys
+   {[:map]                   map->hmap
+    [:map-of]                (fn [sch mode] (cons 'typed.clojure/Map (walk-children sch mode)))
+    [:vector]                (wrap-first 'typed.clojure/Vec)
+    [:sequential]            (wrap-first 'typed.clojure/SequentialColl)
+    [:set]                   (wrap-first 'typed.clojure/Set)
+    [:maybe]                 (wrap-first 'typed.clojure/Nilable)
+    [:tuple]                 (fn [sch mode] (list 'quote (walk-children sch mode)))
+    [:enum]                  (fn [sch _] (cons 'typed.clojure/U
+                                               (map #(list 'typed.clojure/Val %) (m/children sch))))
+    [:=]                     (fn [sch _] (list 'typed.clojure/Val (first (m/children sch))))
+    [:or]                    (fn [sch mode] (union-of (walk-children sch mode)))
+    [:and]                   walk-first
+    [:multi]                 (fn [sch mode] (union-of (mapv #(-walk (nth % 2) mode) (m/children sch))))
+    [:=>]                    fn-arity
+    [:function]              (fn [sch mode]
+                               (let [as (walk-children sch mode)]
+                                 (if (= 1 (count as)) (first as) (cons 'typed.clojure/IFn as))))
+    [:orn]                   (fn [sch mode] (cons 'typed.clojure/U (mapv #(orn-branch mode %) (m/children sch))))
+    [:* :+ :repeat]          repeat-type
+    [:ref :schema ::m/schema] (fn [sch mode] (-walk (m/deref sch) mode))}))
+
+(defn- -dispatch
+  "Type syntax for the resolved schema SCH: a scalar from `scalar-types`, a
+   composite from `composite-emitters`, a deref for any other ref schema,
+   else t/Any."
+  [sch mode]
+  (let [t (m/type sch)]
+    (if-let [scalar (get scalar-types t)]
+      scalar
+      (if-let [emit (get composite-emitters t)]
+        (emit sch mode)
+        (if (m/-ref-schema? sch)
+          (-walk (m/deref sch) mode)
+          Any)))))
 
 (defn- -walk
   [?schema mode]
@@ -180,3 +219,23 @@
                [:=> [:cat :symbol :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]
                [:=> [:cat :symbol :any :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]])
 (m/=> registered-types [:=> [:cat] [:map-of :keyword TypeSyntax]])
+
+;; The walk's private stages.
+
+(def ^:private Mode
+  "Which type a walk derives: of validated values, or of m/parse results."
+  [:enum :validator :parser])
+
+(def ^:private Schema
+  "A resolved malli schema instance."
+  [:fn {:error/message "a malli schema"} m/schema?])
+
+(m/=> expand-keys [:=> [:cat [:map-of [:sequential :any] :any]] [:map-of :any :any]])
+(m/=> -walk [:=> [:cat reg/SchemaRef Mode] TypeSyntax])
+(m/=> -dispatch [:=> [:cat Schema Mode] TypeSyntax])
+(m/=> walk-children [:=> [:cat Schema Mode] [:vector TypeSyntax]])
+(m/=> walk-first [:=> [:cat Schema Mode] TypeSyntax])
+(m/=> wrap-first [:=> [:cat :symbol] [:=> [:cat Schema Mode] TypeSyntax]])
+(m/=> union-of [:=> [:cat [:sequential TypeSyntax]] TypeSyntax])
+(m/=> orn-branch [:=> [:cat Mode [:tuple :any :any :any]] TypeSyntax])
+(m/=> repeat-type [:=> [:cat Schema Mode] [:cat :symbol TypeSyntax]])

@@ -2,8 +2,9 @@
   "IDiscPropagation is an OPTIONAL extension of the memory-scope port:
    `content-changed!` must answer nil for every host that lacks it, and must
    never throw."
-  (:require [clojure.test :refer [deftest is use-fixtures]]
-            [hive-spi.swarm.ports.memory-scope :as port]))
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [hive-spi.swarm.ports.memory-scope :as port]
+            [hive-spi.log.ports :as log]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -50,6 +51,24 @@
     (is (= [["/p/a.clj" :hash-mismatch]] @told))))
 
 (deftest a-host-that-throws-does-not-fail-the-caller
+  (let [events (atom [])
+        prior  (when (log/logger-set?) (log/get-logger))]
+    (log/set-logger! (reify log/ILogger
+                       (log-event [_ level msg] (swap! events conj [level msg]) nil)
+                       (logger-levels [_] #{:warn})))
+    (try
+      (port/set-memory-scope!
+       (propagating-port (fn [_ _] (throw (ex-info "store down" {})))))
+      (is (nil? (port/content-changed! "/p/a.clj" :hash-mismatch)))
+      (testing "the host defect is reported, not swallowed"
+        (is (= [:warn] (mapv first @events)))
+        (is (re-find #"store down" (second (first @events)))))
+      (finally
+        (log/clear-logger!)
+        (when prior (log/set-logger! prior))))))
+
+(deftest an-error-is-not-swallowed
   (port/set-memory-scope!
-   (propagating-port (fn [_ _] (throw (ex-info "store down" {})))))
-  (is (nil? (port/content-changed! "/p/a.clj" :hash-mismatch))))
+   (propagating-port (fn [_ _] (throw (AssertionError. "invariant")))))
+  (is (thrown? AssertionError (port/content-changed! "/p/a.clj" :hash-mismatch))
+      "only Exceptions degrade to nil; Errors propagate"))

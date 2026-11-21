@@ -49,10 +49,16 @@
   (current [_]
     (if-let [v @state] v (when on-empty (on-empty))))
   (present? [_] (some? @state))
-  (clear! [_]
+  (clear! [this]
     (when-let [impl @state]
       (when teardown
-        (try (teardown impl) (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) _ nil))))
+        (try (teardown impl)
+             (catch #?(:clj Exception :cljs :default :cljr Exception :lpy python/Exception :default :default) e
+               ;; The slot is the bottom stratum (the log port is built on
+               ;; it), so it cannot log; it hands the failure to the
+               ;; configured :on-teardown-error seam instead of dropping it.
+               (when-let [report (:on-teardown-error this)]
+                 (report impl e))))))
     (reset! state nil)
     nil))
 
@@ -74,12 +80,15 @@
 
 (defn single-slot
   "A SingleSlot from a config map:
-     :validate  pred — implementations failing it are rejected on install!
-     :on-empty  (fn []) — value `current` returns when nothing is installed
-     :teardown  (fn [impl]) — run on the installed impl during clear!
-     :initial   seed value (default nil)"
-  [{:keys [validate on-empty teardown initial]}]
-  (->SingleSlot (atom initial) validate on-empty teardown))
+     :validate           pred — implementations failing it are rejected on install!
+     :on-empty           (fn []) — value `current` returns when nothing is installed
+     :teardown           (fn [impl]) — run on the installed impl during clear!
+     :on-teardown-error  (fn [impl throwable]) — told when :teardown throws;
+                         clear! still empties the slot and returns nil
+     :initial            seed value (default nil)"
+  [{:keys [validate on-empty teardown on-teardown-error initial]}]
+  (cond-> (->SingleSlot (atom initial) validate on-empty teardown)
+    on-teardown-error (assoc :on-teardown-error on-teardown-error)))
 
 (defn multi-slot
   "A MultiSlot from a config map:
@@ -115,6 +124,7 @@
            [:validate {:optional true} Hook]
            [:on-empty {:optional true} Hook]
            [:teardown {:optional true} Hook]
+           [:on-teardown-error {:optional true} Hook]
            [:initial {:optional true} :any]]])
 
 (def MultiSlotConfig

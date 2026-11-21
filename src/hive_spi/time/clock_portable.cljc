@@ -27,6 +27,8 @@
       (str (apply str (repeat short-by \0)) s)
       s)))
 
+(m/=> pad [:=> [:cat [:int {:min 0}] :int] :string])
+
 (defn- now-fields
   "The current LOCAL wall clock broken into :year :month :day :hour :minute
    :second :milli. Month and day are 1-based."

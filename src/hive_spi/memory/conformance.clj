@@ -54,6 +54,8 @@
 
 (defn- token [] (subs (str (random-uuid)) 0 8))
 
+(m/=> token [:=> [:cat] [:string {:min 8 :max 8}]])
+
 (defn make-entry
   "A valid memory entry with a fresh id and content-hash, OVERRIDES merged in."
   ([] (make-entry {}))
@@ -73,9 +75,15 @@
     (ports/reset-store! s)
     s))
 
+(m/=> fresh [:=> [:cat [:map [:make-store ifn?]]] :some])
+
 (defn- ids-of [rows] (set (map :id rows)))
 
+(m/=> ids-of [:=> [:cat [:maybe [:sequential [:maybe :map]]]] [:set :any]])
+
 (defn- type= [a b] (= (entry/type-name a) (entry/type-name b)))
+
+(m/=> type= [:=> [:cat :any :any] :boolean])
 
 (defn- tags= [a b] (= (set (map str a)) (set (map str b))))
 
@@ -84,6 +92,8 @@
   [s entries]
   (doseq [e entries] (ports/add-entry! s e))
   (into {} (map (juxt :id identity)) entries))
+
+(m/=> seed! [:=> [:cat :some [:sequential [:map [:id :any]]]] [:map-of :any :map]])
 
 (defn- query-fixture
   "Five entries with distinct type, tags, project and :created, one expired."
@@ -105,6 +115,10 @@
         f (query-fixture)]
     (seed! s (vals f))
     [s (into {} (map (fn [[k e]] [k (:id e)])) f)]))
+
+;; [store {fixture-key entry-id}]
+(m/=> seeded-query-store [:=> [:cat [:map [:make-store ifn?]]]
+                          [:tuple :some [:map-of :keyword :any]]])
 
 (def seal-requirements
   "What a store must offer before the seal layer can wrap it, keyed by the

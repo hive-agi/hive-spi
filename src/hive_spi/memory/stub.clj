@@ -50,6 +50,9 @@
 
 (defn- entries [state] (vals (:entries @state)))
 
+(m/=> entries [:=> [:cat [:fn #(instance? clojure.lang.IDeref %)]]
+               [:maybe [:sequential :map]]])
+
 (defrecord StubMemoryStore [state]
   ports/IMemoryStore
 

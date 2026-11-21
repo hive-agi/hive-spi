@@ -49,6 +49,17 @@
     (is (nil? (slot/clear! s)))
     (is (false? (slot/present? s)))))
 
+(deftest a-throwing-teardown-is-reported-not-dropped-test
+  (let [reported (atom [])
+        s (slot/single-slot {:teardown (fn [_] (throw (ex-info "boom" {})))
+                             :on-teardown-error (fn [impl e]
+                                                  (swap! reported conj [impl (ex-message e)]))})]
+    (slot/install! s :impl)
+    (is (nil? (slot/clear! s)))
+    (is (false? (slot/present? s)) "the slot still empties")
+    (is (= [[:impl "boom"]] @reported)
+        "the failure reaches the configured seam instead of vanishing")))
+
 (deftest initial-seeds-the-slot-test
   (let [s (slot/single-slot {:initial :seeded})]
     (is (= :seeded (slot/current s)))

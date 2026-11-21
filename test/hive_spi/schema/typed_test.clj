@@ -1,5 +1,5 @@
 (ns hive-spi.schema.typed-test
-  (:require [clojure.test :refer [deftest testing is]]
+  (:require [clojure.test :refer [are deftest testing is]]
             [hive-spi.schema.registry :as reg]
             [hive-spi.schema.typed :as typed]))
 
@@ -119,3 +119,27 @@
   (testing ":float -> (t/U Double Float); :double -> Double"
     (is (= '(typed.clojure/U Double Float) (typed/schema->type :float)))
     (is (= 'Double (typed/schema->type :double)))))
+
+(deftest every-composite-row-emits-its-type
+  (testing "one assertion per emitter-table row the other tests leave unpinned"
+    (are [schema expected] (= expected (typed/schema->type schema))
+      [:map-of :keyword :int]  '(typed.clojure/Map typed.clojure/Kw typed.clojure/AnyInteger)
+      [:vector :int]           '(typed.clojure/Vec typed.clojure/AnyInteger)
+      [:sequential :string]    '(typed.clojure/SequentialColl typed.clojure/Str)
+      [:set :keyword]          '(typed.clojure/Set typed.clojure/Kw)
+      [:tuple :int :string]    '(quote [typed.clojure/AnyInteger typed.clojure/Str])
+      [:= 3]                   '(typed.clojure/Val 3)
+      [:or :int]               'typed.clojure/AnyInteger
+      [:or :int :string]       '(typed.clojure/U typed.clojure/AnyInteger typed.clojure/Str)
+      [:multi {:dispatch :t}
+       [:a [:map [:t [:= :a]]]]
+       [:b [:map [:t [:= :b]]]]] '(typed.clojure/U
+                                   (typed.clojure/HMap :mandatory {:t (typed.clojure/Val :a)})
+                                   (typed.clojure/HMap :mandatory {:t (typed.clojure/Val :b)}))
+      [:fn any?]               'typed.clojure/Any
+      [:+ :int]                '(typed.clojure/Seqable typed.clojure/AnyInteger)
+      [:repeat {:min 1} :int]  '(typed.clojure/Seqable typed.clojure/AnyInteger)
+      [:schema :int]           'typed.clojure/AnyInteger
+      :nil                     '(typed.clojure/Val nil)
+      'simple-symbol?          'typed.clojure/Sym
+      [:re #"x"]               'typed.clojure/Any)))

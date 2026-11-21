@@ -19,6 +19,8 @@
 
 (defn- run-of [state handle] (get-in @state [:runs (:run/id handle)]))
 
+(m/=> run-of [:=> [:cat [:fn #(instance? clojure.lang.IDeref %)] [:maybe :map]] [:maybe :map]])
+
 (defn- unknown [handle] (r/err :run/unknown {:run/id (:run/id handle)}))
 
 (defn- status-of [run]
