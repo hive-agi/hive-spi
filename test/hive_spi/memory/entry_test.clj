@@ -2,7 +2,8 @@
   "The pure entry helpers every store shares, driven by their contracts:
    type tokens, embed text, projection and ordering by property, the
    timestamp and filter semantics by golden."
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.string]
+            [clojure.test :refer [deftest is testing]]
             [hive-schemas.test :as hst]
             [hive-spi.memory.entry :as e]
             [hive-test.golden :refer [deftest-golden]])
@@ -80,3 +81,65 @@
     (is (= ["a" ":b"] (:tags n)))
     (is (string? (:content-hash n)))
     (is (= :note (:type (e/normalize {}))))))
+
+;; =============================================================================
+;; try-parse: the parser vector behind parse-instant
+;; =============================================================================
+
+(def ^:private TimestampInput
+  "Every input class try-parse distinguishes: each accepted ISO form, blank,
+   garbage, and non-strings."
+  [:or
+   e/Timestamp
+   [:enum "2026-01-01T00:00:00+02:00" "2026-01-01T00:00:00+02:00[Europe/Paris]"
+    "2026-01-01T10:00:00"]
+   [:enum "" "   " nil 7 :kw]
+   [:string {:min 1 :max 6}]
+   [:enum "nope" "2026-13-45T99:99:99Z" "2026-01-01" "T10:00"]])
+
+(hst/deftrifecta-from-schema try-parse-answers-ok-or-a-categorised-err
+  hive-spi.memory.entry/try-parse
+  {:in  [:cat TimestampInput]
+   :out e/ParseResult
+   :rel (fn [[s] out]
+          (cond
+            (or (not (string? s)) (clojure.string/blank? s))
+            (= out {:error :timestamp/blank :input s})
+
+            (:ok out)
+            ;; parse-instant is exactly the ok side
+            (= (:ok out) (e/parse-instant s))
+
+            :else
+            (and (= :timestamp/unparseable (:error out))
+                 (= (mapv first e/instant-parsers) (:tried out))
+                 (nil? (e/parse-instant s)))))
+   :classify (fn [_ out] (or (:error out) :ok))
+   :classify-domain [:enum :ok :timestamp/blank :timestamp/unparseable]})
+
+(deftest try-parse-stops-at-the-first-parser-that-reads-the-input
+  (let [calls (atom [])
+        spy   (fn [nm f] [nm (fn [s] (swap! calls conj nm) (f s))])
+        res   (e/try-parse [(spy :never #(throw (java.time.format.DateTimeParseException. "no" % 0)))
+                            (spy :instant #(Instant/parse %))
+                            (spy :unreached #(Instant/parse %))]
+                           "2026-01-01T00:00:00Z")]
+    (is (= (Instant/parse "2026-01-01T00:00:00Z") (:ok res)))
+    (is (= [:never :instant] @calls))))
+
+(deftest a-broken-parser-is-a-defect-not-an-unparseable-timestamp
+  (testing "only DateTimeParseException means 'try the next form'"
+    (is (thrown-with-msg? IllegalStateException #"parser bug"
+                          (e/try-parse [[:broken (fn [_] (throw (IllegalStateException. "parser bug")))]]
+                                       "2026-01-01T00:00:00Z")))))
+
+(deftest matches?-treats-an-absent-opt-as-unconstrained
+  (let [row {:id "a" :type :note :tags ["x"] :project-id "p1"}]
+    (is (true? (e/matches? row {} now)))
+    (is (true? (e/matches? row {:project-ids [] :tags [] :exclude-tags []} now))
+        "empty collections constrain nothing, as before")
+    (is (false? (e/matches? row {:project-id "p2"} now)))
+    (is (false? (e/matches? (assoc row :expires "2026-01-01T00:00:00Z") {} now))
+        "expired rows are filtered by default")
+    (is (true? (e/matches? (assoc row :expires "2026-01-01T00:00:00Z")
+                           {:include-expired? true} now)))))
