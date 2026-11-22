@@ -35,20 +35,53 @@
             (when (seq reqm) [:mandatory reqm])
             (when (seq optm) [:optional optm]))))
 
-(defn- arg-vec
-  "Positional arg types from a :cat/:catn/:tuple param schema (args validate)."
+(defn- param-members
+  "Positional members of a :=> param schema: the children of a :cat / :tuple,
+   the entry schemas of a :catn, else the param itself as the sole member."
   [param]
   (case (m/type param)
-    :cat   (mapv #(-walk % :validator) (m/children param))
-    :catn  (mapv #(-walk (nth % 2) :validator) (m/children param))
-    :tuple (mapv #(-walk % :validator) (m/children param))
-    [(-walk param :validator)]))
+    (:cat :tuple) (vec (m/children param))
+    :catn         (mapv #(nth % 2) (m/children param))
+    [param]))
+
+(defn- arg-arities
+  "Positional arg-type vectors a :=> param admits (args validate). A `[:? T]`
+   member forks every arity into one without and one with T; a trailing
+   `[:* T]` is the rest `T :*` and a trailing `[:+ T]` is `T T :*`. Any other
+   member, a non-trailing repeat included, is one positional arg."
+  [param]
+  (let [ms    (param-members param)
+        last? #(= % (dec (count ms)))
+        item  #(-walk (first (m/children %)) :validator)
+        add   (fn [arities & ts] (mapv #(into % ts) arities))]
+    (reduce (fn [arities [i member]]
+              (let [t (m/type member)]
+                (cond
+                  (= t :?)                    (into arities (add arities (item member)))
+                  (and (= t :*) (last? i))    (add arities (item member) :*)
+                  (and (= t :+) (last? i))    (add arities (item member) (item member) :*)
+                  :else                       (add arities (-walk member :validator)))))
+            [[]]
+            (map-indexed vector ms))))
+
+(defn- fn-arities
+  "[:=> param ret] -> every `[ArgT.. :-> RetT]` arity its param admits."
+  [sch mode]
+  (let [[param ret] (m/children sch)
+        rt          (-walk ret mode)]
+    (mapv #(conj % :-> rt) (arg-arities param))))
+
+(defn- ifn-of
+  "The sole arity vector, or (t/IFn arity..) when there are several."
+  [arities]
+  (let [as (vec (distinct arities))]
+    (if (= 1 (count as)) (first as) (cons 'typed.clojure/IFn as))))
 
 (defn- fn-arity
-  "[:=> param ret] -> `[ArgT.. :-> RetT]`."
+  "[:=> param ret] -> `[ArgT.. :-> RetT]`, or t/IFn over the arities an
+   optional (:?) or trailing variadic (:* / :+) param member admits."
   [sch mode]
-  (let [[param ret] (m/children sch)]
-    (conj (arg-vec param) :-> (-walk ret mode))))
+  (ifn-of (fn-arities sch mode)))
 
 (defn- expand-keys
   "{[k ..] v} -> {k v ..}: a table row may name several schema types."
@@ -120,8 +153,7 @@
     [:multi]                 (fn [sch mode] (union-of (mapv #(-walk (nth % 2) mode) (m/children sch))))
     [:=>]                    fn-arity
     [:function]              (fn [sch mode]
-                               (let [as (walk-children sch mode)]
-                                 (if (= 1 (count as)) (first as) (cons 'typed.clojure/IFn as))))
+                               (ifn-of (into [] (mapcat #(fn-arities % mode)) (m/children sch))))
     [:orn]                   (fn [sch mode] (cons 'typed.clojure/U (mapv #(orn-branch mode %) (m/children sch))))
     [:* :+ :repeat]          repeat-type
     [:ref :schema ::m/schema] (fn [sch mode] (-walk (m/deref sch) mode))}))
@@ -192,6 +224,24 @@
   []
   (into {} (map (fn [k] [k (schema->type k)])) (keys (reg/registered))))
 
+(defn contract-schema
+  "The function schema `(m/=> qsym ..)` registered for the fully-qualified
+   var symbol `qsym` (in malli's :clj function-schema registry), or nil when
+   that var carries no m/=> contract."
+  [qsym]
+  (when (and (symbol? qsym) (namespace qsym))
+    (get-in (m/function-schemas)
+            [(symbol (namespace qsym)) (symbol (name qsym)) :schema])))
+
+(defn contract-ann-form
+  "`(t/ann qsym FnType)` with FnType projected from the m/=> contract already
+   registered for `qsym`, so the Typed Clojure annotation and the malli
+   contract cannot drift: one source, two rungs. Nil when `qsym` has no
+   contract."
+  [qsym]
+  (when-let [sch (contract-schema qsym)]
+    (list 'typed.clojure/ann qsym (schema->type sch))))
+
 ;; ---------------------------------------------------------------------------
 ;; Contracts
 ;; ---------------------------------------------------------------------------
@@ -219,6 +269,8 @@
                [:=> [:cat :symbol :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]
                [:=> [:cat :symbol :any :any] [:cat [:= 'malli.core/=>] :symbol [:tuple [:= :=>] :any :any]]]])
 (m/=> registered-types [:=> [:cat] [:map-of :keyword TypeSyntax]])
+(m/=> contract-schema [:=> [:cat :any] [:maybe [:fn {:error/message "a malli schema"} m/schema?]]])
+(m/=> contract-ann-form [:=> [:cat :any] [:maybe [:cat [:= 'typed.clojure/ann] :qualified-symbol TypeSyntax]]])
 
 ;; The walk's private stages.
 
