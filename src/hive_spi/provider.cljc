@@ -193,11 +193,16 @@
   "`via`, but only when the selected provider declares `capability`.
 
    A provider whose profile does not admit an operation is never asked to
-   perform it — the profile is the permission, not a comment."
-  [reg subject subject-key capability f]
-  (when-let [found (for-subject reg subject subject-key)]
-    (when (capable? reg (get-in found [:profile :provider/id]) capability)
-      (f (:impl found)))))
+   perform it — the profile is the permission, not a comment.
+
+   `call` is `{:subject-key .. :capability .. :f ..}`. The positional
+   (reg subject subject-key capability f) arity is kept and delegates."
+  ([reg subject {:keys [subject-key capability f]}]
+   (when-let [found (for-subject reg subject subject-key)]
+     (when (capable? reg (get-in found [:profile :provider/id]) capability)
+       (f (:impl found)))))
+  ([reg subject subject-key capability f]
+   (via-capable reg subject {:subject-key subject-key :capability capability :f f})))
 
 ;; =============================================================================
 ;; conformance — for tests
@@ -263,7 +268,14 @@
 (m/=> subject-id [:=> [:cat :any ifn?] :any])
 (m/=> for-subject [:=> [:cat Reg :any ifn?] [:maybe Entry]])
 (m/=> via [:=> [:cat Reg :any ifn? ifn?] :any])
-(m/=> via-capable [:=> [:cat Reg :any ifn? :keyword ifn?] :any])
+(def CapableCall
+  "The call `via-capable` makes: how to read the subject's provider id, the
+   capability the provider must declare, and the fn applied to its impl."
+  [:map [:subject-key ifn?] [:capability :keyword] [:f ifn?]])
+
+(m/=> via-capable [:function
+                   [:=> [:cat Reg :any CapableCall] :any]
+                   [:=> [:cat Reg :any ifn? :keyword ifn?] :any]])
 (m/=> conformance [:=> [:cat Reg [:maybe :map]]
                    [:map-of :any [:map
                                   [:profile-valid? :boolean]

@@ -131,6 +131,16 @@
     (is (nil? (provider/via-capable rails {:invoice/provider :manual} :invoice/provider
                                     :refund #(refund! % 500))))))
 
+(deftest via-capable-takes-the-call-as-one-opts-map-test
+  (let [refund {:subject-key :invoice/provider :capability :refund
+                :f #(refund! % 500)}]
+    (testing "the opts arity answers what the positional one does"
+      (is (= [:chain :refunded 500] (provider/via-capable rails invoice refund)))
+      (is (nil? (provider/via-capable rails {:invoice/provider :manual} refund)))
+      (doseq [subject [invoice {:invoice/provider :manual} {:invoice/provider :ghost}]]
+        (is (= (provider/via-capable rails subject :invoice/provider :refund #(refund! % 500))
+               (provider/via-capable rails subject refund)))))))
+
 (deftest selection-reads-the-subject-through-any-accessor-test
   (let [nested {:order {:rail :cards}}]
     (is (= :cards (provider/subject-id nested (comp :rail :order))))

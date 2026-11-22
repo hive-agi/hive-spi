@@ -24,6 +24,21 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- `hive-spi.memory.entry/try-parse` and `instant-parsers`: timestamp parsing
+  as an ordered parser vector answering a hive-dsl Result
+  (`:timestamp/blank`, `:timestamp/unparseable` with the parsers tried).
+  `parse-instant` keeps its nil-on-miss contract on top of it. Only a
+  `DateTimeParseException` moves to the next parser; any other throwable is
+  a defect and propagates.
+
+- `hive-spi.provider/via-capable` takes the call as one opts map,
+  `(via-capable reg subject {:subject-key .. :capability .. :f ..})`. The
+  positional five-argument arity is kept and delegates.
+
+- `hive-spi.memory.conformance/skip-reason`: the pure skip decision the
+  runner reports. Skips are now logged through `hive-spi.log.ports` instead
+  of printed to stdout.
+
 - `hive-spi.embeddings.space`: the EmbeddingSpace value layer, moved here
   from hive-mcp.embeddings.space so a vector-store backend can stamp, admit
   and audit collections with no host on the classpath (`->space`,

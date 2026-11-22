@@ -4,9 +4,11 @@
    projection. No I/O. A store that filters or orders post-fetch uses these
    so its semantics equal the reference in-memory store's."
   (:require [clojure.string :as str]
+            [hive-dsl.result :as r]
             [hive-spi.memory.ids :as ids]
             [malli.core :as m])
-  (:import [java.time Duration Instant LocalDateTime OffsetDateTime ZoneId ZonedDateTime]))
+  (:import [java.time Duration Instant LocalDateTime OffsetDateTime ZoneId ZonedDateTime]
+           [java.time.format DateTimeParseException]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -23,16 +25,42 @@
   [t]
   (some-> t type-name keyword))
 
+(def instant-parsers
+  "The ISO-8601 forms a timestamp may take, tried in order: [name parse-fn],
+   each parse-fn String -> Instant, throwing DateTimeParseException on a form
+   it does not read. A new accepted form is a new row here."
+  [[:instant Instant/parse]
+   [:zoned   #(.toInstant (ZonedDateTime/parse %))]
+   [:offset  #(.toInstant (OffsetDateTime/parse %))]
+   [:local   #(.toInstant (.atZone (LocalDateTime/parse %) (ZoneId/systemDefault)))]])
+
+(defn try-parse
+  "Run S through PARSERS (default `instant-parsers`) in order and answer the
+   first that reads it as (r/ok instant). When none does, answer
+   (r/err :timestamp/unparseable {:input s :tried [parser-name ...]});
+   blank or non-string input is (r/err :timestamp/blank {:input s}).
+
+   Only a DateTimeParseException means 'not this form, try the next'. Any
+   other throwable is a defect in a parser and propagates, so a broken
+   parser can no longer read as an unparseable timestamp."
+  ([s] (try-parse instant-parsers s))
+  ([parsers s]
+   (if (or (not (string? s)) (str/blank? s))
+     (r/err :timestamp/blank {:input s})
+     (reduce (fn [res [parser-name parse]]
+               (try
+                 (reduced (r/ok (parse s)))
+                 (catch DateTimeParseException _
+                   (update res :tried conj parser-name))))
+             (r/err :timestamp/unparseable {:input s :tried []})
+             parsers))))
+
 (defn parse-instant
   "Instant for an ISO-8601 timestamp string (Instant, offset, zoned or local
-   forms all accepted); nil for blank or unparseable input."
+   forms all accepted); nil for blank or unparseable input. The nil-on-miss
+   reading of `try-parse`, for callers that only branch on presence."
   [s]
-  (when (and (string? s) (not (str/blank? s)))
-    (or (try (Instant/parse s) (catch Exception _ nil))
-        (try (.toInstant (ZonedDateTime/parse s)) (catch Exception _ nil))
-        (try (.toInstant (OffsetDateTime/parse s)) (catch Exception _ nil))
-        (try (.toInstant (.atZone (LocalDateTime/parse s) (ZoneId/systemDefault)))
-             (catch Exception _ nil)))))
+  (:ok (try-parse s)))
 
 (defn expired?
   "True when ENTRY carries an :expires timestamp earlier than NOW (default:
@@ -73,19 +101,29 @@
            :created (or (:created entry) now)
            :updated (or (:updated entry) now))))
 
+(def ^:private filter-clauses
+  "The filter opts of query-entries, one row each: [opt-key active? holds?].
+   A clause whose opt is absent (active? false) does not constrain. holds? is
+   (fn [entry opt-value ctx]) with ctx {:tags #{str} :now Instant}. Adding a
+   filter opt is adding a row; `matches?` never branches on which opt it is."
+  [[:type             some?   (fn [e t _] (= (type-name t) (type-name (:type e))))]
+   [:project-id       some?   (fn [e p _] (= (str p) (:project-id e)))]
+   [:project-ids      seq     (fn [e ps _] (contains? (set (map str ps)) (:project-id e)))]
+   [:tags             seq     (fn [_ ts {:keys [tags]}] (every? #(contains? tags (str %)) ts))]
+   [:exclude-tags     seq     (fn [_ ts {:keys [tags]}] (not-any? #(contains? tags (str %)) ts))]
+   ;; expired entries are filtered unless the caller opts in
+   [:include-expired? not     (fn [e _ {:keys [now]}] (not (expired? e now)))]])
+
 (defn matches?
   "True when ENTRY satisfies the filter opts of query-entries: :type,
    :project-id, :project-ids (OR), :tags (AND), :exclude-tags and
    :include-expired? (default false), evaluated at NOW."
-  [entry {:keys [type project-id project-ids tags exclude-tags include-expired?]} now]
-  (let [etags (set (map str (:tags entry)))]
-    (and (or (nil? type) (= (type-name type) (type-name (:type entry))))
-         (or (nil? project-id) (= (str project-id) (:project-id entry)))
-         (or (empty? project-ids)
-             (contains? (set (map str project-ids)) (:project-id entry)))
-         (every? #(contains? etags (str %)) tags)
-         (not-any? #(contains? etags (str %)) exclude-tags)
-         (or (boolean include-expired?) (not (expired? entry now))))))
+  [entry opts now]
+  (let [ctx {:tags (set (map str (:tags entry))) :now now}]
+    (every? (fn [[k active? holds?]]
+              (let [v (get opts k)]
+                (or (not (active? v)) (boolean (holds? entry v ctx)))))
+            filter-clauses)))
 
 (defn order-by
   "ENTRIES sorted by ORDER-BY, a [field direction] pair with direction :asc
@@ -185,6 +223,21 @@
 (m/=> type-keyword [:=> [:cat :any] [:maybe :keyword]])
 ;; Total: anything that is not a parseable timestamp string answers nil.
 (m/=> parse-instant [:=> [:cat :any] [:maybe InstantValue]])
+
+(def Parser
+  "One row of `instant-parsers`: a name and a String -> Instant fn."
+  [:tuple :keyword ifn?])
+
+(def ParseResult
+  "What `try-parse` answers."
+  [:or
+   [:map [:ok InstantValue]]
+   [:map [:error [:= :timestamp/blank]] [:input :any]]
+   [:map [:error [:= :timestamp/unparseable]] [:input :string] [:tried [:vector :keyword]]]])
+
+(m/=> try-parse [:function
+                 [:=> [:cat :any] ParseResult]
+                 [:=> [:cat [:sequential Parser] :any] ParseResult]])
 (m/=> expired? [:function
                 [:=> [:cat [:maybe :map]] :boolean]
                 [:=> [:cat [:maybe :map] InstantValue] :boolean]])
