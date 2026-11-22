@@ -57,15 +57,47 @@
   (decorate/remove! id)
   (redecorate!))
 
-;; register-store! stays hand-written above: it runs the decorator chain, and
-;; set-store! is routed through it so a :default install is decorated too.
-(slot/defregistry store-slot
-  {:noun "memory store" :key-name :store-key
-   :hint "Call set-store! or register-store! :default first."
-   :set-default-via register-store!
-   :unregister unregister-store! :snapshot registered-stores :require get-store
-   :set-default set-store! :default-present? store-set? :reset reset-registry!
-   :doc {:require "The store under KEY, or the :default store when called with no argument.\n\n   Throws ex-info naming the available keys when the store is absent: a\n   caller reaching for a store it never registered has a wiring bug, and a\n   nil here surfaces as a NullPointerException far from the cause."}})
+(defn unregister-store!
+  "Remove the store under KEY. No-op when absent. Returns nil."
+  [key]
+  (slot/reg-remove! store-slot key))
+
+(defn registered-stores
+  "A read-only {key -> store} snapshot."
+  []
+  (slot/reg-snapshot store-slot))
+
+(defn get-store
+  "The store under KEY, or the :default store when called with no argument.
+
+   Throws ex-info naming the available keys when the store is absent — a
+   caller reaching for a store it never registered has a wiring bug, and a
+   nil here surfaces as a NullPointerException far from the cause."
+  ([]
+   (or (slot/reg-get store-slot :default)
+       (throw (ex-info "No default memory store registered."
+                       {:registry-keys (vec (keys (registered-stores)))
+                        :hint "Call set-store! or register-store! :default first."}))))
+  ([key]
+   (or (slot/reg-get store-slot key)
+       (throw (ex-info (str "Unknown memory store key: " key)
+                       {:store-key key
+                        :available (vec (keys (registered-stores)))})))))
+
+(defn set-store!
+  "Install STORE as the :default store. Returns STORE."
+  [store]
+  (register-store! :default store))
+
+(defn store-set?
+  "True iff a :default store is installed. Never throws."
+  []
+  (some? (slot/reg-get store-slot :default)))
+
+(defn reset-registry!
+  "Remove every registered store. Returns nil."
+  []
+  (slot/reg-clear! store-slot))
 
 (defn reset-active-store!
   "Disconnect the :default store, then drop it from the registry. No-op when

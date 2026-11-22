@@ -393,13 +393,29 @@
   (slot/single-slot {:validate #(satisfies? IEventBus %)
                      :on-empty (constantly noop)}))
 
-(slot/defslot port-slot
-  {:noun "messaging adapter" :fallback :noop
-   :set set-messaging! :get get-messaging :clear clear-messaging!
-   :present? messaging-set?
-   :doc {:set "Install IMPL as the active messaging port implementation. Returns
-   IMPL. Throws on a programming error (the value is not an IEventBus,
-   which every full messaging adapter satisfies)."}})
+(defn set-messaging!
+  "Install ADAPTER as the active messaging port implementation. Returns
+   ADAPTER. Throws on a programming error (the value is not an IEventBus :
+   which every full messaging adapter satisfies)."
+  [adapter]
+  (slot/install! port-slot adapter))
+
+(defn get-messaging
+  "The active messaging adapter: the installed one, else the noop."
+  []
+  (slot/current port-slot))
+
+(defn clear-messaging!
+  "Remove the installed messaging adapter, so consumers fall back to the
+   noop. Returns nil."
+  []
+  (slot/clear! port-slot))
+
+(defn messaging-set?
+  "True iff a messaging adapter is explicitly installed. The noop default
+   does not count."
+  []
+  (slot/present? port-slot))
 
 ;;; ============================================================================
 ;;; Contracts

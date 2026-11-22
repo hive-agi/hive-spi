@@ -241,12 +241,28 @@
   (slot/single-slot {:validate #(satisfies? IEventDispatch %)
                      :on-empty (constantly noop)}))
 
-(slot/defslot port-slot
-  {:noun "events port" :fallback :noop
-   :set set-events! :get get-events :clear clear-events! :present? events-set?
-   :doc {:set "Install IMPL as the active events/lifecycle/telemetry port. IMPL must
+(defn set-events!
+  "Install IMPL as the active events/lifecycle/telemetry port. IMPL must
    satisfy IEventDispatch; the adapter built by the host implements every
-   protocol in this namespace. Returns IMPL."}})
+   protocol in this namespace. Returns IMPL."
+  [impl]
+  (slot/install! port-slot impl))
+
+(defn get-events
+  "The active port: the installed implementation, else the Noop."
+  []
+  (slot/current port-slot))
+
+(defn clear-events!
+  "Remove the installed port, so consumers fall back to the Noop.
+   Returns nil."
+  []
+  (slot/clear! port-slot))
+
+(defn events-set?
+  "True iff a port is explicitly installed. The Noop fallback does not count."
+  []
+  (slot/present? port-slot))
 
 (def Events
   "Any IEventDispatch implementation (the Noop included)."

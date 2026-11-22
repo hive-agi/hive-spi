@@ -64,10 +64,26 @@
   (slot/single-slot {:validate #(satisfies? ILogger %)
                      :on-empty #(deref host-default)}))
 
-(slot/defslot logger-slot
-  {:noun "logger" :fallback :host-default
-   :set set-logger! :get get-logger :clear clear-logger! :present? logger-set?
-   :doc {:get "The active logger: the installed one, else the host default, else nil."}})
+(defn set-logger!
+  "Install LOGGER as the active logger. Returns LOGGER."
+  [logger]
+  (slot/install! logger-slot logger))
+
+(defn get-logger
+  "The active logger: the installed one, else the host default, else nil."
+  []
+  (slot/current logger-slot))
+
+(defn clear-logger!
+  "Remove the installed logger, so consumers fall back to the host default.
+   Returns nil."
+  []
+  (slot/clear! logger-slot))
+
+(defn logger-set?
+  "True iff a logger is explicitly installed. The host default does not count."
+  []
+  (slot/present? logger-slot))
 
 (defn log!
   "Emit ARGS at LEVEL through the active logger, rendered with `print-str`.

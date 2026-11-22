@@ -31,9 +31,20 @@
 (defonce ^:private store-slot
   (slot/single-slot {:validate #(satisfies? ISpawnStore %)}))
 
-(slot/defslot store-slot
-  {:noun "spawn registration store"
-   :set set-store! :get get-store :clear clear-store!})
+(defn set-store!
+  "Install STORE as the spawn registration store. Returns STORE."
+  [store]
+  (slot/install! store-slot store))
+
+(defn get-store
+  "The installed spawn registration store, or nil."
+  []
+  (slot/current store-slot))
+
+(defn clear-store!
+  "Remove the installed store. Returns nil."
+  []
+  (slot/clear! store-slot))
 
 (def SpawnStore
   "Any ISpawnStore implementation."

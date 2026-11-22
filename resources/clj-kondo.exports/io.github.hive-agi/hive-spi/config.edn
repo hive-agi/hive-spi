@@ -4,6 +4,4 @@
   hive-spi.schema.typed-ann/ann-op clojure.core/comment
   ;; defconformance's first arg is a deftest-name PREFIX; linting it as a def
   ;; keeps kondo from resolving the prefix as a symbol reference.
-  hive-spi.memory.conformance/defconformance clojure.core/def}
- :hooks {:analyze-call {hive-spi.slot/defslot hooks.hive-spi.slot/defslot
-                        hive-spi.slot/defregistry hooks.hive-spi.slot/defslot}}}
+  hive-spi.memory.conformance/defconformance clojure.core/def}}
