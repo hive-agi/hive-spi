@@ -27,7 +27,8 @@
             [malli.error :as me]
             [hive-spi.schema.registry :as reg]
             [hive-dsl.result :as r]
-            [hive-spi.schema.typed :as typed]))
+            [hive-spi.schema.typed :as typed]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -123,7 +124,12 @@
    [:projection-errors {:optional true} [:map-of :keyword :any]]])
 
 (m/=> input-schema [:=> [:cat reg/SchemaRef] :map])
+(tc/ann-op input-schema)
 (m/=> register-projection! [:=> [:cat :keyword reg/FnValue] :keyword])
+(tc/ann-op register-projection!)
 (m/=> deregister-projection! [:=> [:cat :any] :any])
+(tc/ann-op deregister-projection!)
 (m/=> projections [:=> [:cat] [:map-of :keyword reg/FnValue]])
+(tc/ann-op projections)
 (m/=> compile-op [:=> [:cat reg/SchemaRef] OpBundle])
+(tc/ann-op compile-op)

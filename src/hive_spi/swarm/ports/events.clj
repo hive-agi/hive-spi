@@ -43,7 +43,8 @@
    do — re-evaluating this namespace never orphans existing implementations.
    Consumers must NOT re-defprotocol these names."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -272,6 +273,10 @@
    #(satisfies? IEventDispatch %)])
 
 (m/=> set-events! [:=> [:cat Events] Events])
+(tc/ann-op set-events!)
 (m/=> get-events [:=> [:cat] Events])
+(tc/ann-op get-events)
 (m/=> clear-events! [:=> [:cat] :nil])
+(tc/ann-op clear-events!)
 (m/=> events-set? [:=> [:cat] :boolean])
+(tc/ann-op events-set?)

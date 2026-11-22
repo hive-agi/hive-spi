@@ -14,7 +14,8 @@
    exists for has no zone database. On a JVM the port prefers
    `hive-spi.time.clock-jvm`, whose rendering is zoned."
   (:require [hive-spi.time.ports :as time]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -85,4 +86,6 @@
 ;; =============================================================================
 
 (m/=> default-clock [:=> [:cat] time/Clock])
+(tc/ann-op default-clock)
 (m/=> install! [:=> [:cat] time/Clock])
+(tc/ann-op install!)

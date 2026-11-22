@@ -19,7 +19,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded."
   (:require [hive-spi.agent.run-control :as rc]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -92,4 +93,6 @@
 
 (m/=> evidence? [:=> [:cat [:maybe [:map [:transcript/truncated? {:optional true} :any]]]]
                  :boolean])
+(tc/ann-op evidence?)
 (m/=> last-cursor [:=> [:cat rc/Cursor [:sequential TranscriptEntry]] rc/Cursor])
+(tc/ann-op last-cursor)

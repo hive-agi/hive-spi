@@ -13,7 +13,8 @@
    from. A captured value would freeze the seam."
   (:require [hive-spi.kanban :as kanban]
             [hive-spi.log.ports :as log]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -141,14 +142,24 @@
    #(or (satisfies? kanban/IKanbanRead %) (satisfies? kanban/IKanbanWrite %))])
 
 (m/=> noop? [:=> [:cat :any] :boolean])
+(tc/ann-op noop?)
 ;; Throws on an unknown port or an impl of the wrong protocol.
 (m/=> register! [:=> [:cat Port Provider] Provider])
+(tc/ann-op register!)
 (m/=> unregister! [:=> [:cat :any] :nil])
+(tc/ann-op unregister!)
 (m/=> reset-providers! [:=> [:cat] :nil])
+(tc/ann-op reset-providers!)
 (m/=> registered? [:=> [:cat :any] :boolean])
+(tc/ann-op registered?)
 (m/=> provider [:=> [:cat Port] Provider])
+(tc/ann-op provider)
 ;; The facade passes the provider's answer through: the port's own schemas.
 (m/=> list-tasks [:=> [:cat [:maybe kanban/ListQuery]] [:sequential kanban/Task]])
+(tc/ann-op list-tasks)
 (m/=> get-task [:=> [:cat :any] [:maybe kanban/Task]])
+(tc/ann-op get-task)
 (m/=> transition! [:=> [:cat kanban/TransitionRequest] kanban/TransitionResult])
+(tc/ann-op transition!)
 (m/=> create-task! [:=> [:cat kanban/CreateRequest] kanban/CreateResult])
+(tc/ann-op create-task!)

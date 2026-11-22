@@ -10,7 +10,8 @@
    guarded. Re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol this name."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -51,5 +52,8 @@
   [:fn {:error/message "an ISpawnStore"} #(satisfies? ISpawnStore %)])
 
 (m/=> set-store! [:=> [:cat SpawnStore] SpawnStore])
+(tc/ann-op set-store!)
 (m/=> get-store [:=> [:cat] [:maybe SpawnStore]])
+(tc/ann-op get-store)
 (m/=> clear-store! [:=> [:cat] :nil])
+(tc/ann-op clear-store!)

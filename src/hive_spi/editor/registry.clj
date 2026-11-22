@@ -11,7 +11,8 @@
    smaller tool surface instead of an AbstractMethodError."
   (:require [hive-spi.editor.ports :as ports]
             [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -114,12 +115,21 @@
    #(satisfies? ports/IEditorPort %)])
 
 (m/=> register-port! [:=> [:cat :any EditorPort] EditorPort])
+(tc/ann-op register-port!)
 (m/=> unregister-port! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-port!)
 (m/=> registered-ports [:=> [:cat] [:map-of :any EditorPort]])
+(tc/ann-op registered-ports)
 (m/=> get-port [:function [:=> [:cat] EditorPort] [:=> [:cat :any] EditorPort]])
+(tc/ann-op get-port)
 (m/=> set-port! [:=> [:cat EditorPort] EditorPort])
+(tc/ann-op set-port!)
 (m/=> port-set? [:=> [:cat] :boolean])
+(tc/ann-op port-set?)
 ;; Total over any value and any surface name: unknown surfaces are false.
 (m/=> supports? [:=> [:cat :any :any] :boolean])
+(tc/ann-op supports?)
 (m/=> surfaces [:=> [:cat :any] [:set Surface]])
+(tc/ann-op surfaces)
 (m/=> reset-registry! [:=> [:cat] :nil])
+(tc/ann-op reset-registry!)

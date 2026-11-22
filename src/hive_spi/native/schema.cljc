@@ -1,6 +1,7 @@
 (ns hive-spi.native.schema
   "Portable malli shapes for hive-cabi/v1 envelopes, catalogs and library declarations."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -84,6 +85,9 @@
 
 ;; Contracts. The schema argument of `valid?` is any malli schema form.
 (m/=> valid? [:=> [:cat [:any {:gen/elements [:int :string [:map [:ok :boolean]]]}] :any] :boolean])
+(tc/ann-op valid?)
 ;; Both throw on an invalid value, so the input states what they accept.
 (m/=> ->library-spec [:=> [:cat LibrarySpec] LibrarySpec])
+(tc/ann-op ->library-spec)
 (m/=> ->envelope [:=> [:cat Envelope] Envelope])
+(tc/ann-op ->envelope)

@@ -15,7 +15,8 @@
   (:require [hive-spi.memory.entry :as entry]
             [hive-spi.memory.ids :as ids]
             [hive-spi.memory.ports :as ports]
-            [malli.core :as m])
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc])
   (:import [java.time Instant]))
 
 ;; SPDX-License-Identifier: MIT
@@ -284,3 +285,4 @@
 (m/=> create-store [:function
                     [:=> [:cat] StubStore]
                     [:=> [:cat StubConfig] StubStore]])
+(tc/ann-op create-store)

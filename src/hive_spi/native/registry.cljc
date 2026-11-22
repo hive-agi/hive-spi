@@ -2,7 +2,8 @@
   "Process-local injection point for the active native loader."
   (:require [hive-spi.native.ports :as ports]
             [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -38,5 +39,8 @@
    #(satisfies? ports/INativeLoader %)])
 
 (m/=> register-loader! [:=> [:cat NativeLoader] NativeLoader])
+(tc/ann-op register-loader!)
 (m/=> unregister-loader! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-loader!)
 (m/=> loader [:=> [:cat] [:maybe NativeLoader]])
+(tc/ann-op loader)

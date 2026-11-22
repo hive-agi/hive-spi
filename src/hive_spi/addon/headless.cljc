@@ -9,7 +9,8 @@
    Reload-safety: `defprotocol` is not idempotent, so each declaration is
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -95,5 +96,8 @@
   [:map [:on-interface any?] [:sigs :map]])
 
 (m/=> headless-backend? [:=> [:cat :any] :boolean])
+(tc/ann-op headless-backend?)
 (m/=> headless-addon? [:=> [:cat Protocol :any] :boolean])
+(tc/ann-op headless-addon?)
 (m/=> capabilities [:=> [:cat :any] [:set :qualified-keyword]])
+(tc/ann-op capabilities)

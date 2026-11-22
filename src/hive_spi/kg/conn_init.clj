@@ -2,7 +2,8 @@
   "SPI: single-init capability — at-most-once eval of open-fn under concurrent
    contention (LMDB open is non-idempotent). Leaf — only malli, for the m/=>
    contract."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 ;; SPDX-License-Identifier: MIT
 
 (defprotocol IConnInit
@@ -38,3 +39,4 @@
 (m/=> atom-conn-init [:function
                       [:=> [:cat] ConnInit]
                       [:=> [:cat StateAtom] ConnInit]])
+(tc/ann-op atom-conn-init)

@@ -24,7 +24,8 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol these names."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -115,6 +116,10 @@
   [:map [:ready? :boolean] [:phase :keyword] [:elapsed-ms :int] [:attempts :int]])
 
 (m/=> set-ling-host! [:=> [:cat LingHost] LingHost])
+(tc/ann-op set-ling-host!)
 (m/=> get-ling-host [:=> [:cat] LingHost])
+(tc/ann-op get-ling-host)
 (m/=> clear-ling-host! [:=> [:cat] :nil])
+(tc/ann-op clear-ling-host!)
 (m/=> ling-host-set? [:=> [:cat] :boolean])
+(tc/ann-op ling-host-set?)

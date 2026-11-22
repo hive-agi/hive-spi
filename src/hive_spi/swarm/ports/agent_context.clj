@@ -26,7 +26,8 @@
    implementations. Consumers must NOT re-defprotocol these names."
   (:require [hive-spi.slot :as slot]
             [malli.core :as m]
-            [hive-spi.log.ports :as log]))
+            [hive-spi.log.ports :as log]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -143,8 +144,13 @@
    #(satisfies? IAgentCallContext %)])
 
 (m/=> set-agent-context! [:=> [:cat AgentContext] AgentContext])
+(tc/ann-op set-agent-context!)
 (m/=> get-agent-context [:=> [:cat] AgentContext])
+(tc/ann-op get-agent-context)
 (m/=> clear-agent-context! [:=> [:cat] :nil])
+(tc/ann-op clear-agent-context!)
 (m/=> agent-context-set? [:=> [:cat] :boolean])
+(tc/ann-op agent-context-set?)
 ;; The host owns the id's shape; the reader only promises it never throws.
 (m/=> current-caller-id [:=> [:cat] :any])
+(tc/ann-op current-caller-id)

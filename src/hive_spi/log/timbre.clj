@@ -11,7 +11,8 @@
    that need to name their origin carry it in the message text."
   (:require [hive-spi.log.ports :as log]
             [taoensso.timbre :as timbre]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -37,4 +38,6 @@
 ;; =============================================================================
 
 (m/=> default-logger [:=> [:cat] log/Logger])
+(tc/ann-op default-logger)
 (m/=> install! [:=> [:cat] log/Logger])
+(tc/ann-op install!)

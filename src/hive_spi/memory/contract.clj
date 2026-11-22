@@ -14,7 +14,8 @@
      :failed   refused: a map with :success? false, or with a non-nil :error
 
    hive-spi.memory.conformance holds every registered store to these shapes."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -80,6 +81,7 @@
   (and (m/validate AddEntriesResult r) (= n (count r))))
 
 (m/=> add-entries-result? [:=> [:cat nat-int? :any] :boolean])
+(tc/ann-op add-entries-result?)
 
 (def UpdateResult
   "update-entry! and update-metadata!: the merged entry on success, nil for
@@ -102,6 +104,7 @@
   (and (m/validate DeleteEntriesResult r) (= n (count r))))
 
 (m/=> delete-entries-result? [:=> [:cat nat-int? :any] :boolean])
+(tc/ann-op delete-entries-result?)
 
 (def write-results
   "Write verb -> the schema its return value must satisfy."
@@ -131,6 +134,7 @@
 
 (m/=> outcome [:=> [:cat [:enum :add-entry! :update-entry! :update-metadata! :delete-entry!] :any]
                [:enum :landed :absent :queued :failed :violation]])
+(tc/ann-op outcome)
 
 (defn landed?
   "True when write VERB answered R and the write is durable now."
@@ -153,7 +157,12 @@
   (into [:enum] (keys write-results)))
 
 (m/=> failure? [:=> [:cat :any] :boolean])
+(tc/ann-op failure?)
 (m/=> queued? [:=> [:cat :any] :boolean])
+(tc/ann-op queued?)
 (m/=> entry? [:=> [:cat :any] :boolean])
+(tc/ann-op entry?)
 (m/=> landed? [:=> [:cat WriteVerb :any] :boolean])
+(tc/ann-op landed?)
 (m/=> explain [:=> [:cat WriteVerb :any] [:maybe [:map [:errors [:vector :map]]]]])
+(tc/ann-op explain)

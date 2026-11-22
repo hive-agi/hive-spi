@@ -6,7 +6,8 @@
    tick."
   (:require [hive-spi.lifecycle.ports :as ports]
             [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -154,19 +155,32 @@
    [:owners   {:optional true} [:maybe [:map-of :any ResourceOwner]]]])
 
 (m/=> register-shutdown! [:=> [:cat :any ShutdownHook] ShutdownHook])
+(tc/ann-op register-shutdown!)
 (m/=> unregister-shutdown! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-shutdown!)
 (m/=> registered-shutdown-hooks [:=> [:cat] [:vector ShutdownHook]])
+(tc/ann-op registered-shutdown-hooks)
 (m/=> register-sweep! [:=> [:cat :any Sweeper] Sweeper])
+(tc/ann-op register-sweep!)
 (m/=> unregister-sweep! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-sweep!)
 (m/=> registered-sweeps [:=> [:cat] [:map-of :any Sweeper]])
+(tc/ann-op registered-sweeps)
 (m/=> register-resource-owner! [:=> [:cat :any ResourceOwner] ResourceOwner])
+(tc/ann-op register-resource-owner!)
 (m/=> unregister-resource-owner! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-resource-owner!)
 (m/=> get-resource-owner [:=> [:cat :any] [:maybe ResourceOwner]])
+(tc/ann-op get-resource-owner)
 (m/=> registered-resource-owners [:=> [:cat] [:map-of :any ResourceOwner]])
+(tc/ann-op registered-resource-owners)
 (m/=> registry-snapshot [:=> [:cat] Snapshot])
+(tc/ann-op registry-snapshot)
 (m/=> reset-all! [:=> [:cat] :nil])
+(tc/ann-op reset-all!)
 (m/=> restore-all! [:=> [:cat [:maybe [:map {:closed false}
                                      [:shutdown {:optional true} [:maybe [:map-of :any ShutdownHook]]]
                                      [:sweeps {:optional true} [:maybe [:map-of :any Sweeper]]]
                                      [:owners {:optional true} [:maybe [:map-of :any ResourceOwner]]]]]]
                     :nil])
+(tc/ann-op restore-all!)

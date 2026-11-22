@@ -26,7 +26,8 @@
   (:require [hive-spi.guard.decision]
             [hive-spi.guard.event]
             [hive-spi.guard.rule]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; MIT License - Copyright (c) 2026 Pedro Gomes Branquinho (BuddhiLW)
 
@@ -72,8 +73,11 @@
 ;; Contracts for the seam-key helpers. `name` reads a keyword, symbol or
 ;; string, so `projection-ext-key` accepts all three.
 (m/=> projection-ext-key [:=> [:cat [:or :keyword :symbol :string]] :qualified-keyword])
+(tc/ann-op projection-ext-key)
 (m/=> projection-ext-key? [:=> [:cat :any] :boolean])
+(tc/ann-op projection-ext-key?)
 (m/=> harness-of [:=> [:cat :any] [:maybe simple-keyword?]])
+(tc/ann-op harness-of)
 
 (defprotocol IGuardRuleSource
   "A source of GuardRules (see hive-spi.guard.rule/GuardRule)."

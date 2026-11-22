@@ -20,7 +20,8 @@
    implementations."
   (:require [hive-spi.slot :as slot]
             [malli.core :as m]
-            #?(:clj [hive-spi.resolve :as resolve])))
+            #?(:clj [hive-spi.resolve :as resolve])
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -115,12 +116,21 @@
    #(satisfies? ILogger %)])
 
 (m/=> set-logger! [:=> [:cat Logger] Logger])
+(tc/ann-op set-logger!)
 (m/=> get-logger [:=> [:cat] [:maybe Logger]])
+(tc/ann-op get-logger)
 (m/=> clear-logger! [:=> [:cat] :nil])
+(tc/ann-op clear-logger!)
 (m/=> logger-set? [:=> [:cat] :boolean])
+(tc/ann-op logger-set?)
 ;; ARGS are timbre-style variadic message parts: anything `print-str` renders.
 (m/=> log! [:=> [:cat :keyword [:* :any]] :nil])
+(tc/ann-op log!)
 (m/=> debug [:=> [:cat [:* :any]] :nil])
+(tc/ann-op debug)
 (m/=> info [:=> [:cat [:* :any]] :nil])
+(tc/ann-op info)
 (m/=> warn [:=> [:cat [:* :any]] :nil])
+(tc/ann-op warn)
 (m/=> error [:=> [:cat [:* :any]] :nil])
+(tc/ann-op error)

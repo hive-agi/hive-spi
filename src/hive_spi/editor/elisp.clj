@@ -10,7 +10,8 @@
      (el/require-and-call-json 'hive-mcp-magit 'hive-mcp-magit-api-status)
      ;; => \"(progn (require 'hive-mcp-magit nil t) ...)\""
   (:require [clojure.string :as str]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
 ;; SPDX-License-Identifier: MIT
@@ -170,17 +171,28 @@
    #"(?s)^\(.*\)$"])
 
 (m/=> elisp-quote [:=> [:cat Quotable] :string])
+(tc/ann-op elisp-quote)
 (m/=> format-args [:=> [:cat [:maybe [:sequential Quotable]]] :string])
+(tc/ann-op format-args)
 (m/=> require-and-call-json [:=> [:cat Feature Feature [:* Quotable]] ElispCall])
+(tc/ann-op require-and-call-json)
 (m/=> require-and-call-plist-json [:=> [:cat Feature Feature [:maybe [:map-of [:or :keyword :string] Quotable]]] ElispCall])
+(tc/ann-op require-and-call-plist-json)
 (m/=> require-and-call-text [:=> [:cat Feature Feature [:* Quotable]] ElispCall])
+(tc/ann-op require-and-call-text)
 (m/=> require-and-call [:=> [:cat Feature Feature [:* Quotable]] ElispCall])
+(tc/ann-op require-and-call)
 (m/=> fboundp-call-json [:=> [:cat Feature [:* Quotable]] ElispCall])
+(tc/ann-op fboundp-call-json)
 (m/=> emit [:=> [:cat :any] :string])
+(tc/ann-op emit)
 (m/=> emit-forms [:=> [:cat [:maybe [:sequential :any]]] :string])
+(tc/ann-op emit-forms)
 (m/=> wrap-progn [:=> [:cat [:* :string]]
                   [:re {:gen/schema [:string {:max 12}]
                         :gen/fmap   (fn [s] (str "(progn\n  " (pr-str s) ")"))}
                    #"(?s)^\(progn\n.*\)$"]])
+(tc/ann-op wrap-progn)
 ;; A format template with matching args: the arity check is java.util.Formatter's.
 (m/=> format-elisp [:=> [:cat :string [:* :any]] :string])
+(tc/ann-op format-elisp)

@@ -7,7 +7,8 @@
    but lawful projection that shows the suite is not vacuous about :C."
   (:require [clojure.string :as str]
             [hive-spi.projection.ports :as p]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -48,6 +49,10 @@
   {:projection (truncating)})
 
 (m/=> identity-projection [:=> [:cat] p/Projection])
+(tc/ann-op identity-projection)
 (m/=> truncating [:=> [:cat] p/Projection])
+(tc/ann-op truncating)
 (m/=> harness [:=> [:cat] [:map [:projection p/Projection]]])
+(tc/ann-op harness)
 (m/=> truncating-harness [:=> [:cat] [:map [:projection p/Projection]]])
+(tc/ann-op truncating-harness)

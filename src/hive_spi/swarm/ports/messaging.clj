@@ -50,7 +50,8 @@
    adapters. IInboxSink's delivery method is -deliver!, and the public
    deliver! below is the router over the registered sinks."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -445,10 +446,18 @@
    [:reason {:optional true} :keyword]])
 
 (m/=> register-sink! [:=> [:cat InboxSink] InboxSink])
+(tc/ann-op register-sink!)
 (m/=> unregister-sink! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-sink!)
 (m/=> sinks [:=> [:cat] [:maybe [:sequential InboxSink]]])
+(tc/ann-op sinks)
 (m/=> deliver! [:=> [:cat Envelope] DeliveryResult])
+(tc/ann-op deliver!)
 (m/=> set-messaging! [:=> [:cat Messaging] Messaging])
+(tc/ann-op set-messaging!)
 (m/=> get-messaging [:=> [:cat] Messaging])
+(tc/ann-op get-messaging)
 (m/=> clear-messaging! [:=> [:cat] :nil])
+(tc/ann-op clear-messaging!)
 (m/=> messaging-set? [:=> [:cat] :boolean])
+(tc/ann-op messaging-set?)

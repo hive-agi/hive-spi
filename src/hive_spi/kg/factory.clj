@@ -8,7 +8,8 @@
 
    Extension point: (defmethod backend->store :my-backend [_ opts] <IKGStore>)."
   (:require [hive-dsl.result :as r]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 (defn resolve-sym
   "Resolve `sym`, loading its namespace on demand.
@@ -84,10 +85,14 @@
 
 (m/=> resolve-sym [:=> [:cat :qualified-symbol]
                    [:maybe [:fn {:gen/return #'clojure.core/identity} var?]]])
+(tc/ann-op resolve-sym)
 (m/=> from-artifact [:=> [:cat :qualified-symbol :any] :any])
 (m/=> supported-backends [:=> [:cat] [:set :keyword]])
+(tc/ann-op supported-backends)
 (m/=> make-store [:function
                   [:=> [:cat :any] MakeStoreResult]
                   [:=> [:cat :any :any] MakeStoreResult]])
+(tc/ann-op make-store)
 (m/=> late-bound-factory [:=> [:cat] [:fn {:gen/return (->LateBoundFactory)}
                                       #(satisfies? IStoreFactory %)]])
+(tc/ann-op late-bound-factory)

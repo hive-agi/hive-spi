@@ -22,7 +22,8 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -111,6 +112,10 @@
    #(satisfies? IVectorCollectionStore %)])
 
 (m/=> set-store! [:=> [:cat Store] Store])
+(tc/ann-op set-store!)
 (m/=> get-store [:=> [:cat] [:maybe Store]])
+(tc/ann-op get-store)
 (m/=> store-set? [:=> [:cat] :boolean])
+(tc/ann-op store-set?)
 (m/=> clear-store! [:=> [:cat] :nil])
+(tc/ann-op clear-store!)

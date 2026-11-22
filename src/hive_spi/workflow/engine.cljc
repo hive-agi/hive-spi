@@ -8,7 +8,8 @@
    then fail `satisfies?` silently. Alias with `def`, always."
 
   ;; Only malli, for the m/=> contracts. SPI is a pure-contract leaf.
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -71,4 +72,6 @@
   (satisfies? IWorkflowPersistence x))
 
 (m/=> workflow-engine? [:=> [:cat :any] :boolean])
+(tc/ann-op workflow-engine?)
 (m/=> persistent-engine? [:=> [:cat :any] :boolean])
+(tc/ann-op persistent-engine?)

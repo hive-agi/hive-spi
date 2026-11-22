@@ -20,7 +20,8 @@
      identity space-id            stable sha256 of the canonical space
      value    ->space             a normalized, validated EmbeddingSpace
      floor    unknown-space-id    what an unattributed vector set answers to"
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -78,6 +79,7 @@
 ;; Input is a partial map: the body fills defaults and throws on what is
 ;; still missing, so any map is admitted.
 (m/=> ->space [:=> [:cat [:maybe [:map-of :keyword :any]]] EmbeddingSpace])
+(tc/ann-op ->space)
 
 (def ^:private hex-chars (set "0123456789abcdef"))
 
@@ -112,6 +114,7 @@
 (m/=> config->space [:function
                      [:=> [:cat [:maybe [:map-of :keyword :any]]] EmbeddingSpace]
                      [:=> [:cat [:maybe [:map-of :keyword :any]] [:maybe [:map-of :keyword :any]]] EmbeddingSpace]])
+(tc/ann-op config->space)
 
 ;; =============================================================================
 ;; Identity
@@ -125,6 +128,7 @@
     (pr-str (mapv (fn [k] [k (get s k)]) space-keys))))
 
 (m/=> canonical [:=> [:cat [:map-of :keyword :any]] [:string {:min 1}]])
+(tc/ann-op canonical)
 
 (defn- sha256-hex
   [^String text]
@@ -139,6 +143,7 @@
   (sha256-hex (canonical space)))
 
 (m/=> space-id [:=> [:cat [:map-of :keyword :any]] SpaceId])
+(tc/ann-op space-id)
 
 (def unknown-space-id
   "What a vector set with no recorded provenance answers to. It equals no
@@ -157,6 +162,7 @@
 
 (m/=> differing-keys [:=> [:cat [:map-of :keyword :any] [:map-of :keyword :any]]
                       [:vector SpaceKey]])
+(tc/ann-op differing-keys)
 
 (defn compatible?
   "True when `a` and `b` are the same space."
@@ -164,6 +170,7 @@
   (empty? (differing-keys a b)))
 
 (m/=> compatible? [:=> [:cat [:map-of :keyword :any] [:map-of :keyword :any]] :boolean])
+(tc/ann-op compatible?)
 
 (defn check-compatible!
   "Return `expected` when `actual` is the same space. `actual` nil means the
@@ -193,6 +200,7 @@
 
 (m/=> check-compatible! [:=> [:cat [:map-of :keyword :any] [:maybe [:map-of :keyword :any]]]
                          EmbeddingSpace])
+(tc/ann-op check-compatible!)
 
 ;; =============================================================================
 ;; Collection stamp
@@ -233,6 +241,7 @@
           space-keys)))
 
 (m/=> space->metadata [:=> [:cat [:map-of :keyword :any]] StampMetadata])
+(tc/ann-op space->metadata)
 
 (defn- meta-get
   "Value of keyword K in collection metadata MD, whose keys may come back as
@@ -257,6 +266,7 @@
                  (nil? (:normalized? raw))    (dissoc :normalized?))))))
 
 (m/=> metadata->space [:=> [:cat [:maybe [:map-of :any :any]]] [:maybe EmbeddingSpace]])
+(tc/ann-op metadata->space)
 
 (def Admission
   "Verdict of `admit`: the collection holds `expected`'s space (:stamped), or
@@ -296,6 +306,7 @@
 
 (m/=> admit [:=> [:cat :string [:map-of :keyword :any] [:maybe [:map-of :any :any]]]
              Admission])
+(tc/ann-op admit)
 
 (def AuditVerdict
   "Verdict of `audit` for one collection: it holds `expected`'s space
@@ -343,3 +354,4 @@
              [:=> [:cat :string [:maybe [:map-of :any :any]]] AuditRow]
              [:=> [:cat :string [:maybe [:map-of :keyword :any]] [:maybe [:map-of :any :any]]]
               AuditRow]])
+(tc/ann-op audit)

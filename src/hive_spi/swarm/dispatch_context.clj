@@ -22,7 +22,8 @@
    Reload-safety: `defprotocol` is not idempotent, so the declaration is
    guarded. Re-evaluating this namespace will not orphan existing
    implementations. Consumers must NOT re-defprotocol this name."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -112,5 +113,8 @@
            [:reconstruct-fn {:optional true} [:maybe ifn?]]]])
 
 (m/=> ->text-context [:=> [:cat :string] DispatchContext])
+(tc/ann-op ->text-context)
 (m/=> ->ref-context [:=> [:cat :string RefOpts] DispatchContext])
+(tc/ann-op ->ref-context)
 (m/=> ensure-context [:=> [:cat :any] DispatchContext])
+(tc/ann-op ensure-context)

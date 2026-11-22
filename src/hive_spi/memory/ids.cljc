@@ -4,7 +4,8 @@
   (:require [clojure.string]
             [hive-spi.crypto.hash :as hash]
             [hive-spi.time.ports :as time]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -59,5 +60,8 @@
 ;; Any value hashes (non-strings are pr-str'ed); the digest is whatever the
 ;; active IHasher renders, so the output is the port's string.
 (m/=> content-hash [:=> [:cat :any] :string])
+(tc/ann-op content-hash)
 (m/=> generate-id [:=> [:cat] EntryId])
+(tc/ann-op generate-id)
 (m/=> iso-timestamp [:=> [:cat] time/IsoTimestamp])
+(tc/ann-op iso-timestamp)

@@ -11,7 +11,8 @@
    The host never names a contributor: it calls `compose` with a context
    and receives every registered block's value keyed by id."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -89,9 +90,16 @@
    [:block/order :int]])
 
 (m/=> block? [:=> [:cat :any] :boolean])
+(tc/ann-op block?)
 (m/=> register-block! [:=> [:cat GenBlock] GenBlock])
+(tc/ann-op register-block!)
 (m/=> unregister-block! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-block!)
 (m/=> registered-blocks [:=> [:cat] [:vector GenBlock]])
+(tc/ann-op registered-blocks)
 (m/=> registered? [:=> [:cat :any] :boolean])
+(tc/ann-op registered?)
 (m/=> reset-registry! [:=> [:cat] :nil])
+(tc/ann-op reset-registry!)
 (m/=> compose [:=> [:cat :any] [:map [:blocks [:map-of :keyword :any]] [:failed [:map-of :keyword :string]]]])
+(tc/ann-op compose)

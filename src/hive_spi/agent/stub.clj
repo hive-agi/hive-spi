@@ -13,7 +13,8 @@
   (:require [hive-dsl.result :as r]
             [hive-spi.agent.run-control :as rc]
             [hive-spi.agent.transcript :as tx]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -219,6 +220,10 @@
 (m/=> create [:function
               [:=> [:cat] Stub]
               [:=> [:cat [:maybe :map]] Stub]])
+(tc/ann-op create)
 (m/=> advance! [:=> [:cat Stub [:map [:run/id :string]]] Stub])
+(tc/ann-op advance!)
 (m/=> finish! [:=> [:cat Stub [:map [:run/id :string]] TerminalState] Stub])
+(tc/ann-op finish!)
 (m/=> harness [:=> [:cat] [:map [:ctl Stub] [:transcripts Stub] [:drive! ifn?] [:end! ifn?]]])
+(tc/ann-op harness)

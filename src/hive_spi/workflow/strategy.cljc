@@ -20,7 +20,8 @@
    * A downstream alias MUST keep the symbol spelled `WorkflowStrategyEntry`:
      `adt-case` resolves its ADT argument by symbol name."
   (:require [hive-dsl.adt :refer [defadt]]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -40,6 +41,7 @@
   (satisfies? IDispatchStrategy x))
 
 (m/=> dispatch-strategy? [:=> [:cat :any] :boolean])
+(tc/ann-op dispatch-strategy?)
 
 ;;; ===========================================================================
 ;;; WorkflowStrategyEntry — what addons contribute to the strategy registry

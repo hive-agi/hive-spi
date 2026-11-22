@@ -12,7 +12,8 @@
   (:require [clojure.string :as str]
             [hive-spi.ingest.model :as model]
             [hive-spi.ingest.ports :as ports]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
@@ -329,9 +330,14 @@
 (m/=> payload [:=> [:cat :any] :any])
 ;; register-law! keys by :law/id and stores whatever it is handed.
 (m/=> register-law! [:=> [:cat [:map [:law/id :any]]] :any])
+(tc/ann-op register-law!)
 (m/=> unregister-law! [:=> [:cat :any] :any])
+(tc/ann-op unregister-law!)
 (m/=> laws [:=> [:cat] [:vector :map]])
+(tc/ann-op laws)
 (m/=> satisfied? [:=> [:cat :any :any] :boolean])
 (m/=> run-law [:=> [:cat :map :map] LawResult])
 (m/=> conform [:function [:=> [:cat Source] Report] [:=> [:cat Source Ctx] Report]])
+(tc/ann-op conform)
 (m/=> explain [:function [:=> [:cat Source] :string] [:=> [:cat Source Ctx] :string]])
+(tc/ann-op explain)

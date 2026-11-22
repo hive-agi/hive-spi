@@ -6,7 +6,8 @@
    Renders one line per event: `LEVEL message`, level upper-cased."
   (:require [clojure.string :as str]
             [hive-spi.log.ports :as log]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -47,4 +48,6 @@
 ;; =============================================================================
 
 (m/=> default-logger [:=> [:cat] log/Logger])
+(tc/ann-op default-logger)
 (m/=> install! [:=> [:cat] log/Logger])
+(tc/ann-op install!)

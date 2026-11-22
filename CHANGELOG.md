@@ -24,6 +24,20 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- `hive-spi.schema.typed-contract/ann-op`: `(tc/ann-op f)` after `(m/=> f ..)`
+  derives the Typed Clojure `t/ann` from the registered contract, so the malli
+  and typed rungs share one source. It expands to nil unless the run sets
+  `-Dhive.spi.typed=true` with typed.clojure loaded (the `:typed` alias sets
+  the property), refuses a var with no contract, and defines no var.
+  `hive-spi.schema.typed/contract-schema` and `contract-ann-form` expose the
+  lookup and the projection.
+- Every public defn with an m/=> contract under `src` now carries
+  `(tc/ann-op f)`: 439 forms in 80 namespaces, inserted by
+  `dev/gen_typed_ann.clj` (babashka, idempotent).
+- `schema->type` projects `[:? T]` params to one arity per choice and a
+  trailing `[:* T]` / `[:+ T]` to a rest arg, so optional and variadic
+  contracts give `t/IFn` arities instead of a positional `Seqable`.
+
 - `hive-spi.memory.entry/try-parse` and `instant-parsers`: timestamp parsing
   as an ordered parser vector answering a hive-dsl Result
   (`:timestamp/blank`, `:timestamp/unparseable` with the parsers tried).

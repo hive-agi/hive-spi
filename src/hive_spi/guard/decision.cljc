@@ -17,7 +17,8 @@
 
    Pure leaf: schema, vocabulary, constructors, the join. Deciding WHICH
    verdict an event earns is the engine's job, not this namespace's."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; MIT License - Copyright (c) 2026 Pedro Gomes Branquinho (BuddhiLW)
 
@@ -193,21 +194,32 @@
   [:string {:min 1}])
 
 (m/=> valid? [:=> [:cat :any] :boolean])
+(tc/ann-op valid?)
 (m/=> explain [:=> [:cat :any] [:maybe :map]])
+(tc/ann-op explain)
 (m/=> allow [:function
              [:=> [:cat] GuardDecision]
              [:=> [:cat Opts] :map]])
+(tc/ann-op allow)
 (m/=> warn [:function
             [:=> [:cat Reason] GuardDecision]
             [:=> [:cat Reason Opts] GuardDecision]])
+(tc/ann-op warn)
 (m/=> deny [:function
             [:=> [:cat Reason] GuardDecision]
             [:=> [:cat Reason Opts] GuardDecision]])
+(tc/ann-op deny)
 (m/=> ask [:function
            [:=> [:cat Reason] GuardDecision]
            [:=> [:cat Reason Opts] GuardDecision]])
+(tc/ann-op ask)
 (m/=> asks? [:=> [:cat [:maybe :map]] :boolean])
+(tc/ann-op asks?)
 (m/=> blocking? [:=> [:cat [:maybe :map]] :boolean])
+(tc/ann-op blocking?)
 (m/=> denied? [:=> [:cat [:maybe :map]] :boolean])
+(tc/ann-op denied?)
 (m/=> rank [:=> [:cat [:maybe :map]] [:int {:min 0 :max 3}]])
+(tc/ann-op rank)
 (m/=> strongest [:=> [:cat [:maybe [:sequential [:maybe :map]]]] :map])
+(tc/ann-op strongest)

@@ -24,7 +24,8 @@
    which one serves a call (hive-mcp does it through its :task-dispatch
    transport chain). Leaf namespace: no host dependency."
   (:require [hive-dsl.result :as r]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -154,12 +155,22 @@
 ;; =============================================================================
 
 (m/=> valid-task? [:=> [:cat :any] :boolean])
+(tc/ann-op valid-task?)
 (m/=> valid-dispatched? [:=> [:cat :any] :boolean])
+(tc/ann-op valid-dispatched?)
 (m/=> invalid-task [:=> [:cat :any] :map])
+(tc/ann-op invalid-task)
 (m/=> register-dispatcher! [:=> [:cat :keyword :any :int] :keyword])
+(tc/ann-op register-dispatcher!)
 (m/=> unregister-dispatcher! [:=> [:cat :keyword] :keyword])
+(tc/ann-op unregister-dispatcher!)
 (m/=> reset-dispatchers! [:=> [:cat] :nil])
+(tc/ann-op reset-dispatchers!)
 (m/=> registered [:=> [:cat] [:vector [:map [:id :keyword] [:impl :any] [:priority :int]]]])
+(tc/ann-op registered)
 (m/=> dispatcher [:=> [:cat :keyword] :any])
+(tc/ann-op dispatcher)
 (m/=> registered? [:=> [:cat :keyword] :boolean])
+(tc/ann-op registered?)
 (m/=> dispatcher-health [:=> [:cat :any] :map])
+(tc/ann-op dispatcher-health)

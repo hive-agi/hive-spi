@@ -2,7 +2,8 @@
   "Portable observations for an INativePort and a sequence of expected calls."
   (:require [hive-spi.native.ports :as ports]
             [hive-spi.native.schema :as schema]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -40,5 +41,8 @@
   [:map [:actual :any] [:valid-envelope? :boolean] [:matches? :boolean]])
 
 (m/=> observe [:=> [:cat ports/NativePort Expectation] Observation])
+(tc/ann-op observe)
 (m/=> observations [:=> [:cat ports/NativePort [:sequential Expectation]] [:vector Observation]])
+(tc/ann-op observations)
 (m/=> conformant? [:=> [:cat [:sequential [:maybe :map]]] :boolean])
+(tc/ann-op conformant?)

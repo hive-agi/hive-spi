@@ -34,7 +34,8 @@
             [hive-spi.schema.derive :as der]
             [hive-spi.schema.help :as help]
             [malli.core :as m]
-            [hive-spi.schema.registry :as reg]))
+            [hive-spi.schema.registry :as reg]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -431,11 +432,16 @@
            [:command-description {:optional true} [:maybe :string]]]])
 
 (m/=> resolve-params [:=> [:cat reg/AnyRef] [:maybe ResolvedParams]])
+(tc/ann-op resolve-params)
 (m/=> alias-map [:=> [:cat reg/AnyRef] [:maybe [:map-of :keyword :any]]])
+(tc/ann-op alias-map)
 ;; `params` passes through unchanged when it is not a map, so it is :any.
 (m/=> fold-aliases [:=> [:cat reg/AnyRef :any] :any])
+(tc/ann-op fold-aliases)
 (m/=> coverage [:=> [:cat Manifest] Coverage])
+(tc/ann-op coverage)
 (m/=> catalog [:=> [:cat Manifest] [:map-of :string CatalogEntry]])
+(tc/ann-op catalog)
 (m/=> command-contract [:=> [:cat Manifest :string]
                         [:maybe [:map
                                  [:command :string]
@@ -443,14 +449,17 @@
                                  [:accepted [:maybe [:map [:required [:vector help/HelpRow]]
                                                      [:optional [:vector help/HelpRow]]]]]
                                  [:examples [:vector :any]]]]])
+(tc/ann-op command-contract)
 (m/=> merge-params [:=> [:cat Manifest]
                     [:map
                      [:properties [:map-of :any :map]]
                      [:conflicts [:vector [:map [:param :any] [:winner :any] [:losers [:vector :any]]]]]
                      [:description-regressions [:vector [:map [:param :any] [:winner :any] [:sources [:vector :any]]]]]
                      [:undescribed [:vector :any]]]])
+(tc/ann-op merge-params)
 (m/=> flat-input-schema [:function
                          [:=> [:cat Manifest] [:map [:type [:= "object"]] [:properties [:map-of :string :map]]
                                                [:required [:= ["command"]]]]]
                          [:=> [:cat Manifest FlatOpts] [:map [:type [:= "object"]] [:properties [:map-of :string :map]]
                                                         [:required [:= ["command"]]]]]])
+(tc/ann-op flat-input-schema)

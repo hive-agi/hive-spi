@@ -16,7 +16,8 @@
    wants to check first). An unregistered capability is an explicit
    :editor/capability-unavailable result — never a NullPointerException, and
    never a silent nil that a caller mistakes for a legitimate empty answer."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -120,13 +121,23 @@
 (m/=> register-services! [:function
                           [:=> [:cat Capabilities] Capabilities]
                           [:=> [:cat :any Capabilities] Capabilities]])
+(tc/ann-op register-services!)
 (m/=> unregister-services! [:function [:=> [:cat] :nil] [:=> [:cat :any] :nil]])
+(tc/ann-op unregister-services!)
 (m/=> registered [:=> [:cat] [:map-of :any Capabilities]])
+(tc/ann-op registered)
 (m/=> capabilities [:function [:=> [:cat] [:set :keyword]] [:=> [:cat :any] [:set :keyword]]])
+(tc/ann-op capabilities)
 (m/=> capability [:function [:=> [:cat :any] [:maybe ifn?]] [:=> [:cat :any :any] [:maybe ifn?]]])
+(tc/ann-op capability)
 (m/=> available? [:function [:=> [:cat :any] :boolean] [:=> [:cat :any :any] :boolean]])
+(tc/ann-op available?)
 (m/=> unavailable [:=> [:cat :any :any] Unavailable])
+(tc/ann-op unavailable)
 ;; invoke returns whatever the registered capability returns, or Unavailable.
 (m/=> invoke [:=> [:cat :any :any [:* :any]] :any])
+(tc/ann-op invoke)
 (m/=> invoke-default [:=> [:cat :any [:* :any]] :any])
+(tc/ann-op invoke-default)
 (m/=> reset-services! [:=> [:cat] :nil])
+(tc/ann-op reset-services!)

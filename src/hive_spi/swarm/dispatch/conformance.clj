@@ -14,7 +14,8 @@
   (:require [clojure.test :as t :refer [is testing]]
             [hive-dsl.result :as r]
             [hive-spi.swarm.dispatch :as d]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -97,7 +98,9 @@
 (def CaseId (into [:enum] case-ids))
 
 (m/=> run-case [:=> [:cat MakeHarness CaseId] CaseId])
+(tc/ann-op run-case)
 (m/=> run-conformance [:=> [:cat MakeHarness] [:vector CaseId]])
+(tc/ann-op run-conformance)
 
 (defmacro defconformance
   "Emit one deftest per case, named PREFIX-<case-id>, each running that case

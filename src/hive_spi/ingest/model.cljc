@@ -9,7 +9,8 @@
   (:require [clojure.string :as str]
             [hive-dsl.adt :as adt]
             [hive-dsl.result :as r]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
@@ -86,3 +87,4 @@
                                         [:content {:optional true} :any]
                                         [:metadata {:optional true} :any]]]]
                      DocumentResult])
+(tc/ann-op make-document)

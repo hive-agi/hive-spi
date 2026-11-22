@@ -36,7 +36,8 @@
             [hive-dsl.result :as r]
             [hive-spi.agent.run-control :as rc]
             [hive-spi.agent.transcript :as tx]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -299,5 +300,7 @@
 
 (m/=> run-case [:=> [:cat MakeHarness RunOpts CaseId]
                 [:or [:= :ran] [:map [:skipped CaseId] [:reason :string]]]])
+(tc/ann-op run-case)
 (m/=> run-conformance [:=> [:cat MakeHarness RunOpts]
                        [:map [:ran [:vector CaseId]] [:skipped [:map-of CaseId :string]]]])
+(tc/ann-op run-conformance)

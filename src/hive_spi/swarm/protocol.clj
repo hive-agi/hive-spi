@@ -14,7 +14,8 @@
    Design: Functional DDD Repository pattern.
    OCP via protocols + records (compiles to Java interfaces).
    DIP: All consumer code depends on these abstractions, never on backends."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 ;; SPDX-License-Identifier: MIT
 
 (defprotocol ISwarmRegistry
@@ -568,15 +569,26 @@
 (def ^:private Rows [:sequential :map])
 
 (m/=> add-slave!* [:=> [:cat Registry Id [:maybe :map]] TxReport])
+(tc/ann-op add-slave!*)
 (m/=> get-slave* [:=> [:cat Registry :any] [:maybe :map]])
+(tc/ann-op get-slave*)
 (m/=> update-slave!* [:=> [:cat Registry :any :map] TxReport])
+(tc/ann-op update-slave!*)
 (m/=> remove-slave!* [:=> [:cat Registry :any] TxReport])
+(tc/ann-op remove-slave!*)
 (m/=> get-all-slaves* [:=> [:cat Registry] Rows])
+(tc/ann-op get-all-slaves*)
 (m/=> get-slaves-by-status* [:=> [:cat Registry :keyword] Rows])
+(tc/ann-op get-slaves-by-status*)
 (m/=> get-slaves-by-project* [:=> [:cat Registry :any] Rows])
+(tc/ann-op get-slaves-by-project*)
 (m/=> add-task!* [:=> [:cat Registry [:maybe Id] Id [:maybe :map]] TxReport])
+(tc/ann-op add-task!*)
 (m/=> get-task* [:=> [:cat Registry :any] [:maybe :map]])
+(tc/ann-op get-task*)
 (m/=> update-task!* [:=> [:cat Registry :any :map] TxReport])
+(tc/ann-op update-task!*)
 (m/=> get-tasks-for-slave* [:function
                             [:=> [:cat Registry :any] Rows]
                             [:=> [:cat Registry :any [:maybe :keyword]] Rows]])
+(tc/ann-op get-tasks-for-slave*)
