@@ -20,26 +20,32 @@
   (and (some? owner) (not (str/blank? (str owner)))))
 
 (defn- put!
-  "Owner-scoped write into REG under KEY. A different owner cannot replace an
-   existing registration."
-  [reg error-tag owner key value]
-  (cond
-    (not (valid-owner? owner))
-    (r/err :source-registry/invalid-owner {:owner owner})
+  "Owner-scoped write into REG of the registration WRITE describes:
+     {:owner .. :key .. :value .. :error-tag kw}
+   :error-tag is the category a blank :key is refused under. A different
+   owner cannot replace an existing registration.
 
-    (str/blank? (str key))
-    (r/err error-tag {:key key})
+   The positional (reg error-tag owner key value) arity is kept and delegates."
+  ([reg error-tag owner key value]
+   (put! reg {:error-tag error-tag :owner owner :key key :value value}))
+  ([reg {:keys [error-tag owner key value]}]
+   (cond
+     (not (valid-owner? owner))
+     (r/err :source-registry/invalid-owner {:owner owner})
 
-    :else
-    (locking reg
-      (if-let [existing (get @reg key)]
-        (if (= owner (:owner existing))
-          (do (swap! reg assoc key (assoc value :owner owner))
-              (r/ok {:key key :owner owner :replaced? true}))
-          (r/err :source-registry/owner-conflict
-                 {:key key :owner owner :registered-owner (:owner existing)}))
-        (do (swap! reg assoc key (assoc value :owner owner))
-            (r/ok {:key key :owner owner :replaced? false}))))))
+     (str/blank? (str key))
+     (r/err error-tag {:key key})
+
+     :else
+     (locking reg
+       (if-let [existing (get @reg key)]
+         (if (= owner (:owner existing))
+           (do (swap! reg assoc key (assoc value :owner owner))
+               (r/ok {:key key :owner owner :replaced? true}))
+           (r/err :source-registry/owner-conflict
+                  {:key key :owner owner :registered-owner (:owner existing)}))
+         (do (swap! reg assoc key (assoc value :owner owner))
+             (r/ok {:key key :owner owner :replaced? false})))))))
 
 (defn- drop!
   "Owner-scoped removal from REG. Removing what was never there succeeds with
@@ -64,7 +70,8 @@
   [owner source-id {:keys [factory] :as registration}]
   (if-not (fn? factory)
     (r/err :source-registry/invalid-source {:source-id source-id})
-    (put! sources :source-registry/invalid-source owner (str source-id) registration)))
+    (put! sources {:error-tag :source-registry/invalid-source :owner owner
+                   :key (str source-id) :value registration})))
 
 (defn unregister-source!
   "Remove a source registration only when called by its owner."
@@ -100,8 +107,9 @@
   [owner rule-id {:keys [rule] :as registration}]
   (if (nil? rule)
     (r/err :source-registry/invalid-rule {:rule-id rule-id})
-    (put! rules :source-registry/invalid-rule owner (str rule-id)
-          (update registration :priority #(or % 100)))))
+    (put! rules {:error-tag :source-registry/invalid-rule :owner owner
+                 :key (str rule-id)
+                 :value (update registration :priority #(or % 100))})))
 
 (defn unregister-parser-rule!
   "Remove a rule registration only when called by its owner."
@@ -145,7 +153,13 @@
    #(instance? clojure.lang.IAtom %)])
 
 (m/=> valid-owner? [:=> [:cat :any] :boolean])
-(m/=> put! [:=> [:cat Registry :keyword :any :any [:maybe :map]] PutResult])
+(def Write
+  "The registration `put!` writes."
+  [:map [:error-tag :keyword] [:owner :any] [:key :any] [:value [:maybe :map]]])
+
+(m/=> put! [:function
+            [:=> [:cat Registry :keyword :any :any [:maybe :map]] PutResult]
+            [:=> [:cat Registry Write] PutResult]])
 (m/=> drop! [:=> [:cat Registry :any :any] DropResult])
 (m/=> register-source! [:=> [:cat :any :any [:maybe :map]] PutResult])
 (m/=> unregister-source! [:=> [:cat :any :any] DropResult])
