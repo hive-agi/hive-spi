@@ -32,6 +32,7 @@
    Entry comparisons follow the port contract: :type is compared by name
    (a store may return keyword or string), :tags as a set of strings."
   (:require [clojure.test :as t :refer [is testing]]
+            [hive-spi.log.ports :as log]
             [hive-spi.memory.entry :as entry]
             [hive-spi.memory.ids :as ids]
             [hive-spi.memory.ports :as ports]
@@ -788,23 +789,24 @@
   (or (some #(when (= id (:id %)) %) cases)
       (throw (ex-info (str "Unknown conformance case: " id) {:id id :known case-ids}))))
 
+(defn skip-reason
+  "Why the case C must not run under OPTS, or nil when it runs: an explicit
+   (get-in opts [:skip id]) wins, then a :requires-opt key OPTS lacks.
+   Pure, so the runner's only effect is reporting the answer."
+  [{:keys [id requires-opt]} opts]
+  (or (get-in opts [:skip id])
+      (when (and requires-opt (not (contains? opts requires-opt)))
+        (str "opts lack " requires-opt))))
+
 (defn run-case
   "Run the case ID against (MAKE-STORE) with OPTS inside the current
    clojure.test context. Returns :ran, or a {:skipped id :reason ...} map
    when OPTS skips it or its :requires-opt key is absent."
   [make-store opts id]
-  (let [{:keys [requires-opt run doc]} (case-by-id id)
-        skip-reason (get-in opts [:skip id])]
-    (cond
-      skip-reason
-      (do (println "conformance: skipping" id "-" skip-reason)
-          {:skipped id :reason skip-reason})
-
-      (and requires-opt (not (contains? opts requires-opt)))
-      (do (println "conformance: skipping" id "- opts lack" requires-opt)
-          {:skipped id :reason (str "opts lack " requires-opt)})
-
-      :else
+  (let [{:keys [run doc] :as c} (case-by-id id)]
+    (if-let [reason (skip-reason c opts)]
+      (do (log/info "conformance: skipping" id "-" reason)
+          {:skipped id :reason reason})
       (do (testing (str (name id) ": " doc)
             (run {:make-store make-store :opts opts}))
           :ran))))
@@ -845,6 +847,9 @@
 (m/=> make-entry [:function
                   [:=> [:cat] [:map [:id :string] [:content-hash :string]]]
                   [:=> [:cat [:maybe :map]] [:map [:content-hash :string]]]])
+(m/=> skip-reason [:=> [:cat [:map [:id CaseId] [:requires-opt {:optional true} :keyword]]
+                           [:maybe :map]]
+                   [:maybe :string]])
 (m/=> run-case [:=> [:cat MakeStore RunOpts CaseId]
                 [:or [:= :ran] [:map [:skipped CaseId] [:reason :string]]]])
 (m/=> run-conformance [:=> [:cat MakeStore RunOpts]
