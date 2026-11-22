@@ -20,7 +20,8 @@
   (:require [hive-spi.slot :as slot]
             [malli.core :as m]
             #?@(:clj [[hive-spi.log.ports :as log]
-                      [hive-spi.resolve :as resolve]])))
+                      [hive-spi.resolve :as resolve]])
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -130,9 +131,16 @@
    #(satisfies? IClock %)])
 
 (m/=> set-clock! [:=> [:cat Clock] Clock])
+(tc/ann-op set-clock!)
 (m/=> get-clock [:=> [:cat] [:maybe Clock]])
+(tc/ann-op get-clock)
 (m/=> clear-clock! [:=> [:cat] :nil])
+(tc/ann-op clear-clock!)
 (m/=> clock-set? [:=> [:cat] :boolean])
+(tc/ann-op clock-set?)
 (m/=> now-millis [:=> [:cat] :int])
+(tc/ann-op now-millis)
 (m/=> entry-stamp [:=> [:cat] Stamp])
+(tc/ann-op entry-stamp)
 (m/=> iso-timestamp [:=> [:cat] IsoTimestamp])
+(tc/ann-op iso-timestamp)

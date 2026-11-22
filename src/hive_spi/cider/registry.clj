@@ -6,7 +6,8 @@
    argument."
   (:require [hive-spi.cider.ports :as ports]
             [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -81,9 +82,16 @@
    #(satisfies? ports/ICiderPort %)])
 
 (m/=> register-port! [:=> [:cat :any CiderPort] CiderPort])
+(tc/ann-op register-port!)
 (m/=> unregister-port! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-port!)
 (m/=> registered-ports [:=> [:cat] [:map-of :any CiderPort]])
+(tc/ann-op registered-ports)
 (m/=> get-port [:function [:=> [:cat] CiderPort] [:=> [:cat :any] CiderPort]])
+(tc/ann-op get-port)
 (m/=> set-port! [:=> [:cat CiderPort] CiderPort])
+(tc/ann-op set-port!)
 (m/=> port-set? [:=> [:cat] :boolean])
+(tc/ann-op port-set?)
 (m/=> reset-registry! [:=> [:cat] :nil])
+(tc/ann-op reset-registry!)

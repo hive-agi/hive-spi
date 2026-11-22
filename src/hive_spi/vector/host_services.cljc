@@ -18,7 +18,8 @@
 
    The pure embedding-space value layer is not here: it needs no host and
    lives in `hive-spi.embeddings.space`."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -141,15 +142,23 @@
   [:map-of :keyword [:fn {:gen/schema :int :gen/fmap constantly} ifn?]])
 
 (m/=> register-services! [:=> [:cat Capabilities] Capabilities])
+(tc/ann-op register-services!)
 (m/=> unregister-services! [:function
                             [:=> [:cat] :nil]
                             [:=> [:cat [:sequential :keyword]] :nil]])
+(tc/ann-op unregister-services!)
 (m/=> registered [:=> [:cat] Capabilities])
+(tc/ann-op registered)
 (m/=> capabilities [:=> [:cat] [:set :keyword]])
+(tc/ann-op capabilities)
 (m/=> capability [:=> [:cat :keyword] [:maybe ifn?]])
+(tc/ann-op capability)
 (m/=> available? [:=> [:cat :keyword] :boolean])
+(tc/ann-op available?)
 ;; invoke returns whatever the registered capability returns.
 (m/=> invoke [:=> [:cat :keyword [:* :any]] :any])
+(tc/ann-op invoke)
 (m/=> soft [:function
             [:=> [:cat :keyword] ifn?]
             [:=> [:cat :keyword [:maybe ifn?]] ifn?]])
+(tc/ann-op soft)

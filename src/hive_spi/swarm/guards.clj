@@ -9,7 +9,8 @@
      corrupt production state."
 
   (:require [hive-spi.log.ports :as log]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 ;; SPDX-License-Identifier: MIT
 
 ;;; =============================================================================
@@ -207,17 +208,29 @@
    [:coordinator-running? :boolean]])
 
 (m/=> child-ling? [:=> [:cat] :boolean])
+(tc/ann-op child-ling?)
 (m/=> coordinator? [:=> [:cat] :boolean])
+(tc/ann-op coordinator?)
 (m/=> get-role [:=> [:cat] :string])
+(tc/ann-op get-role)
 (m/=> ling-depth [:=> [:cat] :int])
+(tc/ann-op ling-depth)
 (m/=> child-ling-env [:=> [:cat] [:map
                                   ["HIVE_MCP_ROLE" [:= "child-ling"]]
                                   ["HIVE_LING_DEPTH" [:re #"^-?\d+$"]]]])
+(tc/ann-op child-ling-env)
 ;; Any value is accepted; only :warn and :block change the mode.
 (m/=> set-enforcement-mode! [:=> [:cat :any] :nil])
+(tc/ann-op set-enforcement-mode!)
 (m/=> enable-guards! [:=> [:cat] :nil])
+(tc/ann-op enable-guards!)
 (m/=> disable-guards! [:=> [:cat] :nil])
+(tc/ann-op disable-guards!)
 (m/=> guard-status [:=> [:cat] GuardStatus])
+(tc/ann-op guard-status)
 (m/=> coordinator-running? [:=> [:cat] :boolean])
+(tc/ann-op coordinator-running?)
 (m/=> mark-coordinator-running! [:=> [:cat] :nil])
+(tc/ann-op mark-coordinator-running!)
 (m/=> mark-coordinator-stopped! [:=> [:cat] :nil])
+(tc/ann-op mark-coordinator-stopped!)

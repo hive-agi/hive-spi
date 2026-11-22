@@ -12,7 +12,8 @@
             [hive-spi.schema.registry :as reg]
             [hive-spi.schema.derive :as derive]
             [malli.core :as m]
-            [clojure.test.check.generators :as tcg]))
+            [clojure.test.check.generators :as tcg]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -61,13 +62,17 @@
 (m/=> generator [:function
                  [:=> [:cat reg/SchemaRef] Generator]
                  [:=> [:cat reg/SchemaRef GenOpts] Generator]])
+(tc/ann-op generator)
 (m/=> generate [:function
                 [:=> [:cat reg/SchemaRef] :any]
                 [:=> [:cat reg/SchemaRef GenOpts] :any]])
+(tc/ann-op generate)
 (m/=> sample [:function
               [:=> [:cat reg/SchemaRef] [:sequential :any]]
               [:=> [:cat reg/SchemaRef GenOpts] [:sequential :any]]])
+(tc/ann-op sample)
 (m/=> seeded-cases [:=> [:cat reg/SchemaRef :int nat-int?] [:map-of :keyword :any]])
+(tc/ann-op seeded-cases)
 
 (derive/register-projection! :generator generator)
 

@@ -2,7 +2,8 @@
   "SPI contracts for Knowledge-Graph storage backends. Leaf — only malli (for
    the m/=> contracts), so any backend implements it without pulling hive-mcp.
    Active-store slot management stays in hive-mcp.protocols.kg."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 ;; SPDX-License-Identifier: MIT
 
 (defprotocol IKGStore
@@ -64,6 +65,10 @@
   [:fn {:error/message "an IKGStore"} #(satisfies? IKGStore %)])
 
 (m/=> kg-store? [:=> [:cat :any] :boolean])
+(tc/ann-op kg-store?)
 (m/=> persistent-store? [:=> [:cat :any] :boolean])
+(tc/ann-op persistent-store?)
 (m/=> temporal-store? [:=> [:cat :any] :boolean])
+(tc/ann-op temporal-store?)
 (m/=> noop-store [:=> [:cat] KGStore])
+(tc/ann-op noop-store)

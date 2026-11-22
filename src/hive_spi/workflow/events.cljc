@@ -10,7 +10,8 @@
    common envelope so a single literal key (:adt/variant) is enough for
    filtering at any sink."
   (:require [hive-dsl.adt :refer [defadt]]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -183,4 +184,6 @@
   [:or :nil (into [:enum] variants) [:map [:adt/variant (into [:enum] variants)]] :any])
 
 (m/=> valid-transition? [:=> [:cat EventOrVariant EventOrVariant] :boolean])
+(tc/ann-op valid-transition?)
 (m/=> terminal? [:=> [:cat EventOrVariant] :boolean])
+(tc/ann-op terminal?)

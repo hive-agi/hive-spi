@@ -14,7 +14,8 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -77,6 +78,10 @@
    #(satisfies? ISigner %)])
 
 (m/=> set-signer! [:=> [:cat Signer] Signer])
+(tc/ann-op set-signer!)
 (m/=> get-signer [:=> [:cat] [:maybe Signer]])
+(tc/ann-op get-signer)
 (m/=> clear-signer! [:=> [:cat] :nil])
+(tc/ann-op clear-signer!)
 (m/=> signer-set? [:=> [:cat] :boolean])
+(tc/ann-op signer-set?)

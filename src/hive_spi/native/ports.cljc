@@ -1,7 +1,8 @@
 (ns hive-spi.native.ports
   "Portable operation-and-JSON native seam; hosts implement transport, not addon policy."
   (:require [hive-spi.native.schema :as schema]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -64,11 +65,15 @@
   [:map [:ok [:= false]] [:error :any] [:error/type {:optional true} :any]])
 
 (m/=> ok? [:=> [:cat :any] :boolean])
+(tc/ann-op ok?)
 ;; The message is not checked: whatever is given lands under :error.
 (m/=> failure [:function
                [:=> [:cat :any] FailureEnvelope]
                [:=> [:cat :any :any] FailureEnvelope]])
+(tc/ann-op failure)
 (m/=> tool-name [:=> [:cat :any :any] [:re #"^[A-Za-z0-9_-]{1,64}$"]])
+(tc/ann-op tool-name)
 (m/=> unavailable-port [:function
                         [:=> [:cat :any] NativePort]
                         [:=> [:cat :any :any] NativePort]])
+(tc/ann-op unavailable-port)

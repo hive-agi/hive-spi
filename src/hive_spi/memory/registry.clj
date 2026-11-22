@@ -12,7 +12,8 @@
   (:require [hive-spi.memory.decorate :as decorate]
             [hive-spi.memory.ports :as ports]
             [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -142,22 +143,36 @@
   decorate/Decorator)
 
 (m/=> register-store! [:=> [:cat :any ports/MemoryStore] ports/MemoryStore])
+(tc/ann-op register-store!)
 (m/=> redecorate! [:=> [:cat] :nil])
+(tc/ann-op redecorate!)
 (m/=> add-decorator! [:=> [:cat decorate/Decorator] :nil])
+(tc/ann-op add-decorator!)
 (m/=> remove-decorator! [:=> [:cat :any] :nil])
+(tc/ann-op remove-decorator!)
 (m/=> unregister-store! [:=> [:cat :any] :nil])
+(tc/ann-op unregister-store!)
 (m/=> registered-stores [:=> [:cat] [:map-of :any ports/MemoryStore]])
+(tc/ann-op registered-stores)
 (m/=> get-store [:function
                  [:=> [:cat] ports/MemoryStore]
                  [:=> [:cat :any] ports/MemoryStore]])
+(tc/ann-op get-store)
 (m/=> set-store! [:=> [:cat ports/MemoryStore] ports/MemoryStore])
+(tc/ann-op set-store!)
 (m/=> store-set? [:=> [:cat] :boolean])
+(tc/ann-op store-set?)
 (m/=> reset-registry! [:=> [:cat] :nil])
+(tc/ann-op reset-registry!)
 (m/=> reset-active-store! [:=> [:cat] :nil])
+(tc/ann-op reset-active-store!)
 ;; These pass the store's own answer through unchecked. The port documents
 ;; :success? / :healthy? / :backend, but a store answering another map (the
 ;; registries test double does) reaches the caller as-is: state that, not
 ;; the documented ideal.
 (m/=> connect-active-store! [:=> [:cat :any] [:maybe :map]])
+(tc/ann-op connect-active-store!)
 (m/=> active-store-healthy? [:=> [:cat] [:maybe :map]])
+(tc/ann-op active-store-healthy?)
 (m/=> active-store-status [:=> [:cat] [:maybe :map]])
+(tc/ann-op active-store-status)

@@ -21,7 +21,8 @@
    of its :content when one is given, and never persists :embed-text.
    Decorators that change content at rest (encryption) need it, or the
    backend would index what they wrote."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -115,13 +116,21 @@
   [:map-of :keyword Decorator])
 
 (m/=> decorator? [:=> [:cat :any] :boolean])
+(tc/ann-op decorator?)
 ;; Peels decorators off; any value that is not a decorator is the base.
 (m/=> base-store [:=> [:cat :any] :any])
+(tc/ann-op base-store)
 (m/=> embed-text-capable? [:=> [:cat [:maybe :map]] :boolean])
+(tc/ann-op embed-text-capable?)
 ;; Throws on an invalid decorator, so the input states only what it accepts.
 (m/=> add! [:=> [:cat Decorator] Chain])
+(tc/ann-op add!)
 (m/=> remove! [:=> [:cat :any] Chain])
+(tc/ann-op remove!)
 (m/=> chain [:=> [:cat] [:sequential Decorator]])
+(tc/ann-op chain)
 ;; Each decorator may return any store, so the result is what the chain built.
 (m/=> apply-chain [:=> [:cat :any :any] :any])
+(tc/ann-op apply-chain)
 (m/=> reset-chain! [:=> [:cat] :nil])
+(tc/ann-op reset-chain!)

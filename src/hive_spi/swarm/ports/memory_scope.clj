@@ -17,7 +17,8 @@
    implementations. Consumers must NOT re-defprotocol these names."
   (:require [hive-spi.slot :as slot]
             [malli.core :as m]
-            [hive-spi.log.ports :as log]))
+            [hive-spi.log.ports :as log]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -150,7 +151,12 @@
    #(satisfies? IProjectScope %)])
 
 (m/=> set-memory-scope! [:=> [:cat MemoryScope] MemoryScope])
+(tc/ann-op set-memory-scope!)
 (m/=> get-memory-scope [:=> [:cat] MemoryScope])
+(tc/ann-op get-memory-scope)
 (m/=> clear-memory-scope! [:=> [:cat] :nil])
+(tc/ann-op clear-memory-scope!)
 (m/=> memory-scope-set? [:=> [:cat] :boolean])
+(tc/ann-op memory-scope-set?)
 (m/=> content-changed! [:=> [:cat :any :any] [:maybe :map]])
+(tc/ann-op content-changed!)

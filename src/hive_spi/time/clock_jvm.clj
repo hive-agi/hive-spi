@@ -7,7 +7,8 @@
    `java.time.ZonedDateTime` exist; the port resolves this namespace softly and
    falls through to `hive-spi.time.clock-portable` where they do not."
   (:require [hive-spi.time.ports :as time]
-            [malli.core :as m])
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc])
   (:import (java.time LocalDateTime ZoneId ZonedDateTime)
            (java.time.format DateTimeFormatter)))
 
@@ -37,4 +38,6 @@
 ;; =============================================================================
 
 (m/=> default-clock [:=> [:cat] time/Clock])
+(tc/ann-op default-clock)
 (m/=> install! [:=> [:cat] time/Clock])
+(tc/ann-op install!)

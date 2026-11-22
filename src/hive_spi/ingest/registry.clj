@@ -7,7 +7,8 @@
    Rationale: hive memory 20260906013030-2d53c103."
   (:require [clojure.string :as str]
             [hive-dsl.result :as r]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
 ;;
@@ -162,13 +163,21 @@
             [:=> [:cat Registry Write] PutResult]])
 (m/=> drop! [:=> [:cat Registry :any :any] DropResult])
 (m/=> register-source! [:=> [:cat :any :any [:maybe :map]] PutResult])
+(tc/ann-op register-source!)
 (m/=> unregister-source! [:=> [:cat :any :any] DropResult])
+(tc/ann-op unregister-source!)
 (m/=> source-factory [:=> [:cat :any] [:maybe ifn?]])
+(tc/ann-op source-factory)
 (m/=> registered-sources [:=> [:cat] [:vector [:map [:source-id :string] [:owner :any]
                                                 [:description :any] [:params :any]]]])
+(tc/ann-op registered-sources)
 (m/=> register-parser-rule! [:=> [:cat :any :any [:maybe :map]] PutResult])
+(tc/ann-op register-parser-rule!)
 (m/=> unregister-parser-rule! [:=> [:cat :any :any] DropResult])
+(tc/ann-op unregister-parser-rule!)
 (m/=> registered-rules [:=> [:cat] [:vector some?]])
+(tc/ann-op registered-rules)
 (m/=> retract-all! [:=> [:cat :any] [:map [:ok [:map [:owner :any]
                                                [:sources [:vector :string]]
                                                [:rules [:vector :string]]]]]])
+(tc/ann-op retract-all!)

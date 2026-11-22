@@ -18,7 +18,8 @@
    NOTE: hive-mcp owns ONLY abstract/generic modes here. Concrete provider-
    or implementation-specific modes (e.g. :hive-agent, :tmux) are
    contributed by addons via `register-mode!`."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -248,13 +249,24 @@
    [:or :keyword :string :symbol]])
 
 (m/=> registry [:=> [:cat] [:map-of :keyword ModeSpec]])
+(tc/ann-op registry)
 (m/=> valid-mode? [:=> [:cat ModeRef] :boolean])
+(tc/ann-op valid-mode?)
 (m/=> resolve-alias [:=> [:cat :any] :any])
+(tc/ann-op resolve-alias)
 (m/=> requires-emacs? [:=> [:cat :any] :boolean])
+(tc/ann-op requires-emacs?)
 (m/=> slot-limit [:=> [:cat :any] [:maybe :int]])
+(tc/ann-op slot-limit)
 (m/=> io-model [:=> [:cat :any] [:maybe :keyword]])
+(tc/ann-op io-model)
 (m/=> capabilities [:=> [:cat :any] [:set :keyword]])
+(tc/ann-op capabilities)
 (m/=> has-capability? [:=> [:cat :any :any] :boolean])
+(tc/ann-op has-capability?)
 (m/=> mcp-enum [:=> [:cat] [:vector :string]])
+(tc/ann-op mcp-enum)
 (m/=> register-mode! [:=> [:cat :keyword :map] :keyword])
+(tc/ann-op register-mode!)
 (m/=> deregister-mode! [:=> [:cat :any] :any])
+(tc/ann-op deregister-mode!)

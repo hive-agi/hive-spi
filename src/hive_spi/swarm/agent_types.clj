@@ -9,7 +9,8 @@
    validation, MCP schemas, depth mappings, and capabilities derive automatically.
 
    Sum type variants: coordinator, ling."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -231,14 +232,26 @@
   [:enum :free :economy :standard :premium])
 
 (m/=> valid-type? [:=> [:cat :any] :boolean])
+(tc/ann-op valid-type?)
 (m/=> type-depth [:=> [:cat TypeRef] :int])
+(tc/ann-op type-depth)
 (m/=> depth->agent-type [:=> [:cat :any] :keyword])
+(tc/ann-op depth->agent-type)
 (m/=> spawnable? [:=> [:cat TypeRef] :boolean])
+(tc/ann-op spawnable?)
 (m/=> valid-spawn-mode? [:=> [:cat TypeRef TypeRef] :boolean])
+(tc/ann-op valid-spawn-mode?)
 (m/=> has-capability? [:=> [:cat TypeRef TypeRef] :boolean])
+(tc/ann-op has-capability?)
 (m/=> has-permission? [:=> [:cat TypeRef :any] :boolean])
+(tc/ann-op has-permission?)
 (m/=> can-chain-tools? [:=> [:cat TypeRef] :boolean])
+(tc/ann-op can-chain-tools?)
 (m/=> slot-limit [:=> [:cat TypeRef] [:maybe :int]])
+(tc/ann-op slot-limit)
 (m/=> default-model-tier [:=> [:cat TypeRef] ModelTier])
+(tc/ann-op default-model-tier)
 (m/=> mcp-enum [:=> [:cat] [:vector :string]])
+(tc/ann-op mcp-enum)
 (m/=> describe [:=> [:cat TypeRef] [:maybe :string]])
+(tc/ann-op describe)

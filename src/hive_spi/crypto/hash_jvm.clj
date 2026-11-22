@@ -5,7 +5,8 @@
    namespace softly, so a runtime without it degrades to \"no hasher\" rather
    than to a load failure."
   (:require [hive-spi.crypto.hash :as hash]
-            [malli.core :as m])
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc])
   (:import (java.nio.charset StandardCharsets)
            (java.security MessageDigest)))
 
@@ -47,4 +48,6 @@
 ;; =============================================================================
 
 (m/=> default-hasher [:=> [:cat] hash/Hasher])
+(tc/ann-op default-hasher)
 (m/=> install! [:=> [:cat] hash/Hasher])
+(tc/ann-op install!)

@@ -16,7 +16,8 @@
 
    Pure leaf: schema, vocabulary, FAIL-LOUD gates and a smart constructor.
    Matching an event against rules is the engine's job, not this namespace's."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; MIT License - Copyright (c) 2026 Pedro Gomes Branquinho (BuddhiLW)
 
@@ -130,7 +131,12 @@
 ;;; ===========================================================================
 
 (m/=> phase? [:=> [:cat :any] :boolean])
+(tc/ann-op phase?)
 (m/=> tool-phase? [:=> [:cat :any] :boolean])
+(tc/ann-op tool-phase?)
 (m/=> valid? [:=> [:cat :any] :boolean])
+(tc/ann-op valid?)
 (m/=> explain [:=> [:cat :any] [:maybe :map]])
+(tc/ann-op explain)
 (m/=> guard-event [:=> [:cat :any] GuardEvent])
+(tc/ann-op guard-event)

@@ -6,7 +6,8 @@
    provider passes. Every call is appended to `:calls` as [method argument]."
   (:require [hive-spi.kanban :as k]
             [hive-spi.kanban.registry :as r]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -84,7 +85,12 @@
 (m/=> recording-kanban [:function
                         [:=> [:cat] Stub]
                         [:=> [:cat [:sequential k/Task]] Stub]])
+(tc/ann-op recording-kanban)
 (m/=> board [:=> [:cat Stub] [:map-of :string k/Task]])
+(tc/ann-op board)
 (m/=> calls [:=> [:cat Stub] [:vector [:tuple :keyword :any]]])
+(tc/ann-op calls)
 (m/=> install! [:=> [:cat Stub] Stub])
+(tc/ann-op install!)
 (m/=> uninstall! [:=> [:cat] :nil])
+(tc/ann-op uninstall!)

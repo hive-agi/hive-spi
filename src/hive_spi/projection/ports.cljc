@@ -28,7 +28,8 @@
    guarded; re-evaluating this namespace will not orphan existing
    implementations."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -95,7 +96,12 @@
    #(satisfies? FloorProjection %)])
 
 (m/=> set-projection! [:=> [:cat Projection] Projection])
+(tc/ann-op set-projection!)
 (m/=> get-projection [:=> [:cat] [:maybe Projection]])
+(tc/ann-op get-projection)
 (m/=> projection-set? [:=> [:cat] :boolean])
+(tc/ann-op projection-set?)
 (m/=> clear-projection! [:=> [:cat] :nil])
+(tc/ann-op clear-projection!)
 (m/=> project-or-identity [:=> [:cat Entry] :map])
+(tc/ann-op project-or-identity)

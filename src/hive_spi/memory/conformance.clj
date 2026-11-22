@@ -38,7 +38,8 @@
             [hive-spi.memory.ports :as ports]
             [hive-spi.memory.contract :as contract]
             [hive-spi.memory.decorate :as decorate]
-            [malli.core :as m])
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc])
   (:import [java.time Duration Instant]))
 
 ;; SPDX-License-Identifier: MIT
@@ -847,13 +848,17 @@
 (m/=> make-entry [:function
                   [:=> [:cat] [:map [:id :string] [:content-hash :string]]]
                   [:=> [:cat [:maybe :map]] [:map [:content-hash :string]]]])
+(tc/ann-op make-entry)
 (m/=> skip-reason [:=> [:cat [:map [:id CaseId] [:requires-opt {:optional true} :keyword]]
                            [:maybe :map]]
                    [:maybe :string]])
+(tc/ann-op skip-reason)
 (m/=> run-case [:=> [:cat MakeStore RunOpts CaseId]
                 [:or [:= :ran] [:map [:skipped CaseId] [:reason :string]]]])
+(tc/ann-op run-case)
 (m/=> run-conformance [:=> [:cat MakeStore RunOpts]
                        [:map [:ran [:vector CaseId]] [:skipped [:map-of CaseId :string]]]])
+(tc/ann-op run-conformance)
 
 (def SealRequirement
   "A key of `seal-requirements`."
@@ -869,9 +874,12 @@
 (m/=> seal-readiness [:function
                       [:=> [:cat ports/MemoryStore] SealReadiness]
                       [:=> [:cat ports/MemoryStore [:maybe :map]] SealReadiness]])
+(tc/ann-op seal-readiness)
 (m/=> seal-readiness-report [:=> [:cat [:maybe [:map-of :any ports/MemoryStore]]]
                              [:map-of :any SealReadiness]])
+(tc/ann-op seal-readiness-report)
 (m/=> assert-seal-ready [:=> [:cat ports/MemoryStore] SealReadiness])
+(tc/ann-op assert-seal-ready)
 
 (defmacro defconformance
   "Emit one clojure.test deftest per case, named PREFIX-<case-id>, each

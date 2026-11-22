@@ -16,7 +16,8 @@
    Protocols are wrapped in a `defonce`-guarded block: reloading this ns must
    not mint fresh protocol objects, which would orphan already-registered
    implementations."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -175,3 +176,4 @@
                    [:=> [:cat :any :any [:maybe [:map [:missing-id {:optional true} :string]
                                                   [:directory {:optional true} [:maybe :string]]]]]
                     [:vector CaseResult]]])
+(tc/ann-op conformance)

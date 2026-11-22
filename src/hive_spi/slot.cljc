@@ -4,7 +4,8 @@
    A slot is the injection point for an SPI port: implementations install
    themselves at runtime, consumers read whatever is installed. `single-slot`
    holds one active implementation; `multi-slot` holds a keyed map of them."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -153,6 +154,10 @@
    slot-shaped?])
 
 (m/=> single-slot [:=> [:cat SingleSlotConfig] Slot])
+(tc/ann-op single-slot)
 (m/=> multi-slot [:=> [:cat MultiSlotConfig] Slot])
+(tc/ann-op multi-slot)
 (m/=> watch-slot! [:=> [:cat Slot :any ifn?] Slot])
+(tc/ann-op watch-slot!)
 (m/=> unwatch-slot! [:=> [:cat Slot :any] Slot])
+(tc/ann-op unwatch-slot!)

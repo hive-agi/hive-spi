@@ -20,7 +20,8 @@
   (:require [hive-spi.slot :as slot]
             [malli.core :as m]
             #?@(:clj [[hive-spi.log.ports :as log]
-                      [hive-spi.resolve :as resolve]])))
+                      [hive-spi.resolve :as resolve]])
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -102,10 +103,15 @@
    #(satisfies? IHasher %)])
 
 (m/=> set-hasher! [:=> [:cat Hasher] Hasher])
+(tc/ann-op set-hasher!)
 (m/=> get-hasher [:=> [:cat] [:maybe Hasher]])
+(tc/ann-op get-hasher)
 (m/=> clear-hasher! [:=> [:cat] :nil])
+(tc/ann-op clear-hasher!)
 (m/=> hasher-set? [:=> [:cat] :boolean])
+(tc/ann-op hasher-set?)
 ;; The output is whatever the active hasher renders: the port DOCUMENTS
 ;; lowercase hex, but it passes an installed hasher's answer through
 ;; unchecked, so the contract states the string the port actually returns.
 (m/=> sha256 [:=> [:cat :string] :string])
+(tc/ann-op sha256)

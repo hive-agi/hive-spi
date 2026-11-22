@@ -8,7 +8,8 @@
    guarded — re-evaluating this namespace will not orphan existing
    implementations."
   (:require [hive-spi.slot :as slot]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -67,6 +68,10 @@
    #(satisfies? EmbeddingProvider %)])
 
 (m/=> set-provider! [:=> [:cat Provider] Provider])
+(tc/ann-op set-provider!)
 (m/=> get-provider [:=> [:cat] [:maybe Provider]])
+(tc/ann-op get-provider)
 (m/=> provider-set? [:=> [:cat] :boolean])
+(tc/ann-op provider-set?)
 (m/=> clear-provider! [:=> [:cat] :nil])
+(tc/ann-op clear-provider!)

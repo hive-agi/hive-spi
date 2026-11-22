@@ -24,7 +24,8 @@
   (:require [clojure.string :as str]
             [malli.core :as m]
             [hive-spi.schema.registry :as reg]
-            [hive-spi.schema.derive :as der]))
+            [hive-spi.schema.derive :as der]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -152,5 +153,6 @@
 
 ;; TOTAL: any value in; nil when it does not resolve.
 (m/=> schema->help-rows [:=> [:cat reg/AnyRef] [:maybe [:vector HelpRow]]])
+(tc/ann-op schema->help-rows)
 
 (der/register-projection! :help schema->help-rows)

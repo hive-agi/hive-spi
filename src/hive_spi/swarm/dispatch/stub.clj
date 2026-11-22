@@ -4,7 +4,8 @@
    a stand-in for tests of a scheduler."
   (:require [hive-dsl.result :as r]
             [hive-spi.swarm.dispatch :as d]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -35,5 +36,8 @@
   {:dispatcher (->stub)})
 
 (m/=> ->stub [:function [:=> [:cat] :any] [:=> [:cat [:set :keyword]] :any]])
+(tc/ann-op ->stub)
 (m/=> calls [:=> [:cat :any] [:vector :map]])
+(tc/ann-op calls)
 (m/=> harness [:=> [:cat] [:map [:dispatcher :any]]])
+(tc/ann-op harness)

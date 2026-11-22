@@ -21,7 +21,8 @@
    Stratification: this namespace depends on nothing but hive-dsl and malli,
    so the log port itself can use it. Reporting is the CALLER's concern."
   (:require [hive-dsl.result :as r]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -128,8 +129,14 @@
    [:failures [:vector ResolveError]]])
 
 (m/=> absence? [:=> [:cat :any] :boolean])
+(tc/ann-op absence?)
 (m/=> soft-resolve [:=> [:cat :qualified-symbol] Resolution])
+(tc/ann-op soft-resolve)
 (m/=> construct [:=> [:cat :qualified-symbol] Resolution])
+(tc/ann-op construct)
 (m/=> absent? [:=> [:cat [:maybe :map]] :boolean])
+(tc/ann-op absent?)
 (m/=> first-available [:=> [:cat [:sequential :qualified-symbol]] Ladder])
+(tc/ann-op first-available)
 (m/=> describe-failure [:=> [:cat ResolveError] :string])
+(tc/ann-op describe-failure)

@@ -15,7 +15,8 @@
    Reload-safety: each defprotocol is wrapped in a defonce-guarded
    compare-and-set! so re-evaluating this namespace does not mint a fresh
    host interface class per reload."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -458,6 +459,9 @@
    ifn?])
 
 (m/=> degraded-search-result [:=> [:cat [:maybe :map]] [:= []]])
+(tc/ann-op degraded-search-result)
 (m/=> register-protection-provider! [:=> [:cat [:maybe ProtectionProvider]] [:maybe ProtectionProvider]])
+(tc/ann-op register-protection-provider!)
 ;; The ids are whatever the host provider answers, coerced to a set.
 (m/=> protected-ids [:=> [:cat] [:set :any]])
+(tc/ann-op protected-ids)

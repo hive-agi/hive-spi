@@ -17,7 +17,8 @@
    - `-create-collection` without `:get-or-create?` REFUSES an existing name
      rather than silently returning it."
   (:require [hive-spi.vector.ports :as vp]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -108,3 +109,4 @@
   (->InMemoryVectorStore (atom {})))
 
 (m/=> in-memory-store [:=> [:cat] vp/Store])
+(tc/ann-op in-memory-store)

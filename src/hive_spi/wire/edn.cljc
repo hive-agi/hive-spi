@@ -8,7 +8,8 @@
    `edn-param` validates both forms but publishes only the string form."
   (:require [clojure.edn :as edn]
             [hive-dsl.result :as r]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -85,7 +86,10 @@
   [:or [:map [:ok :any]] [:map [:error [:enum :edn/unreadable :edn/unsupported]]]])
 
 (m/=> wire-json-schema [:=> [:cat WireOpts] WireJsonSchema])
+(tc/ann-op wire-json-schema)
 (m/=> edn-param [:function
                  [:=> [:cat] [:cat [:= :maybe] [:map [:json-schema WireJsonSchema]] :any]]
                  [:=> [:cat WireOpts] [:cat [:= :maybe] [:map [:json-schema WireJsonSchema]] :any]]])
+(tc/ann-op edn-param)
 (m/=> read-edn-param [:=> [:cat :any] ParamResult])
+(tc/ann-op read-edn-param)

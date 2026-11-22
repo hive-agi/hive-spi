@@ -38,6 +38,7 @@
    "src/hive_spi/schema/help.cljc"
    "src/hive_spi/schema/registry.cljc"
    "src/hive_spi/schema/typed.cljc"
+   "src/hive_spi/schema/typed_contract.cljc"
    "src/hive_spi/time"
    "src/hive_spi/vector"
    "src/hive_spi/wire"

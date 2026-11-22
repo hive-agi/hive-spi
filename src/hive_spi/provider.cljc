@@ -20,7 +20,8 @@
      3. A SUBJECT selects its provider (`for-subject`). A caller naming a
         provider is stating a claim to be checked against the subject, never
         the authority that resolves it."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 
@@ -250,24 +251,37 @@
 (def ^:private Entries [:or [:sequential Entry] [:set Entry]])
 
 (m/=> entry [:=> [:cat [:maybe :map] :any] Entry])
+(tc/ann-op entry)
 (m/=> registry [:function
                 [:=> [:cat Entries] Registry]
                 [:=> [:cat Entries [:maybe :map]] Registry]])
+(tc/ann-op registry)
 (m/=> profile [:=> [:cat Reg :any] [:maybe :map]])
+(tc/ann-op profile)
 (m/=> implementation [:=> [:cat Reg :any] :any])
+(tc/ann-op implementation)
 (m/=> registered? [:=> [:cat Reg :any] :boolean])
+(tc/ann-op registered?)
 (m/=> add [:function
            [:=> [:cat Reg Entry] Registry]
            [:=> [:cat Reg Entry [:maybe :map]] Registry]])
+(tc/ann-op add)
 (m/=> without [:=> [:cat Reg :any] Reg])
+(tc/ann-op without)
 (m/=> behaviour [:function
                  [:=> [:cat Reg :any :any] :any]
                  [:=> [:cat Reg :any :any :any] :any]])
+(tc/ann-op behaviour)
 (m/=> capabilities [:=> [:cat Reg :any] [:set :keyword]])
+(tc/ann-op capabilities)
 (m/=> profiles-by [:=> [:cat Reg :any] [:map-of :any [:vector [:maybe :map]]]])
+(tc/ann-op profiles-by)
 (m/=> subject-id [:=> [:cat :any ifn?] :any])
+(tc/ann-op subject-id)
 (m/=> for-subject [:=> [:cat Reg :any ifn?] [:maybe Entry]])
+(tc/ann-op for-subject)
 (m/=> via [:=> [:cat Reg :any ifn? ifn?] :any])
+(tc/ann-op via)
 (def CapableCall
   "The call `via-capable` makes: how to read the subject's provider id, the
    capability the provider must declare, and the fn applied to its impl."
@@ -276,13 +290,20 @@
 (m/=> via-capable [:function
                    [:=> [:cat Reg :any CapableCall] :any]
                    [:=> [:cat Reg :any ifn? :keyword ifn?] :any]])
+(tc/ann-op via-capable)
 (m/=> conformance [:=> [:cat Reg [:maybe :map]]
                    [:map-of :any [:map
                                   [:profile-valid? :boolean]
                                   [:implements-port? :boolean]]]])
+(tc/ann-op conformance)
 
 (m/=> profile-schema [:=> [:cat [:sequential :any]] :any])
+(tc/ann-op profile-schema)
 (m/=> ids [:=> [:cat [:maybe :map]] [:set :keyword]])
+(tc/ann-op ids)
 (m/=> capable? [:=> [:cat [:maybe :map] :keyword :keyword] :boolean])
+(tc/ann-op capable?)
 (m/=> with-capability [:=> [:cat [:maybe :map] :keyword] [:set :keyword]])
+(tc/ann-op with-capability)
 (m/=> conforming? [:=> [:cat [:maybe :map] :map] :boolean])
+(tc/ann-op conforming?)

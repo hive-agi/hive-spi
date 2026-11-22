@@ -10,7 +10,8 @@
 
    Bytes are the canonical unit everywhere (:diag/*-bytes). Human-friendly
    rendering (MiB/GiB) is the caller's concern; `human-bytes` is provided."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -250,14 +251,25 @@
 (def ^:private Candidate [:maybe :map])
 
 (m/=> valid? [:=> [:cat SchemaLike :any] :boolean])
+(tc/ann-op valid?)
 (m/=> explain [:=> [:cat SchemaLike :any] [:maybe :map]])
+(tc/ann-op explain)
 (m/=> build [:=> [:cat SchemaLike :keyword Candidate] :map])
 (m/=> ->heap-snapshot [:=> [:cat Candidate] HeapSnapshot])
+(tc/ann-op ->heap-snapshot)
 (m/=> ->class-histogram [:=> [:cat Candidate] ClassHistogram])
+(tc/ann-op ->class-histogram)
 (m/=> ->allocation [:=> [:cat Candidate] AllocationProfile])
+(tc/ann-op ->allocation)
 (m/=> ->flamegraph [:=> [:cat Candidate] FlamegraphArtifact])
+(tc/ann-op ->flamegraph)
 (m/=> ->cache-occupancy [:=> [:cat Candidate] CacheOccupancy])
+(tc/ann-op ->cache-occupancy)
 (m/=> ->reclamation [:=> [:cat Candidate] Reclamation])
+(tc/ann-op ->reclamation)
 (m/=> ->retainer-report [:=> [:cat Candidate] RetainerReport])
+(tc/ann-op ->retainer-report)
 (m/=> ->diagnosis [:=> [:cat Candidate] DiagnosisReport])
+(tc/ann-op ->diagnosis)
 (m/=> human-bytes [:=> [:cat [:maybe number?]] :string])
+(tc/ann-op human-bytes)

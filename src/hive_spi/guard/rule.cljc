@@ -18,7 +18,8 @@
    is the engine's job, not this namespace's."
   (:require [hive-spi.guard.decision :as d]
             [hive-spi.guard.event :as e]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc]))
 
 ;; MIT License - Copyright (c) 2026 Pedro Gomes Branquinho (BuddhiLW)
 
@@ -151,9 +152,16 @@
     [:rule/enabled?  {:optional true} [:maybe :boolean]]]])
 
 (m/=> valid? [:=> [:cat :any] :boolean])
+(tc/ann-op valid?)
 (m/=> explain [:=> [:cat :any] [:maybe :map]])
+(tc/ann-op explain)
 (m/=> enabled? [:=> [:cat RuleLike] :boolean])
+(tc/ann-op enabled?)
 (m/=> applies-to-harness? [:=> [:cat RuleLike :any] :boolean])
+(tc/ann-op applies-to-harness?)
 (m/=> applies-to-phase? [:=> [:cat RuleLike :any] :boolean])
+(tc/ann-op applies-to-phase?)
 (m/=> candidate? [:=> [:cat RuleLike [:maybe :map]] :boolean])
+(tc/ann-op candidate?)
 (m/=> guard-rule [:=> [:cat [:maybe :map]] GuardRule])
+(tc/ann-op guard-rule)

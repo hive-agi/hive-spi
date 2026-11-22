@@ -6,7 +6,8 @@
   (:require [clojure.string :as str]
             [hive-dsl.result :as r]
             [hive-spi.memory.ids :as ids]
-            [malli.core :as m])
+            [malli.core :as m]
+            [hive-spi.schema.typed-contract :as tc])
   (:import [java.time Duration Instant LocalDateTime OffsetDateTime ZoneId ZonedDateTime]
            [java.time.format DateTimeParseException]))
 
@@ -220,9 +221,12 @@
 
 ;; nil for nil; keywords by name, anything else by `str`.
 (m/=> type-name [:=> [:cat :any] [:maybe :string]])
+(tc/ann-op type-name)
 (m/=> type-keyword [:=> [:cat :any] [:maybe :keyword]])
+(tc/ann-op type-keyword)
 ;; Total: anything that is not a parseable timestamp string answers nil.
 (m/=> parse-instant [:=> [:cat :any] [:maybe InstantValue]])
+(tc/ann-op parse-instant)
 
 (def Parser
   "One row of `instant-parsers`: a name and a String -> Instant fn."
@@ -238,14 +242,23 @@
 (m/=> try-parse [:function
                  [:=> [:cat :any] ParseResult]
                  [:=> [:cat [:sequential Parser] :any] ParseResult]])
+(tc/ann-op try-parse)
 (m/=> expired? [:function
                 [:=> [:cat [:maybe :map]] :boolean]
                 [:=> [:cat [:maybe :map] InstantValue] :boolean]])
+(tc/ann-op expired?)
 (m/=> expires-within? [:=> [:cat [:maybe :map] :int InstantValue] :boolean])
+(tc/ann-op expires-within?)
 (m/=> embed-text [:=> [:cat :any] [:maybe :string]])
+(tc/ann-op embed-text)
 (m/=> normalize [:=> [:cat [:maybe Entry]] NormalizedEntry])
+(tc/ann-op normalize)
 (m/=> matches? [:=> [:cat [:maybe Entry] [:maybe QueryOpts] InstantValue] :boolean])
+(tc/ann-op matches?)
 ;; ENTRIES may be nil (a store's (vals {})): every seq fn here accepts it.
 (m/=> order-by [:=> [:cat [:maybe [:sequential :map]] OrderBy] [:vector :map]])
+(tc/ann-op order-by)
 (m/=> project [:=> [:cat :map [:maybe [:sequential [:or :keyword :string]]]] :map])
+(tc/ann-op project)
 (m/=> query [:=> [:cat [:maybe [:sequential Entry]] [:maybe QueryOpts]] [:vector :map]])
+(tc/ann-op query)
