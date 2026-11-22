@@ -24,15 +24,6 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
-- `hive-spi.slot/defslot` and `defregistry`: define a port's accessor fns
-  (set, get, clear, present?; register, unregister, snapshot, lookup,
-  required lookup, set-default, default-present?, reset) from one spec map
-  naming each accessor. The 18 ports and registries in this library now use
-  them; every public name and arity is unchanged. `reg-require`,
-  `missing-entry` and `accessor-doc` are the pure helpers behind them, and
-  the exported clj-kondo config carries a hook so consumers' linters see the
-  generated defs.
-
 - `hive-spi.memory.entry/try-parse` and `instant-parsers`: timestamp parsing
   as an ordered parser vector answering a hive-dsl Result
   (`:timestamp/blank`, `:timestamp/unparseable` with the parsers tried).
