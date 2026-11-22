@@ -64,26 +64,10 @@
   (slot/single-slot {:validate #(satisfies? IClock %)
                      :on-empty #(deref host-default)}))
 
-(defn set-clock!
-  "Install CLOCK as the active clock. Returns CLOCK."
-  [clock]
-  (slot/install! clock-slot clock))
-
-(defn get-clock
-  "The active clock: the installed one, else the host default, else nil."
-  []
-  (slot/current clock-slot))
-
-(defn clear-clock!
-  "Remove the installed clock, so consumers fall back to the host default.
-   Returns nil."
-  []
-  (slot/clear! clock-slot))
-
-(defn clock-set?
-  "True iff a clock is explicitly installed. The host default does not count."
-  []
-  (slot/present? clock-slot))
+(slot/defslot clock-slot
+  {:noun "clock" :fallback :host-default
+   :set set-clock! :get get-clock :clear clear-clock! :present? clock-set?
+   :doc {:get "The active clock: the installed one, else the host default, else nil."}})
 
 (defn- active
   []

@@ -103,26 +103,10 @@
   (slot/single-slot {:validate #(satisfies? IProjectScope %)
                      :on-empty (constantly noop)}))
 
-(defn set-memory-scope!
-  "Install IMPL as the active project-scope/disc-staleness port. Returns IMPL."
-  [impl]
-  (slot/install! port-slot impl))
-
-(defn get-memory-scope
-  "The active port: the installed one, else the Noop."
-  []
-  (slot/current port-slot))
-
-(defn clear-memory-scope!
-  "Remove the installed port, so consumers fall back to the Noop.
-   Returns nil."
-  []
-  (slot/clear! port-slot))
-
-(defn memory-scope-set?
-  "True iff a port is explicitly installed. The Noop does not count."
-  []
-  (slot/present? port-slot))
+(slot/defslot port-slot
+  {:noun "project-scope/disc-staleness port" :fallback :noop
+   :set set-memory-scope! :get get-memory-scope :clear clear-memory-scope!
+   :present? memory-scope-set?})
 
 (defn content-changed!
   "Tell the host that file PATH's content changed, CAUSE naming how the caller

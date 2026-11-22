@@ -68,25 +68,9 @@
 (defonce ^:private store-slot
   (slot/single-slot {:validate #(satisfies? IVectorCollectionStore %)}))
 
-(defn set-store!
-  "Install STORE as the active vector-collection store. Returns STORE."
-  [store]
-  (slot/install! store-slot store))
-
-(defn get-store
-  "The active vector-collection store, or nil when none is installed."
-  []
-  (slot/current store-slot))
-
-(defn store-set?
-  "True iff a vector-collection store is installed."
-  []
-  (slot/present? store-slot))
-
-(defn clear-store!
-  "Remove the active vector-collection store. Returns nil."
-  []
-  (slot/clear! store-slot))
+(slot/defslot store-slot
+  {:noun "vector-collection store"
+   :set set-store! :get get-store :clear clear-store! :present? store-set?})
 
 ;; =============================================================================
 ;; Contracts

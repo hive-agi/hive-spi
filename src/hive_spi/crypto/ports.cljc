@@ -39,26 +39,10 @@
 (defonce ^:private signer-slot
   (slot/single-slot {:validate #(satisfies? ISigner %)}))
 
-(defn set-signer!
-  "Install SIGNER as the active signer. Returns SIGNER."
-  [signer]
-  (slot/install! signer-slot signer))
-
-(defn get-signer
-  "The active signer, or nil when none is installed."
-  []
-  (slot/current signer-slot))
-
-(defn clear-signer!
-  "Remove the installed signer, so consumers fall back to their own default.
-   Returns nil."
-  []
-  (slot/clear! signer-slot))
-
-(defn signer-set?
-  "True iff a signer is installed."
-  []
-  (slot/present? signer-slot))
+(slot/defslot signer-slot
+  {:noun "signer"
+   :set set-signer! :get get-signer :clear clear-signer! :present? signer-set?
+   :doc {:clear "Remove the installed signer, so consumers fall back to their own default.\n   Returns nil."}})
 
 ;; =============================================================================
 ;; Contracts

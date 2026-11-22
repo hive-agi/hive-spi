@@ -95,27 +95,12 @@
   (slot/single-slot {:validate #(satisfies? IAgentCallContext %)
                      :on-empty (constantly noop)}))
 
-(defn set-agent-context!
-  "Install IMPL as the active agent context (and budget guardrail).
-   Returns IMPL. Throws when IMPL does not satisfy IAgentCallContext."
-  [impl]
-  (slot/install! port-slot impl))
-
-(defn get-agent-context
-  "The active agent context: the installed one, else the Noop."
-  []
-  (slot/current port-slot))
-
-(defn clear-agent-context!
-  "Remove the installed agent context, so consumers fall back to the Noop.
-   Returns nil."
-  []
-  (slot/clear! port-slot))
-
-(defn agent-context-set?
-  "True iff an agent context is explicitly installed. The Noop does not count."
-  []
-  (slot/present? port-slot))
+(slot/defslot port-slot
+  {:noun "agent context" :fallback :noop
+   :set set-agent-context! :get get-agent-context :clear clear-agent-context!
+   :present? agent-context-set?
+   :doc {:set "Install IMPL as the active agent context (and budget guardrail).
+   Returns IMPL. Throws when IMPL does not satisfy IAgentCallContext."}})
 
 (defn current-caller-id
   "Caller id of the tool call in flight, read through the active agent

@@ -19,15 +19,9 @@
 (defonce ^:private owner-slot
   (slot/multi-slot {:validate #(satisfies? ports/IResourceOwner %)}))
 
-(defn register-shutdown!
-  "Install HOOK under KEY. Returns HOOK."
-  [key hook]
-  (slot/reg-put! shutdown-slot key hook))
-
-(defn unregister-shutdown!
-  "Remove the shutdown hook under KEY. Returns nil."
-  [key]
-  (slot/reg-remove! shutdown-slot key))
+(slot/defregistry shutdown-slot
+  {:noun "shutdown hook"
+   :register register-shutdown! :unregister unregister-shutdown!})
 
 (defn registered-shutdown-hooks
   "Registered shutdown hooks in ascending `shutdown-priority` order."
@@ -37,40 +31,14 @@
        (sort-by ports/shutdown-priority)
        vec))
 
-(defn register-sweep!
-  "Install SWEEPER under KEY. Returns SWEEPER."
-  [key sweeper]
-  (slot/reg-put! sweep-slot key sweeper))
+(slot/defregistry sweep-slot
+  {:noun "sweeper"
+   :register register-sweep! :unregister unregister-sweep! :snapshot registered-sweeps})
 
-(defn unregister-sweep!
-  "Remove the sweeper under KEY. Returns nil."
-  [key]
-  (slot/reg-remove! sweep-slot key))
-
-(defn registered-sweeps
-  "A read-only {key -> sweeper} snapshot."
-  []
-  (slot/reg-snapshot sweep-slot))
-
-(defn register-resource-owner!
-  "Install OWNER under KEY. Returns OWNER."
-  [key owner]
-  (slot/reg-put! owner-slot key owner))
-
-(defn unregister-resource-owner!
-  "Remove the resource owner under KEY. Returns nil."
-  [key]
-  (slot/reg-remove! owner-slot key))
-
-(defn get-resource-owner
-  "The resource owner under KEY, or nil."
-  [key]
-  (slot/reg-get owner-slot key))
-
-(defn registered-resource-owners
-  "A read-only {key -> owner} snapshot."
-  []
-  (slot/reg-snapshot owner-slot))
+(slot/defregistry owner-slot
+  {:noun "resource owner"
+   :register register-resource-owner! :unregister unregister-resource-owner!
+   :lookup get-resource-owner :snapshot registered-resource-owners})
 
 (defn registry-snapshot
   "One snapshot of all three registries, keyed by kind."

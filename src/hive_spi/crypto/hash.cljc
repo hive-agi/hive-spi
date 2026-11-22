@@ -55,26 +55,10 @@
   (slot/single-slot {:validate #(satisfies? IHasher %)
                      :on-empty #(deref host-default)}))
 
-(defn set-hasher!
-  "Install HASHER as the active hasher. Returns HASHER."
-  [hasher]
-  (slot/install! hasher-slot hasher))
-
-(defn get-hasher
-  "The active hasher: the installed one, else the host default, else nil."
-  []
-  (slot/current hasher-slot))
-
-(defn clear-hasher!
-  "Remove the installed hasher, so consumers fall back to the host default.
-   Returns nil."
-  []
-  (slot/clear! hasher-slot))
-
-(defn hasher-set?
-  "True iff a hasher is explicitly installed. The host default does not count."
-  []
-  (slot/present? hasher-slot))
+(slot/defslot hasher-slot
+  {:noun "hasher" :fallback :host-default
+   :set set-hasher! :get get-hasher :clear clear-hasher! :present? hasher-set?
+   :doc {:get "The active hasher: the installed one, else the host default, else nil."}})
 
 (defn sha256
   "Lowercase hex SHA-256 of TEXT's UTF-8 bytes, through the active hasher.

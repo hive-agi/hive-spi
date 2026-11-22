@@ -46,25 +46,10 @@
 (defonce ^:private projection-slot
   (slot/single-slot {:validate #(satisfies? FloorProjection %)}))
 
-(defn set-projection!
-  "Install PROJECTION as the active floor projection. Returns PROJECTION."
-  [projection]
-  (slot/install! projection-slot projection))
-
-(defn get-projection
-  "The active floor projection, or nil when none is installed."
-  []
-  (slot/current projection-slot))
-
-(defn projection-set?
-  "True iff a floor projection is installed."
-  []
-  (slot/present? projection-slot))
-
-(defn clear-projection!
-  "Remove the active floor projection. Returns nil."
-  []
-  (slot/clear! projection-slot))
+(slot/defslot projection-slot
+  {:noun "floor projection"
+   :set set-projection! :get get-projection :clear clear-projection!
+   :present? projection-set?})
 
 (defn project-or-identity
   "ENTRY through the installed floor projection, or ENTRY itself when none is

@@ -2,7 +2,8 @@
   "Slots are the injection point for every port, so a slot that accepts an
    invalid implementation or loses one silently breaks dependency inversion
    for the whole ecosystem."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string]
+            [clojure.test :refer [deftest is testing]]
             [hive-spi.slot :as slot]
             [hive-schemas.test :as hst]
             [hive-test.golden :refer [deftest-golden]]))
@@ -168,3 +169,96 @@
               (slot/reg-snapshot multi)
               (slot/reg-remove! multi :a)
               (slot/reg-snapshot multi)]}))
+
+;; =============================================================================
+;; Accessor helpers: defslot / defregistry / reg-require
+;; =============================================================================
+
+(hst/deftrifecta-from-schema missing-entry-names-what-is-missing
+  hive-spi.slot/missing-entry
+  {:in  [:cat [:map [:noun [:string {:min 1 :max 8}]]
+                    [:key-name [:enum :port-key :store-key]]
+                    [:hint [:maybe [:string {:max 8}]]]]
+              [:or [:= :hive-spi.slot/default] [:enum :a :b :zz]]
+              [:vector [:enum :a :b :c]]]
+   :out slot/MissingEntry
+   :rel (fn [[{:keys [noun key-name hint]} requested available] {:keys [message data]}]
+          (if (= :hive-spi.slot/default requested)
+            (and (= message (str "No default " noun " registered."))
+                 (= data {:registry-keys available :hint hint}))
+            (and (= message (str "Unknown " noun " key: " requested))
+                 (= data {key-name requested :available available}))))})
+
+(hst/deftrifecta-from-schema accessor-doc-override-wins-else-names-the-noun
+  hive-spi.slot/accessor-doc
+  {:in  [:cat slot/AccessorRole
+              [:map [:noun [:string {:min 1 :max 8}]]
+                    [:fallback {:optional true} [:maybe [:enum :host-default :noop]]]
+                    [:doc {:optional true} [:maybe [:map-of slot/AccessorRole [:string {:min 1 :max 8}]]]]]]
+   :out [:string {:min 1}]
+   :rel (fn [[role spec] out]
+          (if-let [override (get-in spec [:doc role])]
+            (= out override)
+            (clojure.string/includes? out (:noun spec))))})
+
+(def ^:private test-single (slot/single-slot {:validate keyword?}))
+(def ^:private test-registry (slot/multi-slot {:validate keyword?}))
+(def ^:private decorated (atom []))
+
+(defn- decorated-register!
+  "A hand-written register with extra behaviour, as memory.registry has."
+  [k impl]
+  (swap! decorated conj k)
+  (slot/reg-put! test-registry k impl))
+
+(slot/defslot test-single
+  {:noun "widget" :fallback :noop
+   :set set-widget! :get get-widget :clear clear-widget! :present? widget-set?
+   :doc {:clear "custom clear doc"}})
+
+(slot/defregistry test-registry
+  {:noun "gadget" :key-name :gadget-key :hint "register one first"
+   :set-default-via decorated-register!
+   :unregister unregister-gadget! :snapshot gadgets :lookup gadget
+   :require require-gadget :set-default set-gadget! :default-present? gadget-set?
+   :reset reset-gadgets!})
+
+(deftest defslot-emits-the-named-accessors-test
+  (testing "names and arities are the ones the spec names"
+    (is (= '([impl]) (:arglists (meta #'set-widget!))))
+    (is (= '([]) (:arglists (meta #'get-widget))))
+    (is (= "custom clear doc" (:doc (meta #'clear-widget!))) "an override wins")
+    (is (re-find #"widget" (:doc (meta #'widget-set?))) "generated docs name the noun"))
+  (testing "they behave as the slot verbs they stand for"
+    (clear-widget!)
+    (is (false? (widget-set?)))
+    (is (= :w (set-widget! :w)))
+    (is (= :w (get-widget)))
+    (is (true? (widget-set?)))
+    (is (thrown? AssertionError (set-widget! "not a keyword")) "the slot still validates")
+    (is (nil? (clear-widget!)))
+    (is (false? (widget-set?)))))
+
+(deftest defregistry-emits-the-named-accessors-test
+  (reset-gadgets!)
+  (reset! decorated [])
+  (testing "set-default installs through :set-default-via, which is not re-emitted"
+    (is (= :g (set-gadget! :g)))
+    (is (= [:default] @decorated))
+    (is (= {:default :g} (gadgets))))
+  (testing "required lookup throws the same ex-info the hand-written registries did"
+    (is (= :g (require-gadget)))
+    (is (= :g (require-gadget :default)))
+    (let [e (try (require-gadget :nope) (catch clojure.lang.ExceptionInfo e e))]
+      (is (= "Unknown gadget key: :nope" (ex-message e)))
+      (is (= {:gadget-key :nope :available [:default]} (ex-data e)))))
+  (testing "plain lookup is nil-tolerant"
+    (is (nil? (gadget :nope))))
+  (testing "reset empties, then a default lookup names the hint"
+    (is (true? (gadget-set?)))
+    (is (nil? (unregister-gadget! :default)))
+    (is (false? (gadget-set?)))
+    (let [e (try (require-gadget) (catch clojure.lang.ExceptionInfo e e))]
+      (is (= "No default gadget registered." (ex-message e)))
+      (is (= {:registry-keys [] :hint "register one first"} (ex-data e))))
+    (is (nil? (reset-gadgets!)))))

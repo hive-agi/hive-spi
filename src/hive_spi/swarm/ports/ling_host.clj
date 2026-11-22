@@ -82,26 +82,10 @@
   (slot/single-slot {:validate #(satisfies? ILingReadiness %)
                      :on-empty (constantly noop)}))
 
-(defn set-ling-host!
-  "Install IMPL as the active ling-readiness/catchup port. Returns IMPL."
-  [impl]
-  (slot/install! port-slot impl))
-
-(defn get-ling-host
-  "The active port: the installed one, else the Noop."
-  []
-  (slot/current port-slot))
-
-(defn clear-ling-host!
-  "Remove the installed port, so consumers fall back to the Noop.
-   Returns nil."
-  []
-  (slot/clear! port-slot))
-
-(defn ling-host-set?
-  "True iff a port is explicitly installed. The Noop does not count."
-  []
-  (slot/present? port-slot))
+(slot/defslot port-slot
+  {:noun "ling-readiness/catchup port" :fallback :noop
+   :set set-ling-host! :get get-ling-host :clear clear-ling-host!
+   :present? ling-host-set?})
 
 (def LingHost
   "Any ILingReadiness implementation (the Noop included)."

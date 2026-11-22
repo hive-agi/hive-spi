@@ -30,25 +30,9 @@
 (defonce ^:private provider-slot
   (slot/single-slot {:validate #(satisfies? EmbeddingProvider %)}))
 
-(defn set-provider!
-  "Install PROVIDER as the active embedding provider. Returns PROVIDER."
-  [provider]
-  (slot/install! provider-slot provider))
-
-(defn get-provider
-  "The active embedding provider, or nil when none is installed."
-  []
-  (slot/current provider-slot))
-
-(defn provider-set?
-  "True iff an embedding provider is installed."
-  []
-  (slot/present? provider-slot))
-
-(defn clear-provider!
-  "Remove the active embedding provider. Returns nil."
-  []
-  (slot/clear! provider-slot))
+(slot/defslot provider-slot
+  {:noun "embedding provider"
+   :set set-provider! :get get-provider :clear clear-provider! :present? provider-set?})
 
 ;; =============================================================================
 ;; Contracts
