@@ -61,8 +61,13 @@
   (is (nil? (macroexpand '(hive-spi.schema.typed-contract/ann-op f [:map [:a :int]])))))
 
 (deftest ann-op-refuses-a-var-without-a-contract
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"no m/=> contract is registered"
-        (macroexpand '(hive-spi.schema.typed-contract/ann-op no.such.ns/f)))))
+  ;; The compiler wraps a macro's throw; the refusal is its cause.
+  (let [e (try (macroexpand '(hive-spi.schema.typed-contract/ann-op no.such.ns/f))
+               nil
+               (catch Exception e e))]
+    (is (some? e))
+    (is (re-find #"no m/=> contract is registered" (ex-message (or (ex-cause e) e))))
+    (is (= 'no.such.ns/f (:qsym (ex-data (or (ex-cause e) e)))))))
 
 (deftest ann-op-emits-the-derived-annotation-when-opted-in
   (with-redefs [tc/emit? (constantly true)]
