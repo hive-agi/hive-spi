@@ -24,6 +24,32 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- `hive-spi.await.*`: the single-shot await probe contract, so a concrete
+  await source ships as an addon and the host's poll engine waits on it
+  without naming its backend.
+  - `ports`: `IProbeSource` (`descriptor`, `parse-spec`, `probe!`,
+    `judge`), `ISecretScheme` (`scheme`, `valid-id?`, `resolve!`, bounded by
+    the scheme itself) and `IPollScheduler` (`schedule-repeating!`,
+    `shutdown!`), plus the `SourceDescriptor`, `Shape`, `Timing`,
+    `ProbeCtx`, `Observation`, `Verdict` and `ErrorKeyword` schemas. The
+    clock is `hive-spi.time.ports/IClock`.
+  - `registry`: sources keyed by descriptor `:type`, schemes by name.
+    `port->protocol` is checked on register, and a malformed descriptor or
+    scheme name throws `:await/invalid-provider`.
+  - `spec`: the pure shared rules: `kw-keys`, `closed-spec` /
+    `unknown-keys` (closed at EVERY depth, so a key nested under a known
+    one is refused), `refusal`, `allowed!` (default deny), the comparators,
+    `compare-values`, the timing checks and `closed-schema?`.
+  - `catalog`: source type and secret scheme to addon, as data;
+    `missing-source` / `missing-scheme` name the addon to install.
+  - `bounded-regex`: time-bounded matching for caller-supplied regexes,
+    moved from the host.
+  - `conformance`: `defconformance` / `run-conformance` over
+    `IProbeSource`, including the nested-unknown-key and no-secret cases.
+  - `stub`: a stub source, secret scheme and manual scheduler, run through
+    the suite in this repo's tests.
+  The await namespaces ship as source and stay out of
+  `:aot/source-namespaces`.
 - `hive-spi.schema.typed-contract/ann-op`: `(tc/ann-op f)` after `(m/=> f ..)`
   derives the Typed Clojure `t/ann` from the registered contract, so the malli
   and typed rungs share one source. It expands to nil unless the run sets

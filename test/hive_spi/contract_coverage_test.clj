@@ -18,6 +18,7 @@
    "src/hive_spi/swarm"
    "src/hive_spi/agent"
    "src/hive_spi/addon"
+   "src/hive_spi/await"
    "src/hive_spi/cider"
    "src/hive_spi/crypto"
    "src/hive_spi/diag"
