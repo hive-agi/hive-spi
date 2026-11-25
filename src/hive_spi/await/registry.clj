@@ -65,13 +65,24 @@
     impl))
 
 (defn unregister!
-  "Drop what PORT holds under KEY. No-op when absent. Returns nil."
-  [port key]
-  (when-not (contains? port->protocol port)
-    (throw (ex-info (str "await registry: unknown port " (pr-str port))
-                    {:error :await/unknown-port :port port :known (vec (keys port->protocol))})))
-  (swap! -registry update port dissoc key)
-  nil)
+  "Drop what PORT holds under KEY. No-op when absent. Returns nil.
+
+   The 3-arity drops it only when the value registered under KEY is
+   `identical?` to INSTANCE: a caller that installed an implementation and
+   was later displaced under the same key by another cannot unregister the
+   replacement by accident. Returns nil either way."
+  ([port key] (unregister! port key ::any))
+  ([port key instance]
+   (when-not (contains? port->protocol port)
+     (throw (ex-info (str "await registry: unknown port " (pr-str port))
+                     {:error :await/unknown-port :port port :known (vec (keys port->protocol))})))
+   (swap! -registry update port
+          (fn [m]
+            (if (or (identical? instance ::any)
+                    (identical? (get m key) instance))
+              (dissoc m key)
+              m)))
+   nil))
 
 (defn lookup
   "What PORT holds under KEY, or nil. Never throws on an absent key."
@@ -99,9 +110,13 @@
   (register! :source source))
 
 (defn unregister-source!
-  "Drop the source for TYPE. Returns nil."
-  [type]
-  (unregister! :source type))
+  "Drop the source for TYPE. Returns nil.
+
+   The 2-arity drops it only when the source registered for TYPE is
+   `identical?` to SOURCE, so a caller displaced by a later registration
+   under the same type cannot unregister the replacement."
+  ([type] (unregister! :source type))
+  ([type source] (unregister! :source type source)))
 
 (defn source
   "The source registered for TYPE, or nil."
@@ -128,9 +143,13 @@
   (register! :scheme scheme))
 
 (defn unregister-scheme!
-  "Drop the scheme NAME. Returns nil."
-  [name]
-  (unregister! :scheme name))
+  "Drop the scheme NAME. Returns nil.
+
+   The 2-arity drops it only when the scheme registered as NAME is
+   `identical?` to SCHEME, so a caller displaced by a later registration
+   under the same name cannot unregister the replacement."
+  ([name] (unregister! :scheme name))
+  ([name scheme] (unregister! :scheme name scheme)))
 
 (defn scheme
   "The scheme registered as NAME, or nil."
@@ -165,7 +184,9 @@
 (tc/ann-op key-of)
 (m/=> register! [:=> [:cat Port Provider] Provider])
 (tc/ann-op register!)
-(m/=> unregister! [:=> [:cat :any :any] :nil])
+(m/=> unregister! [:function
+                   [:=> [:cat :any :any] :nil]
+                   [:=> [:cat :any :any :any] :nil]])
 (tc/ann-op unregister!)
 (m/=> lookup [:=> [:cat :any :any] [:maybe Provider]])
 (tc/ann-op lookup)
@@ -175,7 +196,9 @@
 (tc/ann-op reset-registry!)
 (m/=> register-source! [:=> [:cat ports/ProbeSource] ports/ProbeSource])
 (tc/ann-op register-source!)
-(m/=> unregister-source! [:=> [:cat :any] :nil])
+(m/=> unregister-source! [:function
+                          [:=> [:cat :any] :nil]
+                          [:=> [:cat :any ports/ProbeSource] :nil]])
 (tc/ann-op unregister-source!)
 (m/=> source [:=> [:cat :any] [:maybe ports/ProbeSource]])
 (tc/ann-op source)
@@ -185,7 +208,9 @@
 (tc/ann-op descriptors)
 (m/=> register-scheme! [:=> [:cat ports/SecretScheme] ports/SecretScheme])
 (tc/ann-op register-scheme!)
-(m/=> unregister-scheme! [:=> [:cat :any] :nil])
+(m/=> unregister-scheme! [:function
+                          [:=> [:cat :any] :nil]
+                          [:=> [:cat :any ports/SecretScheme] :nil]])
 (tc/ann-op unregister-scheme!)
 (m/=> scheme [:=> [:cat :any] [:maybe ports/SecretScheme]])
 (tc/ann-op scheme)

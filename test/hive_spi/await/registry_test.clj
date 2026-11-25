@@ -73,3 +73,28 @@
 
 (deftest unknown-port-on-unregister
   (is (= :await/unknown-port (:error (err #(reg/unregister! :nope :x))))))
+
+(deftest identity-unregister-leaves-a-replacement-in-place
+  (testing "register A then B under one key: unregistering A does not drop B"
+    (let [a (stub/make-source {:a 1})
+          b (stub/make-source {:b 2})]
+      (reg/register-source! a)
+      (reg/register-source! b)
+      (is (identical? b (reg/source :stub-probe)) "B displaced A under the key")
+      (is (nil? (reg/unregister-source! :stub-probe a))
+          "unregistering the displaced A returns nil")
+      (is (identical? b (reg/source :stub-probe))
+          "B is still registered after A is unregistered")
+      (is (nil? (reg/unregister-source! :stub-probe b))
+          "unregistering the registered B drops it")
+      (is (nil? (reg/source :stub-probe)))))
+  (testing "schemes: same identity rule"
+    (let [a (stub/make-scheme "test" {})
+          b (stub/make-scheme "test" {})]
+      (reg/register-scheme! a)
+      (reg/register-scheme! b)
+      (is (identical? b (reg/scheme "test")))
+      (reg/unregister-scheme! "test" a)
+      (is (identical? b (reg/scheme "test")) "B survives unregistering the displaced A")
+      (reg/unregister-scheme! "test" b)
+      (is (nil? (reg/scheme "test"))))))

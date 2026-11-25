@@ -85,8 +85,8 @@
 (defn unknown-keys
   "Every path in SPEC the closed SHAPE does not name, as sorted dotted
    strings (\"predicate.password\"). A map under a leaf key is unknown as a
-   whole, and so is a map inside a sequence under a leaf key; a map or a
-   sequence of maps under a nested shape is walked. Pure."
+   whole, and so is a map inside a sequence or a set under a leaf key; a map
+   or a sequence or a set of maps under a nested shape is walked. Pure."
   [shape spec]
   (letfn [(walk [shape v path]
             (cond
@@ -101,7 +101,7 @@
                                 [(key-text (conj path (if (keyword? k) k (keyword (str k)))))])))
                           v)))
 
-              (sequential? v)
+              (or (sequential? v) (set? v))
               (mapcat #(walk shape % path) v)
 
               :else []))]
@@ -133,17 +133,20 @@
 ;; =============================================================================
 
 (defn closed-schema?
-  "True when every :map in SCHEMA's form is {:closed true}, so a value that
-   validates against it can carry no key the schema does not name. A parsed
-   spec is what a host persists; its schema must be closed. Pure."
+  "True when SCHEMA's form can carry no key the schema does not name: every
+   :map is {:closed true}, and no node is :any (which admits anything) or a
+   :map-of (which admits any key), at any depth. A parsed spec is what a
+   host persists; its schema must be closed. Pure."
   [schema]
   (let [form  (m/form schema)
         nodes (tree-seq coll? seq form)
         maps  (filter #(and (vector? %) (= :map (first %))) nodes)]
-    (every? (fn [mv]
-              (let [p (second mv)]
-                (and (map? p) (true? (:closed p)))))
-            maps)))
+    (and (not-any? #{:any} nodes)
+         (not-any? #(and (vector? %) (= :map-of (first %))) nodes)
+         (every? (fn [mv]
+                   (let [p (second mv)]
+                     (and (map? p) (true? (:closed p)))))
+                 maps))))
 
 ;; =============================================================================
 ;; Comparators

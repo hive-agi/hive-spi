@@ -20,6 +20,10 @@
      :match-subscription  a subscription whose probe + judge MATCHES
      :miss-subscription   a subscription whose probe + judge does not match
      :error-subscription  a subscription whose probe! throws
+     :timeout-subscription a subscription whose probe! SLEEPS past the budget
+     :timeout-ms          the host-enforced :timeout-ms the timeout case uses
+     :malformed-subscription a subscription whose probe! answers a
+                          non-observation (rejected by the Observation schema)
      :secret-canary       a secret value the arranged boundary resolves; it
                           must appear in no observation, verdict or error
      :denies-nil-policy?  false when the source has no allowlist (default true)
@@ -80,13 +84,36 @@
     (vec (walk shape []))))
 
 (defn leaf-keys
-  "The top-level keys of SHAPE that name a leaf. Pure."
+  "Every key PATH in SHAPE whose value names a leaf, at any depth, sorted:
+   [[:predicate :op] [:ref] [:target]]. A set names leaves at its own depth.
+   Pure."
   [shape]
-  (vec (sort (if (set? shape) shape (keep (fn [[k v]] (when (nil? v) k)) shape)))))
+  (letfn [(walk [shape prefix]
+            (mapcat (fn [[k sub]]
+                      (let [p (conj prefix k)]
+                        (if sub (walk sub p) [p])))
+                    (if (set? shape) (zipmap shape (repeat nil)) shape)))]
+    (vec (sort (walk shape [])))))
 
 (defn- spec-map [sub] (spec/spec-of sub))
 
 (defn- with-spec [sub spec'] (assoc sub :spec spec'))
+
+(defn- bounded-probe!
+  "probe! bounded the way the HOST enforces :timeout-ms: the call runs on a
+   future and, when it has not answered within the budget, is abandoned and
+   reported as {:error {:error :await/poll-timeout}}. A source that bounds
+   its own I/O answers first. Answers {:ok observation} or {:error data}."
+  [src parsed ctx]
+  (let [ms  (long (or (:timeout-ms ctx) 1000))
+        fut (future (try {:ok (ports/probe! src parsed ctx)}
+                         (catch Throwable t
+                           {:error (or (ex-data t) {:message (ex-message t)})})))
+        r   (deref fut ms ::timeout)]
+    (if (= r ::timeout)
+      (do (future-cancel fut)
+          {:error {:error :await/poll-timeout :timeout-ms ms}})
+      r)))
 
 ;;; ============================================================================
 ;;; Cases
@@ -147,20 +174,29 @@
            (let [src   (make-source)
                  shape (:spec-shape (ports/descriptor src))
                  sub   (:subscription opts)
-                 s     (spec-map sub)]
-             (doseq [path (nested-paths shape)
-                     :when (map? (get-in s path))]
+                 s     (spec-map sub)
+                 nested (filterv #(map? (get-in s %)) (nested-paths shape))]
+             (is (seq nested)
+                 (str "the sample subscription has no nested map to test: a nested "
+                      "key cannot be planted, so the case would assert nothing. "
+                      "Give :subscription a spec with a map under " (pr-str (nested-paths shape))
+                      ", e.g. a :predicate {:op \">=\" :value 1}. shape " (pr-str shape)))
+             (doseq [path nested]
                (testing (str "under " (str/join "." (map name path)))
                  (let [bad (with-spec sub (assoc-in s (conj path unknown-key) canary))]
                    (is (refusal-ok? (thrown-data #(parse src bad (:policy opts))))))))
              (testing "a map planted under a leaf key"
                (doseq [k (leaf-keys shape)]
-                 (let [bad (with-spec sub (assoc s k {:password canary}))
+                 (let [bad (with-spec sub (assoc-in s k {:password canary}))
                        r   (thrown-data #(parse src bad (:policy opts)))]
                    (is (refusal-ok? r) (str "leaf " k)))))
              (testing "a map inside a vector under a leaf key"
                (doseq [k (leaf-keys shape)]
-                 (let [bad (with-spec sub (assoc s k [{:password canary}]))]
+                 (let [bad (with-spec sub (assoc-in s k [{:password canary}]))]
+                   (is (refusal-ok? (thrown-data #(parse src bad (:policy opts)))) (str "leaf " k)))))
+             (testing "a map inside a set under a leaf key"
+               (doseq [k (leaf-keys shape)]
+                 (let [bad (with-spec sub (assoc-in s k #{{:password canary}}))]
                    (is (refusal-ok? (thrown-data #(parse src bad (:policy opts)))) (str "leaf " k)))))))}
 
    {:id :parsed-holds-no-unknown-key
@@ -195,9 +231,36 @@
     :run (fn [{:keys [make-source opts]}]
            (let [src (make-source)
                  p   (parse src (:miss-subscription opts) (:policy opts))
-                 v   (ports/judge src p (ports/probe! src p (or (:ctx opts) {})))]
+                 o   (ports/probe! src p (or (:ctx opts) {}))
+                 v   (ports/judge src p o)]
+             (is (m/validate ports/Observation o) (pr-str (m/explain ports/Observation o)))
              (is (m/validate ports/Verdict v))
              (is (false? (:match? v)))))}
+
+   {:id :probe-timeout
+    :requires-opt :timeout-subscription
+    :doc "a probe! that sleeps past :timeout-ms yields a host timeout verdict, not a hang"
+    :run (fn [{:keys [make-source opts]}]
+           (let [src (make-source)
+                 p   (parse src (:timeout-subscription opts) (:policy opts))
+                 ctx (assoc (or (:ctx opts) {}) :timeout-ms (:timeout-ms opts 250))
+                 r   (bounded-probe! src p ctx)]
+             (is (contains? r :error)
+                 "the host bound the call: probe! did not answer within :timeout-ms")
+             (is (m/validate ports/ErrorKeyword (get-in r [:error :error]))
+                 (pr-str r))
+             (when-let [c (:secret-canary opts)]
+               (is (not (str/includes? (pr-str r) c))))))}
+
+   {:id :malformed-observation-rejected
+    :requires-opt :malformed-subscription
+    :doc "a probe! that answers a non-observation is rejected by the Observation schema"
+    :run (fn [{:keys [make-source opts]}]
+           (let [src (make-source)
+                 p   (parse src (:malformed-subscription opts) (:policy opts))
+                 o   (ports/probe! src p (or (:ctx opts) {}))]
+             (is (not (m/validate ports/Observation o))
+                 (str "probe! answered a malformed observation: " (pr-str o)))))}
 
    {:id :judge-pure
     :requires-opt :match-subscription
@@ -308,13 +371,16 @@
    [:match-subscription {:optional true} :map]
    [:miss-subscription {:optional true} :map]
    [:error-subscription {:optional true} :map]
+   [:timeout-subscription {:optional true} :map]
+   [:timeout-ms {:optional true} pos-int?]
+   [:malformed-subscription {:optional true} :map]
    [:secret-canary {:optional true} :string]
    [:denies-nil-policy? {:optional true} :boolean]
    [:skip {:optional true} [:maybe [:map-of :keyword :string]]]])
 
 (m/=> nested-paths [:=> [:cat ports/Shape] [:vector [:vector :keyword]]])
 (tc/ann-op nested-paths)
-(m/=> leaf-keys [:=> [:cat ports/Shape] [:vector :keyword]])
+(m/=> leaf-keys [:=> [:cat ports/Shape] [:vector [:vector :keyword]]])
 (tc/ann-op leaf-keys)
 (m/=> skip-reason [:=> [:cat [:map [:id CaseId] [:requires-opt {:optional true} :keyword]]
                            [:maybe :map]]

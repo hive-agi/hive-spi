@@ -22,7 +22,15 @@
       "a map under a leaf is unknown as a whole")
   (is (= ["ref"] (spec/unknown-keys shape {:ref [{:password "p"}]}))
       "a map in a vector under a leaf too")
+  (is (= ["target"] (spec/unknown-keys shape {:target #{{:password "p"}}}))
+      "a map in a SET under a leaf is unknown as a whole")
   (is (= ["predicate.x"] (spec/unknown-keys shape {:predicate [{:op ">"} {:x 1}]}))))
+
+(deftest closed-spec-refuses-a-set-hidden-key
+  (let [e (err #(spec/closed-spec :s {:spec {:target #{{:password "s3cr3t-val"}}}} shape))]
+    (is (= :await/invalid-subscription (:error e)))
+    (is (= ["target"] (:unknown e)))
+    (is (not (re-find #"s3cr3t-val" (pr-str e))))))
 
 (deftest closed-spec-refuses-and-never-echoes-values
   (let [e (err #(spec/closed-spec :s {:spec {:predicate {:op ">" :password "s3cr3t"}}} shape))]
@@ -65,3 +73,16 @@
   (is (false? (spec/closed-schema? [:map {:closed true} [:a [:map [:b :int]]]])))
   (is (false? (spec/closed-schema? [:map [:a :int]])))
   (is (true? (spec/closed-schema? :string))))
+
+(deftest closed-schema-rejects-any-and-map-of
+  (is (false? (spec/closed-schema? [:map {:closed true} [:a :any]]))
+      ":any admits anything")
+  (is (false? (spec/closed-schema? [:map {:closed true} [:a [:map-of :keyword :string]]]))
+      ":map-of admits any key")
+  (is (false? (spec/closed-schema? [:map {:closed true} [:a [:map {:closed true}
+                                                          [:b :any]]]]))
+      ":any nested under a closed map is still open")
+  (is (false? (spec/closed-schema? [:map {:closed true} [:a [:vector [:map-of :keyword :any]]]]))
+      ":map-of nested in a vector is still open")
+  (is (false? (spec/closed-schema? :any))
+      "a bare :any schema is not closed"))

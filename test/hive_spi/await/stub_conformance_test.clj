@@ -10,7 +10,7 @@
 
 ;; SPDX-License-Identifier: MIT
 
-(def policy {:targets ["alpha" "beta" "gamma"]})
+(def policy {:targets ["alpha" "beta" "gamma" "slow" "bad"]})
 
 (def secret-value "s3cr3t-value")
 
@@ -21,20 +21,27 @@
                               (ports/resolve! scheme id {:timeout-ms 100})))})
 
 (defn- make-source []
-  (stub/make-source {"alpha" 5 "beta" 1}))
+  (stub/make-source {"alpha" 5 "beta" 1
+                     ;; a target whose probe! sleeps past any host budget,
+                     ;; and one that answers a non-observation
+                     "slow" ::stub/sleep
+                     "bad"  ::stub/malformed}))
 
 (defn- sub [target op value]
   {:type :stub-probe
    :spec {:target target :ref "test:alpha/secret" :predicate {:op op :value value}}})
 
 (def opts
-  {:subscription       (sub "alpha" ">=" 3)
-   :policy             policy
-   :ctx                ctx
-   :match-subscription (sub "alpha" ">=" 3)
-   :miss-subscription  (sub "beta" ">=" 3)
-   :error-subscription (sub "gamma" "==" 1)
-   :secret-canary      secret-value})
+  {:subscription           (sub "alpha" ">=" 3)
+   :policy                 policy
+   :ctx                    ctx
+   :match-subscription     (sub "alpha" ">=" 3)
+   :miss-subscription      (sub "beta" ">=" 3)
+   :error-subscription     (sub "gamma" "==" 1)
+   :timeout-subscription   (sub "slow" ">=" 3)
+   :timeout-ms             200
+   :malformed-subscription (sub "bad" "==" 1)
+   :secret-canary          secret-value})
 
 (conformance/defconformance stub make-source opts)
 

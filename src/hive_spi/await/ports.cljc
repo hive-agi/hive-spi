@@ -18,9 +18,11 @@
    comparators, allowlists) are pure fns in hive-spi.await.spec, and
    hive-spi.await.conformance is the executable form of this contract.
 
-   Reload-safety: each defprotocol is guarded, so re-evaluating this
-   namespace does not mint a fresh interface that existing records then fail
-   to satisfy."
+   Reload-safety: each defprotocol is guarded AND its expansion is deferred
+   to runtime (quoted, eval'd only on the first load), so re-evaluating this
+   namespace mints neither a fresh protocol var nor a fresh interface class.
+   Both an existing record and one an addon reifies after a reload keep
+   satisfying the protocol."
   (:require [malli.core :as m]
             [hive-spi.schema.typed-contract :as tc]))
 
@@ -31,10 +33,35 @@
 ;; Protocols
 ;; =============================================================================
 
+(defmacro ^:private defprotocol-once
+  "defprotocol whose HOSTED expansion is deferred to runtime via eval.
+
+   `defprotocol` expands to `gen-interface`, a compile-time side effect: a
+   namespace reload re-runs the expansion and mints a FRESH interface class
+   even though the runtime guard skips the body, so a source an addon reifies
+   after the reload is compiled against that fresh class and fails
+   `satisfies?` against the protocol var (which the guard kept on the original
+   interface). Deferring the expansion keeps both the var and its interface
+   class stable across reloads. ClojureScript has no such class identity and
+   gets a plain defprotocol."
+  [name & opts+sigs]
+  (if (:ns &env)
+    `(defprotocol ~name ~@opts+sigs)
+    `(eval '~(list* 'defprotocol name opts+sigs))))
+
 (defonce ^:private -iprobesource-defined? (atom false))
 
+;; Each defprotocol below is QUOTED and eval'd only when its guard first
+;; passes. `defprotocol` expands to `gen-interface`, a COMPILE-TIME side
+;; effect: a namespace reload re-runs the expansion and mints a FRESH
+;; interface class even though the runtime guard skips the body. A source an
+;; addon reifies after such a reload is compiled against that fresh class and
+;; fails `satisfies?` against the protocol var, which the guard kept on the
+;; original interface. Deferring the expansion to runtime via `eval` keeps
+;; both the var and its interface class stable across reloads, so a source
+;; defined AFTER a reload still satisfies the protocol.
 (when #?(:cljr true :default (compare-and-set! -iprobesource-defined? false true))
-  (defprotocol IProbeSource
+  (defprotocol-once IProbeSource
     "One kind of thing an awaiter can wait on, probed once per call.
 
      Every method but probe! is pure. A refusal is an ex-info whose data
@@ -58,7 +85,11 @@
       "ONE bounded read at the I/O boundary for PARSED, under CTX (a
        ProbeCtx). Answers a plain-data Observation map, or throws ex-info
        with an ErrorKeyword under :error. A resolved secret is never put in
-       the observation, the message or the data.")
+       the observation, the message or the data.
+
+       The HOST enforces :timeout-ms by abandoning the call; a source SHOULD
+       also bound its own I/O to :timeout-ms and must release any process or
+       connection it started when interrupted or abandoned.")
 
     (judge [this parsed observation]
       "The Verdict for OBSERVATION: {:match? bool :data map?}. Pure.")))
@@ -66,7 +97,7 @@
 (defonce ^:private -isecretscheme-defined? (atom false))
 
 (when #?(:cljr true :default (compare-and-set! -isecretscheme-defined? false true))
-  (defprotocol ISecretScheme
+  (defprotocol-once ISecretScheme
     "The resolver of one secret-ref scheme. A ref is the string <scheme>:<id>.
      It NAMES a secret and is never the secret itself."
 
@@ -87,7 +118,7 @@
 (defonce ^:private -ipollscheduler-defined? (atom false))
 
 (when #?(:cljr true :default (compare-and-set! -ipollscheduler-defined? false true))
-  (defprotocol IPollScheduler
+  (defprotocol-once IPollScheduler
     "The repeating schedule a host's poll engine runs probes on."
 
     (schedule-repeating! [this f interval-ms]
@@ -158,7 +189,7 @@
    [:created {:optional true} [:maybe :int]]
    [:now {:optional true} :int]
    [:poll {:optional true} :int]
-   [:timeout-ms {:optional true} pos-int?]
+   [:timeout-ms pos-int?]
    [:resolve-secret {:optional true} ifn?]])
 
 (def Observation

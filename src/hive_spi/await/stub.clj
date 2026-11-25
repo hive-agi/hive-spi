@@ -94,6 +94,13 @@
                                        {:error :await/poll-failed :target t}))
         (= v ::timeout) (throw (ex-info "await stub-probe: probe timed out"
                                         {:error :await/poll-timeout :target t}))
+        ;; Sleeps past any host budget: the host must abandon the call and
+        ;; report a timeout rather than hang. Bounded by the observation value
+        ;; when it is a [::sleep ms] pair, else by a fixed 5 s.
+        (= v ::sleep) (do (Thread/sleep 5000) {:target t :value :late})
+        ;; Answers a non-observation: a scalar, rejected by the Observation
+        ;; schema (the malformed-observation case).
+        (= v ::malformed) :not-an-observation
         :else {:target t :value v})))
   (judge [_ parsed observation]
     (let [{:keys [op value]} (:predicate parsed)]
@@ -102,8 +109,9 @@
 
 (defn make-source
   "A :stub-probe source over OBSERVATIONS, a {target value} map. A value of
-   ::timeout makes probe! throw :await/poll-timeout; an absent target
-   throws :await/poll-failed."
+   ::timeout makes probe! throw :await/poll-timeout; ::sleep makes it sleep
+   past any host budget; ::malformed makes it answer a non-observation; an
+   absent target throws :await/poll-failed."
   ([] (make-source {}))
   ([observations]
    (->StubSource (atom observations) (atom 0))))
