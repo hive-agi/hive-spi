@@ -51,5 +51,21 @@
 (deftest error-keywords-are-the-published-set
   (is (every? #(m/validate ports/ErrorKeyword %)
               [:wm/invalid-entry :wm/invalid-transition :wm/terminal
-               :wm/revision-conflict :wm/not-found :wm/store-unavailable
-               :wm/no-consolidator :wm/no-activator])))
+               :wm/not-terminal :wm/revision-conflict :wm/not-found
+               :wm/store-unavailable :wm/no-consolidator :wm/no-activator])))
+
+(deftest activation-and-receipt-shapes
+  (testing "an Activation carries :refs, :axioms and a :cursor"
+    (is (m/validate ports/Activation
+                    {:workspace-id "w" :entries []
+                     :refs [{:id (ids/generate-id) :relation :relates :hops 1}]
+                     :axioms ["a"] :cursor {"k" 3}})))
+  (testing "a ConsolidationReceipt is a :multi on :ok?"
+    (is (m/validate ports/ConsolidationReceipt
+                    {:ok? true :long-term-id "lt"
+                     :edges [{:relation :derived-from :to (ids/generate-id)}]}))
+    (is (m/validate ports/ConsolidationReceipt {:ok? false :error :wm/not-terminal}))
+    (is (false? (m/validate ports/ConsolidationReceipt {:ok? true}))
+        "an ok receipt must carry :long-term-id and :edges")
+    (is (false? (m/validate ports/ConsolidationReceipt {:ok? false}))
+        "a refusal must name an :error")))

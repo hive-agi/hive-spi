@@ -41,6 +41,7 @@
    :wm/invalid-entry
    :wm/invalid-transition
    :wm/terminal
+   :wm/not-terminal
    :wm/revision-conflict
    :wm/not-found
    :wm/store-unavailable
@@ -120,7 +121,15 @@
       :updated      Timestamp    (required)}
 
    A caller hands a put-cas! an entry whose :revision it read; the store
-   answers the entry it actually stored, whose :revision is authoritative."
+   answers the entry it actually stored, whose :revision is authoritative.
+
+   Identity and supersession (the model the store ENFORCES, not just the
+   suite): the KEY is the unit. The store KEEPS the key's :id and :created
+   from the entry it already holds, whatever :id the writer supplied, so an
+   id is stable across a key's revisions. :supersedes names a DIFFERENT
+   key's entry id (the predecessor this claim replaces); a supersession is
+   the ONE legal write that may move a terminal entry on, and it is always a
+   write at its OWN key, never a mutation of the superseded entry."
   [:map {:closed true}
    [:id EntryId]
    [:workspace-id WorkspaceId]
@@ -144,6 +153,17 @@
    working memory carries."
   [:map-of EntryKey nat-int?])
 
+(def DeltaOpts
+  "The optional budget delta-since reads. Both bounds are independent and
+   optional; absent means unbounded. A bounded delta answers what it could
+   carry and reports :truncated? true, advancing its cursor ONLY over the
+   entries it delivered, so the entries a cap held back re-deliver on the
+   next call. The 32000-char piggyback drain sets :max-chars; a caller that
+   counts entries sets :max-entries."
+  [:map
+   [:max-entries {:optional true} [:maybe nat-int?]]
+   [:max-chars {:optional true} [:maybe nat-int?]]])
+
 (def Delta
   "What delta-since answers: the entries of one workspace a reader has not
    seen at the revision it holds, plus the cursor it should carry forward.
@@ -151,7 +171,8 @@
   [:map {:closed true}
    [:workspace-id WorkspaceId]
    [:entries [:vector WorkingEntry]]
-   [:cursor Cursor]])
+   [:cursor Cursor]
+   [:truncated? {:optional true} [:maybe :boolean]]])
 
 (def PutResult
   "What put-cas! answers.
@@ -162,11 +183,14 @@
    that won, or nil>}, where :current is what the caller must now reconcile
    against. A successful write answers :entry and no :error; a refused one
    answers :error and, when the key exists, :current."
-  [:map
-   [:ok? :boolean]
-   [:entry {:optional true} [:maybe WorkingEntry]]
-   [:error {:optional true} [:maybe ErrorKeyword]]
-   [:current {:optional true} [:maybe WorkingEntry]]])
+  [:multi {:dispatch :ok?}
+   [true [:map {:closed true}
+          [:ok? [:= true]]
+          [:entry WorkingEntry]]]
+   [false [:map {:closed true}
+           [:ok? [:= false]]
+           [:error ErrorKeyword]
+           [:current {:optional true} [:maybe WorkingEntry]]]]])
 
 (def ExpectedRevision
   "What a caller believes the key's current revision is: a revision it read,
@@ -179,6 +203,12 @@
    calling it twice is safe."
   [:fn {:error/message "must be a zero-arg cancel fn"} ifn?])
 
+(def ConsolidationEdge
+  "One KG edge consolidate! minted: a relation and the id it points at."
+  [:map {:closed true}
+   [:relation [:enum :derived-from :supersedes :relates :abandoned]]
+   [:to EntryId]])
+
 (def ConsolidationReceipt
   "What consolidate! answers.
 
@@ -186,11 +216,14 @@
    the long-term entry the fold landed on and the KG edges it minted
    (`:derived-from`, `:supersedes`, or an abandonment note). On refusal:
    {:ok? false :error <ErrorKeyword>}."
-  [:map
-   [:ok? :boolean]
-   [:long-term-id {:optional true} [:maybe :string]]
-   [:edges {:optional true} [:maybe [:vector :map]]]
-   [:error {:optional true} [:maybe ErrorKeyword]]])
+  [:multi {:dispatch :ok?}
+   [true [:map {:closed true}
+          [:ok? [:= true]]
+          [:long-term-id :string]
+          [:edges [:vector ConsolidationEdge]]]]
+   [false [:map {:closed true}
+           [:ok? [:= false]]
+           [:error ErrorKeyword]]]])
 
 (def Activation
   "What activate answers: the bundle a ling starts from when it is spawned on
@@ -200,7 +233,9 @@
   [:map
    [:workspace-id WorkspaceId]
    [:entries [:vector WorkingEntry]]
-   [:refs {:optional true} [:maybe [:vector :map]]]
+   [:refs {:optional true} [:maybe [:vector [:map [:id EntryId] [:relation :keyword] [:hops nat-int?]]]]]
+   [:axioms {:optional true} [:maybe [:vector :string]]]
+   [:cursor {:optional true} [:maybe Cursor]]
    [:brief {:optional true} [:maybe :string]]])
 
 ;; =============================================================================
@@ -224,11 +259,27 @@
        current revision is EXPECTED-REVISION.
 
        EXPECTED-REVISION is the revision the caller read, or nil meaning the
-       key must not exist yet (create). On success the store stamps a fresh
-       :revision (one past the expected one, or 1 on create), sets :updated,
-       stores the entry and answers {:ok? true :entry <stored>}. On a mismatch
-       it writes nothing and answers {:ok? false :error :wm/revision-conflict
-       :current <the entry that won, or nil>}. Throws ex-info
+       key must not exist yet (create). A revision is an OPAQUE nat-int that
+       strictly increases per key and is NOT required to be contiguous or to
+       start at 1 (a JetStream KV adapter carries its own counter inside the
+       value); the caller must only ever pass back a revision it READ, never
+       an arithmetic guess. On success the store stamps a fresh :revision,
+       KEEPS the key's :id and :created, sets :updated, stores the entry and
+       answers {:ok? true :entry <stored>}.
+
+       On a mismatch it writes nothing and answers
+       {:ok? false :error :wm/revision-conflict :current <the entry that won,
+       or nil>}. It also REFUSES, writing nothing:
+         :wm/terminal           - CURRENT is terminal (:settled | :abandoned)
+                                  and the write is not a supersession. A
+                                  terminal entry is immutable; the only way
+                                  past it is a NEW entry at its OWN key whose
+                                  :supersedes names CURRENT's :id.
+         :wm/invalid-transition - the write changes the status to a move the
+                                  lifecycle table does not allow (a no-op
+                                  status is allowed and is not a transition).
+
+       Throws ex-info
        {:error :wm/invalid-entry} when ENTRY does not conform \u2014 a store that
        persisted a malformed entry would poison every later reader.")
 
@@ -236,16 +287,38 @@
       "Call F with the new WorkingEntry whenever the entry at
        [WORKSPACE-ID KEY] is written, until the returned cancel fn is called.
        F is called with the stored entry, after the write is durable. Answers
-       a zero-arg cancel fn (a WatchHandle); calling it twice is safe. A watch
-       on an absent key is armed and fires on the first write.")
+       a zero-arg cancel fn (a WatchHandle); calling it twice is safe.
 
-    (delta-since [this workspace-id cursor]
+       A watch is ASYNCHRONOUS: F runs on the store's own thread, so a write
+       that has returned does NOT guarantee F has run yet. A caller must poll
+       or await its own signal, never assert synchronously after a put-cas!.
+
+       Whether a watch armed on an EXISTING key delivers that key's current
+       value before any write is store-defined: a JetStream KV watch does by
+       default, an in-process store need not. A caller that must have the
+       current value reads it with get-entry, or carries a cursor and calls
+       delta-since; a caller that only wants future writes assumes nothing.
+       A watch on an absent key is armed and fires on the first write.")
+
+    (delta-since [this workspace-id cursor opts]
       "Every entry of WORKSPACE-ID a reader holding CURSOR has not seen: a key
        whose current revision is greater than the cursor's, or absent from the
-       cursor. CURSOR nil means 'nothing seen', so every entry answers. Answers
-       a Delta whose :cursor the reader carries into its next call. A key that
-       was EDITED re-delivers \u2014 that is the mutation an append-only cursor
-       would drop.")))
+       cursor. CURSOR nil means 'nothing seen', so every entry answers. A key
+       that was EDITED re-delivers — that is the mutation an append-only
+       cursor would drop.
+
+       OPTS (a DeltaOpts, or nil) bounds the answer: :max-entries caps the
+       count, :max-chars caps the summed rendered size. When a cap holds
+       entries back the Delta answers :truncated? true and its :cursor covers
+       ONLY the delivered entries, so a follow-up delta-since from it delivers
+       every remaining key exactly once. The reader carries the answered
+       :cursor into its next call.")))
+
+(defn delta-since*
+  "Call delta-since on STORE with CURSOR and no size budget. The 2-arg call
+   the old contract promised, kept as a fn so a store implements ONE method."
+  [store workspace-id cursor]
+  (delta-since store workspace-id cursor nil))
 
 (defonce ^:private -iconsolidation-defined? (atom false))
 
@@ -261,8 +334,16 @@
 
        Only a terminal entry is consolidated: a :settled entry becomes a
        long-term fact carrying :derived-from and :supersedes edges, an
-       :abandoned entry becomes a single negative note. A non-terminal entry
-       is refused with {:ok? false :error :wm/terminal} rather than folded.
+       :abandoned entry becomes a single negative note. A NON-terminal entry
+       is refused with {:ok? false :error :wm/not-terminal} rather than folded
+       (:wm/terminal is reserved for a put-cas! over a terminal entry).
+
+       consolidate! is IDEMPOTENT per [id revision]: consolidation is
+       event-driven and its events are at-least-once, so a re-delivered
+       :settled entry must fold into the SAME long-term id, not mint a second
+       one. A host folding into an id it already has answers that id as
+       :long-term-id.
+
        This port does NOT embed: the host owns the embedding cost, so a
        consolidate! that would re-embed is the host's decision, not the
        contract's. Answers a ConsolidationReceipt.")))
@@ -275,10 +356,15 @@
 
     (activate [this workspace-id opts]
       "The Activation for WORKSPACE-ID: the brief and the settled claims, then
-       the KG neighbours one or two hops out, then a small axiom core. OPTS
-       carries the host's knobs (a hop budget, a claim cap, an axiom core) and
-       is host-defined; an empty map asks for the host's defaults. Answers an
-       Activation, empty of entries when the workspace is unknown \u2014 an
+       the KG neighbours one or two hops out, then a small axiom core (the
+       :axioms strings). OPTS carries the host's knobs - a hop budget, a
+       claim cap, an axiom core, and the SAME size budget delta-since reads
+       (:max-entries / :max-chars) - and is host-defined; an empty map asks
+       for the host's defaults. Answers an Activation carrying :entries,
+       :refs, :axioms and a :cursor positioned PAST every entry it put in
+       :entries, so a ling spawned on the ref does not re-drain what
+       activation already gave it. Empty of entries when the workspace is
+       unknown \u2014 an
        unknown workspace is an empty one, not an error.")))
 
 ;; =============================================================================
@@ -312,5 +398,6 @@
   [e]
   (try (m/validate WorkingEntry e) (catch #?(:clj Exception :cljs :default :cljr Exception :default :default) _ false)))
 
+(m/=> delta-since* [:=> [:cat WorkingMemoryStore WorkspaceId [:maybe Cursor]] Delta])
 (m/=> refusal [:=> [:cat ErrorKeyword :string [:maybe :map]] [:fn {:error/message "must be an ex-info"} #(some? (ex-data %))]])
 (m/=> valid-entry? [:=> [:cat :any] :boolean])

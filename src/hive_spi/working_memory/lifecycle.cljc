@@ -18,7 +18,12 @@
    `apply-transition` is the pure write: it returns the entry with the new
    status and a refreshed :updated, or throws a contract refusal when the move
    is not in the table. It touches no store and stamps no revision \u2014 the store
-   owns the revision, this namespace owns the status."
+   owns the revision, this namespace owns the status.
+
+   Releasing a claim whose owner died is NOT a move back to :draft. A dead
+   owner releases by abandoning its entry (a terminal status) and filing a
+   new claim, which names the old one with :supersedes; the table stays closed
+   because a store never has to un-settle an entry in place."
   (:require [hive-spi.memory.ids :as ids]
             [hive-spi.working-memory.ports :as ports]
             [malli.core :as m]))
@@ -100,8 +105,7 @@
                {:status from :to to :allowed (allowed-transitions entry)}))
     (assoc entry
            :status to
-           :updated #?(:clj (hive-spi.memory.ids/iso-timestamp)
-                       :cljs (hive-spi.memory.ids/iso-timestamp)))))
+           :updated (ids/iso-timestamp))))
 
 (defn settle
   "ENTRY moved to :settled. A thin, readable alias for the common move."

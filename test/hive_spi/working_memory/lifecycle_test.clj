@@ -2,13 +2,14 @@
   "The transition table is closed and the write is pure."
   (:require [clojure.set :as set]
             [clojure.test :refer [deftest is testing]]
-            [hive-spi.working-memory.lifecycle :as lc]))
+            [hive-spi.working-memory.entry :as entry]
+            [hive-spi.working-memory.lifecycle :as lc]
+            [hive-spi.working-memory.ports :as ports]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 
-(def all-statuses #{:draft :working :settled :abandoned})
-
-;; SPDX-License-Identifier: MIT
+(def all-statuses (set (m/children ports/Status)))
 
 (deftest the-table-is-closed
   (testing "every status is a key, and only a live status has an outgoing edge"
@@ -58,3 +59,10 @@
   (doseq [{:keys [from to]} lc/transition-list]
     (is (= to (:status (lc/apply-transition {:status from :updated "2026-01-01T00:00:00Z"} to)))
         (str from " -> " to))))
+
+(deftest terminal-and-entry-agree
+  ;; entry/terminal? re-states the terminal set to stay a leaf; this pins the
+  ;; two definitions equal, so a drift between them fails loudly here.
+  (doseq [s (m/children ports/Status)]
+    (is (= (lc/terminal? s) (entry/terminal? {:status s}))
+        (str s " agrees between lifecycle and entry"))))

@@ -39,7 +39,7 @@
           {:ok? true :entry stored})
         {:ok? false :error :wm/revision-conflict :current cur})))
   (watch! [_ _ _ _] (fn [] nil))
-  (delta-since [_ w cursor]
+  (delta-since [_ w cursor _opts]
     ;; BUG: reports each key at its FIRST revision forever, so an edit never
     ;; advances the cursor and the reader is never re-sent the key.
     (let [rows (for [[[ws _] {:keys [entry first-revision]}] @state :when (= ws w)]

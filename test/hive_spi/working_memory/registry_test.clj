@@ -1,5 +1,5 @@
 (ns hive-spi.working-memory.registry-test
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [clojure.test :refer [deftest is use-fixtures]]
             [hive-spi.working-memory.ports :as ports]
             [hive-spi.working-memory.reference-store :as rs]
             [hive-spi.working-memory.registry :as reg]))

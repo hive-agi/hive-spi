@@ -5,6 +5,7 @@
    I/O, no state. A store that keys, stamps or diffs entries itself uses these
    so its semantics equal the reference in-memory store's."
   (:require [hive-spi.memory.ids :as ids]
+            [hive-spi.working-memory.lifecycle :as lifecycle]
             [hive-spi.working-memory.ports :as ports]
             [malli.core :as m]))
 
@@ -36,12 +37,10 @@
 ;; =============================================================================
 
 (defn- default-id []
-  #?(:clj (ids/generate-id)
-     :cljs (ids/generate-id)))
+  (ids/generate-id))
 
 (defn- now []
-  #?(:clj (ids/iso-timestamp)
-     :cljs (ids/iso-timestamp)))
+  (ids/iso-timestamp))
 
 (defn normalize
   "ENTRY with store-side defaults filled so it conforms to WorkingEntry:
@@ -89,12 +88,15 @@
 
 (defn stamp
   "ENTRY as the store stores it after a successful write: CURRENT is the entry
-   the key held before (or nil), so :revision is `next-revision` and :updated
-   is refreshed. Pure apart from the timestamp source."
+   the key held before (or nil). :revision is `next-revision`, :updated is
+   refreshed, and the key's IDENTITY is preserved — :id and :created come from
+   CURRENT, so a key's id is stable across its revisions whatever :id the
+   writer supplied. Pure apart from the timestamp source."
   [entry current]
-  (assoc entry
-         :revision (next-revision current)
-         :updated (now)))
+  (cond-> (assoc entry
+                 :revision (next-revision current)
+                 :updated (now))
+    (some? current) (assoc :id (:id current) :created (:created current))))
 
 ;; =============================================================================
 ;; Supersession and delta
@@ -115,25 +117,53 @@
   (or (nil? revision)
       (> (long (:revision entry)) (long revision))))
 
+(defn entry-size
+  "The rendered size of ENTRY in characters: the length of its pr-str. The
+   unit a :max-chars delta budget is measured in. Pure."
+  [entry]
+  (count (pr-str entry)))
+
 (defn delta-of
   "The Delta over ENTRIES a reader holding CURSOR (a {key revision} map, or
    nil) has not seen, plus the cursor to carry forward. Every entry the reader
-   has not seen is included in full; the answered cursor is CURSOR advanced
-   with each entry's current revision. Pure."
-  [workspace-id entries cursor]
-  (let [cursor (or cursor {})
-        seen (filter #(changed-since? % (get cursor (:key %))) entries)
-        next-cursor (reduce (fn [c e] (assoc c (:key e) (:revision e))) cursor entries)]
-    {:workspace-id workspace-id
-     :entries (vec seen)
-     :cursor next-cursor}))
+   has not seen is included in full, unless OPTS bounds the answer:
+   :max-entries caps the count and :max-chars caps the summed `entry-size`.
+   When a cap holds entries back, :truncated? is true and the answered cursor
+   advances ONLY over the delivered entries (CURSOR unchanged for the rest),
+   so a follow-up delta-of from it delivers every remaining entry exactly
+   once. Pure."
+  ([workspace-id entries cursor]
+   (delta-of workspace-id entries cursor nil))
+  ([workspace-id entries cursor opts]
+   (let [cursor (or cursor {})
+         seen (filterv #(changed-since? % (get cursor (:key %))) entries)
+         max-entries (get opts :max-entries)
+         max-chars (get opts :max-chars)
+         ;; take the prefix that fits both caps; a nil cap is unbounded
+         delivered
+         (loop [remaining (seq seen) out [] chars 0]
+           (if-let [e (first remaining)]
+             (let [nchars (+ chars (entry-size e))
+                   n (count out)]
+               (if (or (and max-entries (>= n max-entries))
+                       (and max-chars (> nchars max-chars)))
+                 out
+                 (recur (next remaining) (conj out e) nchars)))
+             out))
+         truncated? (and (some? (or max-entries max-chars))
+                         (< (count delivered) (count seen)))
+         next-cursor (reduce (fn [c e] (assoc c (:key e) (:revision e))) cursor delivered)]
+     (cond-> {:workspace-id workspace-id
+              :entries delivered
+              :cursor next-cursor}
+       truncated? (assoc :truncated? true)))))
 
 (defn terminal?
-  "True when ENTRY's status is terminal (:settled or :abandoned). A local
-   re-statement of lifecycle/terminal? so this namespace stays a leaf that
-   does not require the lifecycle table. Pure."
+  "True when ENTRY's status is terminal (:settled or :abandoned), read from the
+   lifecycle table so there is ONE definition of terminal. A test pins the two
+   equal. Pure."
   [entry]
-  (contains? #{:settled :abandoned} (:status entry)))
+  (lifecycle/terminal? (:status entry)))
 
 ;; =============================================================================
 ;; Contracts
@@ -164,5 +194,8 @@
 (m/=> stamp [:=> [:cat [:maybe EntryInput] [:maybe :map]] [:map]])
 (m/=> supersedes? [:=> [:cat [:maybe :map] [:maybe :map]] :boolean])
 (m/=> changed-since? [:=> [:cat [:maybe :map] [:maybe nat-int?]] :boolean])
-(m/=> delta-of [:=> [:cat ports/WorkspaceId [:maybe [:sequential :map]] [:maybe ports/Cursor]] ports/Delta])
+(m/=> entry-size [:=> [:cat [:maybe :map]] nat-int?])
+(m/=> delta-of [:function
+                [:=> [:cat ports/WorkspaceId [:maybe [:sequential :map]] [:maybe ports/Cursor]] ports/Delta]
+                [:=> [:cat ports/WorkspaceId [:maybe [:sequential :map]] [:maybe ports/Cursor] [:maybe ports/DeltaOpts]] ports/Delta]])
 (m/=> terminal? [:=> [:cat [:maybe :map]] :boolean])
