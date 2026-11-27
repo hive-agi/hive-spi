@@ -42,7 +42,8 @@
    "src/hive_spi/time"
    "src/hive_spi/vector"
    "src/hive_spi/wire"
-   "src/hive_spi/workflow"])
+   "src/hive_spi/workflow"
+   "src/hive_spi/working_memory"])
 
 ;; Empty: kg.protocol, kg.conn-init and workflow.engine now carry malli and
 ;; their own m/=> contracts (cov-w1), so nothing under :paths is exempt.
