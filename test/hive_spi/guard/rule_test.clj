@@ -7,7 +7,8 @@
   (:require [hive-schemas.test :as hst]
             [hive-spi.guard.event :as e]
             [hive-spi.guard.rule :as r]
-            [hive-test.golden :refer [deftest-golden]]))
+            [hive-test.golden :refer [deftest-golden]]
+            [clojure.test :refer [deftest is testing]]))
 
 (hst/deftrifecta-from-schema guard-rule-is-identity-plus-defaults
   hive-spi.guard.rule/guard-rule
@@ -83,6 +84,17 @@
          [ids kind
           (r/candidate? scoped {:guard/phase :stop :guard/harness :claude-code
                                 :project/ids ids :agent/kind kind})])))
+
+(deftest scope-reads-ancestors-down-never-up
+  (let [stop  {:guard/phase :stop :guard/harness :claude-code}
+        child (assoc scoped :rule/projects #{"funeraria-libs"})
+        plain (dissoc scoped :rule/projects :rule/agent-kinds)]
+    (testing "a rule scoped to a child project stays silent for its parent alone"
+      (is (false? (r/candidate? child (assoc stop :project/ids #{"funeraria"}
+                                             :agent/kind :coordinator)))))
+    (testing "an unscoped rule ignores the scope keys an event carries"
+      (is (true? (r/candidate? plain (assoc stop :project/ids #{"funeraria"}
+                                            :agent/kind :ling)))))))
 
 (def ^:private rule
   (r/guard-rule {:rule/id :guard/x :rule/phases #{:pre-tool :stop}

@@ -71,9 +71,11 @@
    `:rule/harnesses` does: absent or empty means everywhere, and narrowing is
    the explicit act. They are read against the event's `:project/ids` (the
    touched HCR project plus its ancestors, so a rule scoped to a parent
-   project also holds in every descendant) and `:agent/kind`. A host that
-   does not resolve those event keys never fires a SCOPED rule; unscoped
-   rules are unaffected."
+   project also holds in every descendant) and `:agent/kind`. The host must
+   put EVERY ancestor in `:project/ids`: one that sends only the leaf project
+   silently stops parent-scoped rules from firing. A host that does not
+   resolve those event keys never fires a SCOPED rule; unscoped rules are
+   unaffected."
   (m/schema
    [:map {:closed false}
     [:rule/id        :keyword]
@@ -133,7 +135,7 @@
    holds for an event whose projects are unknown."
   [rule project-ids]
   (let [ps (:rule/projects rule)]
-    (or (empty? ps) (boolean (some ps project-ids)))))
+    (or (nil? ps) (empty? ps) (boolean (some #(contains? ps %) project-ids)))))
 
 (defn applies-to-agent-kind?
   "True if `rule` applies to a session of `kind`. A rule with no
@@ -141,7 +143,7 @@
    an unknown (nil) kind."
   [rule kind]
   (let [ks (:rule/agent-kinds rule)]
-    (or (empty? ks) (contains? ks kind))))
+    (or (nil? ks) (empty? ks) (contains? ks kind))))
 
 (defn candidate?
   "True if `rule` is enabled and declares this event's phase, harness,
