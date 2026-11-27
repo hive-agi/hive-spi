@@ -31,7 +31,29 @@
           (= out (let [hs (:rule/harnesses rule)]
                    (or (empty? hs) (contains? hs h)))))})
 
-(hst/deftrifecta-from-schema candidate?-conjoins-the-three-filters
+(def ^:private ProjectId [:enum "hive" "hive-guard" "funeraria" "funeraria-libs"])
+(def ^:private AgentKind [:enum :coordinator :ling :human-session])
+
+(hst/deftrifecta-from-schema applies-to-projects?-needs-a-shared-id-when-scoped
+  hive-spi.guard.rule/applies-to-projects?
+  {:in  [:cat [:map [:rule/projects [:maybe [:set ProjectId]]]]
+         [:maybe [:set ProjectId]]]
+   :out :boolean
+   :rel (fn [[rule ids] out]
+          (= out (let [ps (:rule/projects rule)]
+                   (or (empty? ps)
+                       (boolean (seq (filter ps ids)))))))})
+
+(hst/deftrifecta-from-schema applies-to-agent-kind?-honours-the-narrowing
+  hive-spi.guard.rule/applies-to-agent-kind?
+  {:in  [:cat [:map [:rule/agent-kinds [:maybe [:set AgentKind]]]]
+         [:maybe AgentKind]]
+   :out :boolean
+   :rel (fn [[rule kind] out]
+          (= out (let [ks (:rule/agent-kinds rule)]
+                   (or (empty? ks) (contains? ks kind)))))})
+
+(hst/deftrifecta-from-schema candidate?-conjoins-the-five-filters
   hive-spi.guard.rule/candidate?
   {:in  [:cat r/GuardRule e/GuardEvent]
    :out :boolean
@@ -39,7 +61,28 @@
           (= out (and (not (false? (:rule/enabled? rule)))
                       (contains? (:rule/phases rule) (:guard/phase ev))
                       (let [hs (:rule/harnesses rule)]
-                        (or (empty? hs) (contains? hs (:guard/harness ev)))))))})
+                        (or (empty? hs) (contains? hs (:guard/harness ev))))
+                      (let [ps (:rule/projects rule)]
+                        (or (empty? ps)
+                            (boolean (seq (filter ps (:project/ids ev))))))
+                      (let [ks (:rule/agent-kinds rule)]
+                        (or (empty? ks) (contains? ks (:agent/kind ev)))))))})
+
+(def ^:private scoped
+  (r/guard-rule {:rule/id :guard/scoped :rule/phases #{:pre-tool :stop}
+                 :rule/match {} :rule/verdict :warn :rule/reason "r"
+                 :rule/projects #{"funeraria"}
+                 :rule/agent-kinds #{:coordinator}}))
+
+;; A rule scoped to a parent project holds in a descendant because the host
+;; puts the ancestors in :project/ids; an unresolved scope never fires it.
+(deftest-golden scope-table
+  "test/golden/hive_spi/guard/rule_scope.edn"
+  (vec (for [ids  [nil #{} #{"hive"} #{"funeraria"} #{"funeraria-libs" "funeraria"}]
+             kind [nil :coordinator :ling :human-session]]
+         [ids kind
+          (r/candidate? scoped {:guard/phase :stop :guard/harness :claude-code
+                                :project/ids ids :agent/kind kind})])))
 
 (def ^:private rule
   (r/guard-rule {:rule/id :guard/x :rule/phases #{:pre-tool :stop}

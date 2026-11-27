@@ -48,6 +48,8 @@
    [:session/id {:optional true} [:maybe :string]]
    [:agent/id   {:optional true} [:maybe :string]]
    [:role/id    {:optional true} [:maybe :keyword]]
+   [:agent/kind {:optional true} [:maybe :keyword]]
+   [:project/ids {:optional true} [:maybe [:set :string]]]
    [:cwd        {:optional true} [:maybe :string]]])
 
 (defn- phase-map
@@ -73,6 +75,15 @@
       :session/id    string  (optional)
       :agent/id      string  (optional)
       :role/id       keyword (optional) — the RoleCard in force, if any
+      :agent/kind    keyword (optional) — what KIND of session acts:
+                                          :coordinator, :ling, :human-session,
+                                          … (open). Resolved by the host from
+                                          its session/agent registry, never
+                                          from text.
+      :project/ids   #{string} (optional) — the HCR project the event touches
+                                          (file path, else cwd) PLUS every
+                                          ancestor project. Resolved by the
+                                          host; read by `:rule/projects`.
       :cwd           string  (optional)}"
   (m/schema
    [:multi {:dispatch :guard/phase}
