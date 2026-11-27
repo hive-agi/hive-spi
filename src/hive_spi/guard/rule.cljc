@@ -63,7 +63,19 @@
       :rule/reason     string   (required, min length 1)
       :rule/citations  [MemoryId] (optional) — the axioms it was derived from
       :rule/harnesses  #{keyword} (optional) — nil => every harness
-      :rule/enabled?   boolean  (optional, default true)}"
+      :rule/projects   #{string}  (optional) — nil => every project
+      :rule/agent-kinds #{keyword} (optional) — nil => every agent kind
+      :rule/enabled?   boolean  (optional, default true)}
+
+   SCOPE. `:rule/projects` and `:rule/agent-kinds` narrow a rule the same way
+   `:rule/harnesses` does: absent or empty means everywhere, and narrowing is
+   the explicit act. They are read against the event's `:project/ids` (the
+   touched HCR project plus its ancestors, so a rule scoped to a parent
+   project also holds in every descendant) and `:agent/kind`. The host must
+   put EVERY ancestor in `:project/ids`: one that sends only the leaf project
+   silently stops parent-scoped rules from firing. A host that does not
+   resolve those event keys never fires a SCOPED rule; unscoped rules are
+   unaffected."
   (m/schema
    [:map {:closed false}
     [:rule/id        :keyword]
@@ -73,6 +85,8 @@
     [:rule/reason    [:string {:min 1}]]
     [:rule/citations {:optional true} d/Citations]
     [:rule/harnesses {:optional true} [:maybe [:set :keyword]]]
+    [:rule/projects  {:optional true} [:maybe [:set :string]]]
+    [:rule/agent-kinds {:optional true} [:maybe [:set :keyword]]]
     [:rule/enabled?  {:optional true} :boolean]]))
 
 (def RuleSet
@@ -114,13 +128,33 @@
   [rule phase]
   (contains? (:rule/phases rule) phase))
 
+(defn applies-to-projects?
+  "True if `rule` applies to an event touching `project-ids` (the touched HCR
+   project plus its ancestors). A rule with no `:rule/projects` applies to
+   every project; a scoped rule needs at least one shared id, so it never
+   holds for an event whose projects are unknown."
+  [rule project-ids]
+  (let [ps (:rule/projects rule)]
+    (or (nil? ps) (empty? ps) (boolean (some #(contains? ps %) project-ids)))))
+
+(defn applies-to-agent-kind?
+  "True if `rule` applies to a session of `kind`. A rule with no
+   `:rule/agent-kinds` applies to every kind; a scoped rule never holds for
+   an unknown (nil) kind."
+  [rule kind]
+  (let [ks (:rule/agent-kinds rule)]
+    (or (nil? ks) (empty? ks) (contains? ks kind))))
+
 (defn candidate?
-  "True if `rule` is enabled and declares this event's phase and harness.
-   The cheap structural pre-filter before the engine evaluates `:rule/match`."
+  "True if `rule` is enabled and declares this event's phase, harness,
+   projects and agent kind. The cheap structural pre-filter before the engine
+   evaluates `:rule/match`."
   [rule event]
   (and (enabled? rule)
        (applies-to-phase? rule (:guard/phase event))
-       (applies-to-harness? rule (:guard/harness event))))
+       (applies-to-harness? rule (:guard/harness event))
+       (applies-to-projects? rule (:project/ids event))
+       (applies-to-agent-kind? rule (:agent/kind event))))
 
 (defn guard-rule
   "Build a validated GuardRule from a partial map, filling `default-rule`.
@@ -149,6 +183,8 @@
    [:map {:closed false}
     [:rule/phases    {:optional true} [:maybe [:set :keyword]]]
     [:rule/harnesses {:optional true} [:maybe [:set :keyword]]]
+    [:rule/projects  {:optional true} [:maybe [:set :string]]]
+    [:rule/agent-kinds {:optional true} [:maybe [:set :keyword]]]
     [:rule/enabled?  {:optional true} [:maybe :boolean]]]])
 
 (m/=> valid? [:=> [:cat :any] :boolean])
@@ -161,6 +197,10 @@
 (tc/ann-op applies-to-harness?)
 (m/=> applies-to-phase? [:=> [:cat RuleLike :any] :boolean])
 (tc/ann-op applies-to-phase?)
+(m/=> applies-to-projects? [:=> [:cat RuleLike [:maybe [:set :string]]] :boolean])
+(tc/ann-op applies-to-projects?)
+(m/=> applies-to-agent-kind? [:=> [:cat RuleLike [:maybe :keyword]] :boolean])
+(tc/ann-op applies-to-agent-kind?)
 (m/=> candidate? [:=> [:cat RuleLike [:maybe :map]] :boolean])
 (tc/ann-op candidate?)
 (m/=> guard-rule [:=> [:cat [:maybe :map]] GuardRule])

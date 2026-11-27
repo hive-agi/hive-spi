@@ -24,6 +24,14 @@ contribute a version conflict to a consumer's tree.
 
 ### Added
 
+- Guard rule scope. `GuardRule` takes two optional keys,
+  `:rule/projects #{string}` and `:rule/agent-kinds #{keyword}`, and
+  `GuardEvent` takes the matching optional `:project/ids` (the touched HCR
+  project plus its ancestors) and `:agent/kind` (`:coordinator`, `:ling`,
+  `:human-session`, ...). `hive-spi.guard.rule/candidate?` now also checks
+  `applies-to-projects?` and `applies-to-agent-kind?`. A scope that is absent
+  or empty means everywhere, so existing rules are unchanged. A scoped rule
+  never fires on an event whose host left those keys unresolved.
 - `hive-spi.schema.typed-contract/ann-op`: `(tc/ann-op f)` after `(m/=> f ..)`
   derives the Typed Clojure `t/ann` from the registered contract, so the malli
   and typed rungs share one source. It expands to nil unless the run sets

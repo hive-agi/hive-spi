@@ -159,6 +159,7 @@
 (defspec generated-rules-are-candidates-for-their-own-phases 50
   (prop/for-all [rule (mg/generator r/GuardRule)
                  h    (mg/generator :keyword)]
-                (let [rule (assoc rule :rule/enabled? true :rule/harnesses nil)]
+                (let [rule (assoc rule :rule/enabled? true :rule/harnesses nil
+                                  :rule/projects nil :rule/agent-kinds nil)]
                   (every? #(r/candidate? rule {:guard/phase % :guard/harness h})
                           (:rule/phases rule)))))
