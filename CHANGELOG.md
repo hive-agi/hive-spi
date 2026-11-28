@@ -60,6 +60,19 @@ contribute a version conflict to a consumer's tree.
 - `hive-spi.memory.conformance/skip-reason`: the pure skip decision the
   runner reports. Skips are now logged through `hive-spi.log.ports` instead
   of printed to stdout.
+- `hive-spi.working-memory`: the shared working-memory contract for a swarm
+  subgroup coordinating on one kanban card or epic. `IWorkingMemoryStore`
+  (`get-entry`, `put-cas!`, `watch!`, `delta-since`) with a per-key REVISION a
+  compare-and-set is judged against and a delta that RE-DELIVERS an edited key
+  (which a timestamp or append-only cursor would miss); `IConsolidation`
+  (`consolidate!`, the terminal-entry fold into long-term memory) and
+  `IActivation` (`activate`, the bundle a spawned ling starts from).
+  `hive-spi.working-memory.ports` carries the `WorkingEntry` and delta schemas;
+  `.entry` the pure entry helpers; `.lifecycle` the status transitions as a
+  CLOSED data table; `.registry` the single-slot injection point; and
+  `.conformance` the executable store contract. Contracts only — no engine,
+  no backend, no IO; the reference in-memory store is test-only. Minor: new
+  protocols, so nothing existing changes.
 
 - `hive-spi.embeddings.space`: the EmbeddingSpace value layer, moved here
   from hive-mcp.embeddings.space so a vector-store backend can stamp, admit

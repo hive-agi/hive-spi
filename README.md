@@ -37,6 +37,7 @@ is part of the 1.0 contract.
 | `hive-spi.lifecycle.ports`    | `IShutdownHook`, `ISweepable`, `IResourceOwner`, `IShutdownBudget`                                                            |
 | `hive-spi.embeddings.ports`   | `EmbeddingProvider`                                                                                                          |
 | `hive-spi.projection.ports`   | `FloorProjection` (floor-lane catchup drain projection); `.conformance` the public law suite, `.stub` the reference impls     |
+| `hive-spi.working-memory.ports` | `IWorkingMemoryStore` (per-key revision + CAS, `watch!`, `delta-since`), `IConsolidation`, `IActivation`; `.conformance` the public suite, `.lifecycle` the transition table as data |
 | `hive-spi.crypto.hash` / `.ports` | `IHasher`, `ISigner`                                                                                                     |
 | `hive-spi.log.ports`          | `ILogger`                                                                                                                    |
 | `hive-spi.time.ports`         | `IClock`                                                                                                                     |
