@@ -18,7 +18,8 @@
    ex-info when nothing is installed, because a caller reaching for a store
    it never installed has a wiring bug, and a nil there surfaces far from the
    cause."
-  (:require [hive-spi.slot :as slot]
+  (:require [hive-spi.schema.typed-contract :as tc]
+            [hive-spi.slot :as slot]
             [hive-spi.working-memory.ports :as ports]
             [malli.core :as m]))
 
@@ -159,16 +160,30 @@
    [:activation :boolean]])
 
 (m/=> set-store! [:=> [:cat Store] Store])
+(tc/ann-op set-store!)
 (m/=> get-store [:=> [:cat] Store])
+(tc/ann-op get-store)
 (m/=> store-set? [:=> [:cat] :boolean])
+(tc/ann-op store-set?)
 (m/=> clear-store! [:=> [:cat] :nil])
+(tc/ann-op clear-store!)
 (m/=> set-consolidator! [:=> [:cat Consolidator] Consolidator])
+(tc/ann-op set-consolidator!)
 (m/=> get-consolidator [:=> [:cat] [:maybe Consolidator]])
+(tc/ann-op get-consolidator)
 (m/=> consolidator-set? [:=> [:cat] :boolean])
+(tc/ann-op consolidator-set?)
 (m/=> clear-consolidator! [:=> [:cat] :nil])
+(tc/ann-op clear-consolidator!)
 (m/=> set-activator! [:=> [:cat Activator] Activator])
+(tc/ann-op set-activator!)
 (m/=> get-activator [:=> [:cat] [:maybe Activator]])
+(tc/ann-op get-activator)
 (m/=> activator-set? [:=> [:cat] :boolean])
+(tc/ann-op activator-set?)
 (m/=> clear-activator! [:=> [:cat] :nil])
+(tc/ann-op clear-activator!)
 (m/=> reset-registry! [:=> [:cat] :nil])
+(tc/ann-op reset-registry!)
 (m/=> registry-status [:=> [:cat] RegistryStatus])
+(tc/ann-op registry-status)

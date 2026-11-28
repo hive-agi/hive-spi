@@ -37,6 +37,7 @@
        delivered, so following it to exhaustion delivers every key once."
   (:require [clojure.test :as t :refer [is testing]]
             [hive-spi.memory.ids :as ids]
+            [hive-spi.schema.typed-contract :as tc]
             [hive-spi.working-memory.entry :as entry]
             [hive-spi.working-memory.ports :as ports]
             [hive-spi.working-memory.lifecycle :as lifecycle]
@@ -93,17 +94,41 @@
             (> (System/currentTimeMillis) deadline) false
             :else (do (Thread/sleep 5) (recur))))))
 
+(def drain-iteration-cap
+  "How many delta-since calls `bounded-delta-keys` will make before failing.
+
+   A drain must ALWAYS advance: every truncated delta that answers a non-empty
+   backlog delivers at least one entry, so a well-behaved store terminates in
+   at most one call per entry. A store that answers :truncated? true with
+   nothing and an unmoved cursor is broken, and the cap turns that into a
+   FAILING case instead of a hung thread (the reviewer's probe found the
+   previous loop still alive past the deadline)."
+  200)
+
+(defn- next-cursor-advanced?
+  "True when a delta's answered cursor covers more keys than the one it was
+   asked with — the progress a drain depends on. Pure."
+  [before after]
+  (> (count (or after {})) (count (or before {}))))
+
 (defn- bounded-delta-keys
   "Every key delivered by repeatedly calling delta-since on S for WS with OPTS
    from a nil cursor until a delta is not truncated, concatenated in order. A
-   key delivered twice would appear twice, so the case can assert exactly-once."
+   key delivered twice would appear twice, so the case can assert exactly-once.
+
+   Bounded by `drain-iteration-cap`: a truncated delta that does not advance
+   its cursor stops the loop and is reported by the CASE, so a store without a
+   progress guarantee fails instead of spinning forever."
   [s ws opts]
-  (loop [cursor nil out []]
+  (loop [cursor nil out [] i 0]
     (let [d (ports/delta-since s ws cursor opts)
-          out (into out (map :key (:entries d)))]
-      (if (:truncated? d)
-        (recur (:cursor d) out)
-        out))))
+          out (into out (map :key (:entries d)))
+          advanced? (next-cursor-advanced? cursor (:cursor d))]
+      (cond
+        (not (:truncated? d)) out
+        (>= i drain-iteration-cap) out
+        (not advanced?) out
+        :else (recur (:cursor d) out (inc i))))))
 
 ;;; ============================================================================
 ;;; Cases
@@ -112,7 +137,7 @@
 (def cases
   "Every conformance case, in run order."
   [{:id :create-stamps-a-revision
-    :doc "put-cas! with a nil expected revision creates the key, stamps an opaque revision and keeps the writer's id"
+    :doc "put-cas! with a nil expected revision creates the key and stamps a revision the store owns"
     :run (fn [{:keys [make-store]}]
            (let [s (make-store)
                  e (sample-entry "w" "k" "first")
@@ -121,7 +146,7 @@
              (is (true? (:ok? r)))
              (is (nat-int? (:revision got)))
              (is (pos? (:revision got)))
-             (is (= (:id e) (:id got)) "the key's id is the writer's on create")
+             (is (string? (:id got)) "the created key has an id")
              (valid! ports/WorkingEntry got)
              (valid! ports/PutResult r)))}
 
@@ -339,22 +364,20 @@
              (is (= :settled (:status (ports/get-entry s "w" "old"))) "the superseded entry is untouched")))}
 
    {:id :invalid-transition-refuses
-    :doc "a supersession that ALSO makes an illegal status move is refused :wm/invalid-transition"
+    :doc "an illegal status move on a LIVE entry is refused :wm/invalid-transition"
     :run (fn [{:keys [make-store]}]
            (let [s (make-store)
                  r1 (ports/put-cas! s (sample-entry "w" "k" "x" {:status :working}) nil)
-                 rev1 (:revision (stored r1))
-                 settled (lifecycle/settle (ports/get-entry s "w" "k"))
-                 r2 (ports/put-cas! s settled rev1)
-                 cur (:entry r2)
-                 rev2 (:revision cur)
-                 ;; names the current id (a supersession, so past the terminal
-                 ;; gate) but moves :settled -> :draft, which the table forbids
-                 reopen (assoc cur :status :draft :supersedes (:id cur))
-                 r3 (ports/put-cas! s reopen rev2)]
-             (is (false? (:ok? r3)))
-             (is (= :wm/invalid-transition (:error r3)))
-             (is (= :settled (:status (ports/get-entry s "w" "k"))))))}
+                 cur (:entry r1)
+                 ;; :working -> :draft is not in the table. (The terminal case
+                 ;; is :self-supersession-refuses, which is a different rule:
+                 ;; there the status does NOT change and the write must still
+                 ;; be refused.)
+                 r2 (ports/put-cas! s (assoc cur :status :draft) (:revision cur))]
+             (is (false? (:ok? r2)))
+             (is (= :wm/invalid-transition (:error r2)))
+             (is (= :working (:status (ports/get-entry s "w" "k")))
+                 "the store did not change")))}
 
    {:id :concurrent-writers-one-winner
     :doc "16 writers behind a latch with the same expected revision: exactly one wins, the rest conflict"
@@ -415,18 +438,162 @@
              (is (= (:id first-entry) (:id got)) "the id is stable across revisions")
              (is (= (:created first-entry) (:created got)) "and so is :created")))}
 
-   {:id :terminal-status-immutable
-    :doc "a settled entry cannot move again through the lifecycle table"
+   {:id :self-supersession-refuses
+    :doc "a STATUS-PRESERVING self-supersession at the same key over a terminal entry is ALWAYS refused :wm/terminal"
+    :run (fn [{:keys [make-store]}]
+           ;; THE BLOCKER the reviewer probed. Copy a settled entry, change its
+           ;; body, name its OWN id in :supersedes, keep the status: the write
+           ;; must not land. At a given key CURRENT is that key's entry, so
+           ;; :supersedes naming CURRENT's id is a mutation in place — the one
+           ;; thing a terminal entry may never undergo. A store that gates on
+           ;; `entry/supersedes?` instead of on CURRENT being terminal passes
+           ;; every other case and ships mutable 'immutable' entries.
+           (let [s (make-store)
+                 r1 (ports/put-cas! s (sample-entry "w" "k" "settled-body" {:status :working}) nil)
+                 rev1 (:revision (stored r1))
+                 r2 (ports/put-cas! s (lifecycle/settle (ports/get-entry s "w" "k")) rev1)
+                 cur (:entry r2)
+                 probe (assoc cur :claim "REWRITTEN AFTER SETTLE" :supersedes (:id cur))
+                 r3 (ports/put-cas! s probe (:revision cur))]
+             (is (= :settled (:status cur)))
+             (is (false? (:ok? r3)) "a self-supersession at the same key is refused")
+             (is (= :wm/terminal (:error r3)))
+             (is (= "settled-body" (:claim (ports/get-entry s "w" "k")))
+                 "the settled body was not rewritten")
+             (is (= (:revision cur) (:revision (ports/get-entry s "w" "k")))
+                 "and no revision was minted past the settle")))}
+
+   {:id :self-supersession-refuses-on-abandoned
+    :doc "the same self-supersession over an ABANDONED entry is refused, so its owner cannot be changed"
     :run (fn [{:keys [make-store]}]
            (let [s (make-store)
-                 e (sample-entry "w" "k" "done" {:status :working})
-                 r1 (ports/put-cas! s e nil)
-                 settled (lifecycle/settle (ports/get-entry s "w" "k"))
-                 r (ports/put-cas! s settled (:revision (stored r1)))]
-             (is (true? (:ok? r)))
-             (is (= :settled (:status (:entry r))))
-             (is (empty? (lifecycle/allowed-transitions (:entry r)))
-                 "a terminal entry has no outgoing transition")))}])
+                 r1 (ports/put-cas! s (sample-entry "w" "a" "dropped" {:status :working}) nil)
+                 rev1 (:revision (stored r1))
+                 r2 (ports/put-cas! s (lifecycle/abandon (ports/get-entry s "w" "a")) rev1)
+                 cur (:entry r2)
+                 probe (assoc cur :owner {:agent "thief"} :supersedes (:id cur))
+                 r3 (ports/put-cas! s probe (:revision cur))]
+             (is (= :abandoned (:status cur)))
+             (is (false? (:ok? r3)))
+             (is (= :wm/terminal (:error r3)))
+             (is (= "conformance" (:agent (:owner (ports/get-entry s "w" "a"))))
+                 "the abandoned entry's owner was not stolen")))}
+
+   {:id :terminal-status-immutable
+    :doc "the STORE refuses every write over a settled entry, including a plain status-preserving one"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 r1 (ports/put-cas! s (sample-entry "w" "k" "done" {:status :working}) nil)
+                 rev1 (:revision (stored r1))
+                 r2 (ports/put-cas! s (lifecycle/settle (ports/get-entry s "w" "k")) rev1)
+                 cur (:entry r2)
+                 ;; SAME status, no :supersedes at all — the plainest write there
+                 ;; is, and the one a store is most likely to wave through.
+                 same-status (ports/put-cas! s (assoc cur :claim "edit") (:revision cur))]
+             (is (= :settled (:status cur)))
+             (is (empty? (lifecycle/allowed-transitions cur))
+                 "a terminal entry has no outgoing transition")
+             (is (false? (:ok? same-status)) "the store refuses it, not just the table")
+             (is (= :wm/terminal (:error same-status)))))}
+
+   {:id :create-may-not-be-terminal
+    :doc "creating a key directly as :settled or :abandoned is refused: the table has no such entry state"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 settled (ports/put-cas! s (sample-entry "w" "s" "born done" {:status :settled}) nil)
+                 abandoned (ports/put-cas! s (sample-entry "w" "a" "born dropped" {:status :abandoned}) nil)]
+             (is (false? (:ok? settled)) "a key cannot be born :settled")
+             (is (= :wm/invalid-transition (:error settled)))
+             (is (false? (:ok? abandoned)) "nor :abandoned")
+             (is (= :wm/invalid-transition (:error abandoned)))
+             (is (nil? (ports/get-entry s "w" "s")) "nothing was created")
+             (is (nil? (ports/get-entry s "w" "a")))))}
+
+   {:id :create-mints-the-id
+    :doc "the STORE mints :id, so a create cannot make two keys share one EntryId"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 r1 (ports/put-cas! s (sample-entry "w" "a" "first") nil)
+                 first-id (:id (stored r1))
+                 r2 (ports/put-cas! s (sample-entry "w" "b" "second") nil)
+                 second-id (:id (stored r2))]
+             (is (not= first-id second-id) "two keys never share an id")
+             (is (some? second-id))))}
+
+   {:id :entry-size-is-bounded
+    :doc "WorkingEntry refuses a claim larger than the budget the drain advertises, and the store refuses to persist it"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 huge (apply str (repeat 1000000 "x"))
+                 e (sample-entry "w" "k" "big")]
+             (is (false? (m/validate ports/WorkingEntry (assoc e :claim huge)))
+                 "a 1,000,000-char claim does not validate")
+             (is (= :wm/invalid-entry
+                    (try (ports/put-cas! s (assoc e :claim huge) nil) nil
+                         (catch clojure.lang.ExceptionInfo ex (:error (ex-data ex)))))
+                 "and the store refuses it rather than persisting it")
+             (is (true? (m/validate ports/WorkingEntry (assoc e :claim (apply str (repeat 16384 "x")))))
+                 "a claim at the cap still validates")))}
+
+   {:id :delta-delivers-an-oversize-entry
+    :doc "a bounded delta over an entry larger than the budget still delivers it and advances, so a drain never spins"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 _ (ports/put-cas! s (sample-entry "w" "a" "fits") nil)
+                 _ (ports/put-cas! s (sample-entry "w" "b" (apply str (repeat 200 "b"))) nil)
+                 tiny 1
+                 d1 (ports/delta-since s "w" nil {:max-chars tiny})]
+             (is (= 1 (count (:entries d1))) "a cap no entry fits still delivers exactly one")
+             (is (true? (:truncated? d1)))
+             (is (= ["a"] (map :key (:entries d1))))
+             (is (= {"a" (:revision (first (:entries d1)))} (:cursor d1))
+                 "the cursor moved past the entry it delivered")
+             (let [ks (bounded-delta-keys s "w" {:max-chars tiny})]
+               (is (= ["a" "b"] ks) "the drain terminates and delivers every key once")
+               (is (= 2 (count ks)) "exactly once"))))}
+
+   {:id :watches-deliver-in-write-order
+    :doc "two writes to one key reach the watch in the order the store accepted them"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 seen (atom [])
+                 cancel (ports/watch! s "w" "k" (fn [e] (swap! seen conj (:claim e))))
+                 r1 (ports/put-cas! s (sample-entry "w" "k" "one") nil)
+                 r2 (ports/put-cas! s (sample-entry "w" "k" "two") (:revision (stored r1)))
+                 _ (ports/put-cas! s (sample-entry "w" "k" "three") (:revision (stored r2)))]
+             (try
+               (is (true? (poll-until #(= 3 (count @seen))))
+                   "every write fired within the deadline")
+               (is (= ["one" "two" "three"] @seen)
+                   "and they arrived in write order, not dispatch order")
+               (finally (cancel)))))}
+
+   {:id :supersedes-must-name-a-terminal-entry
+    :doc "a :supersedes naming an id nobody minted, or a LIVE entry, is refused :wm/not-found"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 _ (ports/put-cas! s (sample-entry "w" "live" "still going" {:status :working}) nil)
+                 live-id (:id (ports/get-entry s "w" "live"))
+                 ghost (ports/put-cas! s (sample-entry "w" "x" "x" {:supersedes (ids/generate-id)}) nil)
+                 over-live (ports/put-cas! s (sample-entry "w" "y" "y" {:supersedes live-id}) nil)]
+             (is (false? (:ok? ghost)) "nobody minted that id")
+             (is (= :wm/not-found (:error ghost)))
+             (is (false? (:ok? over-live)) "a supersession replaces a TERMINAL claim, never a live one")
+             (is (= :wm/not-found (:error over-live)))))}
+
+   {:id :create-stamps-a-revision-and-minted-id
+    :doc "a create answers the id the STORE minted, not the one the writer supplied"
+    :run (fn [{:keys [make-store]}]
+           (let [s (make-store)
+                 supplied (ids/generate-id)
+                 e (assoc (sample-entry "w" "k" "first") :id supplied)
+                 r (ports/put-cas! s e nil)
+                 got (stored r)]
+             (is (nat-int? (:revision got)))
+             (is (pos? (:revision got)))
+             (is (not= supplied (:id got)) "the writer's id is ignored on create")
+             (valid! ports/WorkingEntry got)
+             (valid! ports/PutResult r)))}])
 
 (def case-ids
   "The case ids, in run order."
@@ -495,11 +662,18 @@
   [:map
    [:skip {:optional true} [:maybe [:map-of :keyword :string]]]])
 
+(m/=> next-cursor-advanced? [:=> [:cat [:maybe ports/Cursor] [:maybe ports/Cursor]] :boolean])
+(tc/ann-op next-cursor-advanced?)
+(m/=> bounded-delta-keys [:=> [:cat ports/WorkingMemoryStore ports/WorkspaceId [:maybe ports/DeltaOpts]] [:vector ports/EntryKey]])
 (m/=> sample-entry [:function
-                    [:=> [:cat ports/WorkspaceId ports/EntryKey :string] [:map]]
-                    [:=> [:cat ports/WorkspaceId ports/EntryKey :string :map] [:map]]])
+                    [:=> [:cat ports/WorkspaceId ports/EntryKey :string] ports/WorkingEntry]
+                    [:=> [:cat ports/WorkspaceId ports/EntryKey :string :map] ports/WorkingEntry]])
+(tc/ann-op sample-entry)
 (m/=> skip-reason [:=> [:cat [:map [:id CaseId]] [:maybe :map]] [:maybe :string]])
+(tc/ann-op skip-reason)
 (m/=> run-case [:=> [:cat MakeStore RunOpts CaseId]
                 [:or [:= :ran] [:map [:skipped CaseId] [:reason :string]]]])
+(tc/ann-op run-case)
 (m/=> run-conformance [:=> [:cat MakeStore RunOpts]
                        [:map [:ran [:vector CaseId]] [:skipped [:map-of CaseId :string]]]])
+(tc/ann-op run-conformance)

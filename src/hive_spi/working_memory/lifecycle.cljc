@@ -25,6 +25,7 @@
    new claim, which names the old one with :supersedes; the table stays closed
    because a store never has to un-settle an entry in place."
   (:require [hive-spi.memory.ids :as ids]
+            [hive-spi.schema.typed-contract :as tc]
             [hive-spi.working-memory.ports :as ports]
             [malli.core :as m]))
 
@@ -137,11 +138,27 @@
    [:from ports/Status]
    [:to ports/Status]])
 
-(m/=> terminal? [:=> [:cat :any] :boolean])
-(m/=> live? [:=> [:cat :any] :boolean])
-(m/=> allowed? [:=> [:cat :any :any] :boolean])
-(m/=> allowed-transitions [:=> [:cat [:maybe :map]] [:vector ports/Status]])
-(m/=> apply-transition [:=> [:cat [:maybe :map] ports/Status] [:map]])
-(m/=> settle [:=> [:cat [:maybe :map]] [:map]])
-(m/=> abandon [:=> [:cat [:maybe :map]] [:map]])
-(m/=> claim [:=> [:cat [:maybe :map]] [:map]])
+(def StatusLike
+  "A status, or anything compared against one."
+  [:enum :draft :working :settled :abandoned])
+
+(def EntryLike
+  "An entry as the table sees it: a status, and the rest of its fields."
+  [:and [:map [:status StatusLike]] ports/WorkingEntry])
+
+(m/=> terminal? [:=> [:cat StatusLike] :boolean])
+(tc/ann-op terminal?)
+(m/=> live? [:=> [:cat StatusLike] :boolean])
+(tc/ann-op live?)
+(m/=> allowed? [:=> [:cat StatusLike StatusLike] :boolean])
+(tc/ann-op allowed?)
+(m/=> allowed-transitions [:=> [:cat [:maybe [:map [:status {:optional true} [:maybe StatusLike]]]]] [:vector StatusLike]])
+(tc/ann-op allowed-transitions)
+(m/=> apply-transition [:=> [:cat EntryLike StatusLike] ports/WorkingEntry])
+(tc/ann-op apply-transition)
+(m/=> settle [:=> [:cat EntryLike] ports/WorkingEntry])
+(tc/ann-op settle)
+(m/=> abandon [:=> [:cat EntryLike] ports/WorkingEntry])
+(tc/ann-op abandon)
+(m/=> claim [:=> [:cat EntryLike] ports/WorkingEntry])
+(tc/ann-op claim)

@@ -24,7 +24,8 @@
    Reload-safety: `defprotocol` is not idempotent, so each declaration is
    guarded \u2014 re-evaluating this namespace will not orphan existing
    implementations."
-  (:require [malli.core :as m]))
+  (:require [hive-spi.schema.typed-contract :as tc]
+            [malli.core :as m]))
 
 ;; SPDX-License-Identifier: MIT
 ;; Copyright (C) 2026 Pedro Gomes Branquinho (BuddhiLW) <pedrogbranquinho@gmail.com>
@@ -39,6 +40,7 @@
    values."
   [:enum
    :wm/invalid-entry
+   :wm/duplicate-id
    :wm/invalid-transition
    :wm/terminal
    :wm/not-terminal
@@ -64,6 +66,28 @@
   "An entry's key within its workspace: the name a claim is filed under, and
    the unit a revision and a compare-and-set are scoped to."
   [:string {:min 1 :max 128}])
+
+(def max-entry-chars
+  "The largest rendered (pr-str) size one entry may have, in characters."
+  32000)
+
+(def claim-max-chars
+  "The longest a single :claim may be, in characters. Half the entry budget: a
+   claim that alone ate the budget would leave no room for the entry's own
+   identity, owner and provenance, which a drain must send with it."
+  16384)
+
+(def ClaimText
+  "An entry's claim: what it asserts, non-blank and bounded."
+  [:string {:min 1 :max claim-max-chars}])
+
+(defn entry-within-budget?
+  "True when E renders in at most max-entry-chars. The size guard WorkingEntry
+   carries: a :claim can sit within its own cap and the entry still be too
+   large once identity, owner and provenance are added. Pure."
+  [e]
+  (and (map? e)
+       (<= (count (pr-str e)) max-entry-chars)))
 
 (def EntryId
   "An entry id, minted by hive-spi.memory.ids/generate-id: the clock's
@@ -106,10 +130,10 @@
   "One entry of a working-memory workspace, as a store holds it.
 
    Shape:
-     {:id           EntryId      (required) \u2014 minted once, stable across revisions
+     {:id           EntryId      (required) \u2014 minted by the STORE, stable across revisions
       :workspace-id WorkspaceId  (required) \u2014 the card or epic
       :key          EntryKey     (required) \u2014 the revision/CAS unit
-      :claim        string       (required) \u2014 what this entry asserts
+      :claim        ClaimText    (required) \u2014 what this entry asserts, <= claim-max-chars
       :owner        Owner        (required) \u2014 who owns it
       :status       Status       (required) \u2014 :draft | :working | :settled | :abandoned
       :revision     nat-int?     (required) \u2014 STAMPED BY THE STORE, never the writer
@@ -124,26 +148,34 @@
    answers the entry it actually stored, whose :revision is authoritative.
 
    Identity and supersession (the model the store ENFORCES, not just the
-   suite): the KEY is the unit. The store KEEPS the key's :id and :created
-   from the entry it already holds, whatever :id the writer supplied, so an
-   id is stable across a key's revisions. :supersedes names a DIFFERENT
-   key's entry id (the predecessor this claim replaces); a supersession is
-   the ONE legal write that may move a terminal entry on, and it is always a
-   write at its OWN key, never a mutation of the superseded entry."
-  [:map {:closed true}
-   [:id EntryId]
-   [:workspace-id WorkspaceId]
-   [:key EntryKey]
-   [:claim [:string {:min 1}]]
-   [:owner Owner]
-   [:status Status]
-   [:revision nat-int?]
-   [:sha {:optional true} [:maybe :string]]
-   [:branch {:optional true} [:maybe :string]]
-   [:supersedes {:optional true} [:maybe EntryId]]
-   [:provenance {:optional true} [:maybe Provenance]]
-   [:created Timestamp]
-   [:updated Timestamp]])
+   suite): the KEY is the unit. The store MINTS :id on create and KEEPS it
+   (with :created) from the entry the key already holds, so an id belongs to a
+   key, is stable across its revisions, and two keys can never share one.
+   :supersedes names a DIFFERENT key's entry id (the predecessor this claim
+   replaces); a supersession is the ONE legal write that may move a terminal
+   entry on, and it is always a write at its OWN key, never a mutation of the
+   superseded entry.
+
+   SIZE: the entry is BOUNDED. A piggyback drain reads a workspace under a
+   32000-char budget, so :claim is capped at claim-max-chars and the whole
+   rendered entry at max-entry-chars."
+  [:and
+   [:map {:closed true}
+    [:id EntryId]
+    [:workspace-id WorkspaceId]
+    [:key EntryKey]
+    [:claim ClaimText]
+    [:owner Owner]
+    [:status Status]
+    [:revision nat-int?]
+    [:sha {:optional true} [:maybe :string]]
+    [:branch {:optional true} [:maybe :string]]
+    [:supersedes {:optional true} [:maybe EntryId]]
+    [:provenance {:optional true} [:maybe Provenance]]
+    [:created Timestamp]
+    [:updated Timestamp]]
+   [:fn {:error/message "entry renders larger than max-entry-chars"}
+    entry-within-budget?]])
 
 (def Cursor
   "What a reader has already seen: {key -> the revision it saw for that key}.
@@ -159,10 +191,16 @@
    carry and reports :truncated? true, advancing its cursor ONLY over the
    entries it delivered, so the entries a cap held back re-deliver on the
    next call. The 32000-char piggyback drain sets :max-chars; a caller that
-   counts entries sets :max-entries."
+   counts entries sets :max-entries.
+
+   Both caps are POSITIVE: a cap of 0 asks a drain for nothing on every call
+   and can never make progress, so it is not a budget — omit the key to mean
+   unbounded. A cap smaller than one entry is legal and still progresses: a
+   bounded delta over a non-empty backlog always delivers at least one entry
+   (see entry/delta-of), flagged over budget."
   [:map
-   [:max-entries {:optional true} [:maybe nat-int?]]
-   [:max-chars {:optional true} [:maybe nat-int?]]])
+   [:max-entries {:optional true} [:maybe pos-int?]]
+   [:max-chars {:optional true} [:maybe pos-int?]]])
 
 (def Delta
   "What delta-since answers: the entries of one workspace a reader has not
@@ -195,7 +233,20 @@
 (def ExpectedRevision
   "What a caller believes the key's current revision is: a revision it read,
    or nil for 'the key must not exist yet' (create). There is deliberately no
-   'overwrite regardless' value \u2014 a blind write is the thing CAS removes."
+   'overwrite regardless' value \u2014 a blind write is the thing CAS removes.
+
+   THIS IS A FENCING COUNTER, NOT A CAPABILITY. `entry/next-revision` stamps
+   1, 2, 3 \u2026 and a store that carries its own counter (JetStream KV) may stamp
+   anything strictly increasing. The number is small and GUESSABLE on purpose:
+   CAS holds because a caller must hand back a revision it READ, not because
+   the value is hard to produce. A writer that never read the key can guess 1
+   and win a create; what it cannot do is guess the CURRENT revision of a key
+   that already exists and has been written twice. Making the revision
+   non-guessable would break the reload and compare-and-set story (a store
+   must be able to carry its own monotone counter, and a reader must be able
+   to compare two of them), so the honest documentation is the fix: the
+   contract documents a fence, and a caller wanting exclusion over an existing
+   key must read first."
   [:maybe nat-int?])
 
 (def WatchHandle
@@ -270,14 +321,38 @@
        On a mismatch it writes nothing and answers
        {:ok? false :error :wm/revision-conflict :current <the entry that won,
        or nil>}. It also REFUSES, writing nothing:
-         :wm/terminal           - CURRENT is terminal (:settled | :abandoned)
-                                  and the write is not a supersession. A
-                                  terminal entry is immutable; the only way
-                                  past it is a NEW entry at its OWN key whose
-                                  :supersedes names CURRENT's :id.
+         :wm/terminal           - CURRENT is terminal (:settled | :abandoned),
+                                  FULL STOP. A terminal entry is immutable;
+                                  the only way past it is a NEW entry at its
+                                  OWN key whose :supersedes names CURRENT's
+                                  :id — and at that key CURRENT is nil, so
+                                  the gate never fires. There is NO same-key
+                                  exception: a write whose :supersedes names
+                                  CURRENT's own :id is a self-supersession (a
+                                  mutation in place), and it too is refused.
+                                  A store must gate on CURRENT being terminal,
+                                  never on `entry/supersedes?` being true.
          :wm/invalid-transition - the write changes the status to a move the
                                   lifecycle table does not allow (a no-op
                                   status is allowed and is not a transition).
+         :wm/invalid-transition - a CREATE (EXPECTED-REVISION nil) asking for
+                                  a terminal status. There is no entry state
+                                  for a key created :settled or :abandoned: an
+                                  entry is settled by moving to it through the
+                                  lifecycle table, so a create must name
+                                  :draft or :working.
+         :wm/duplicate-id       - :id is already the id of a different key's
+                                  entry in this workspace. Identity is granted
+                                  by the store (it mints :id on create), so a
+                                  store that would accept a duplicate must
+                                  refuse instead: two keys sharing one id
+                                  break :supersedes resolution and
+                                  consolidate!'s 'idempotent per [id revision]'.
+
+       :supersedes, when present, must name the id of an entry that EXISTS
+       and is TERMINAL. A supersession is how a terminal claim is replaced, so
+       naming a live entry (two live entries claiming to replace each other)
+       or an id nobody ever minted is refused as :wm/not-found.
 
        Throws ex-info
        {:error :wm/invalid-entry} when ENTRY does not conform \u2014 a store that
@@ -289,9 +364,16 @@
        F is called with the stored entry, after the write is durable. Answers
        a zero-arg cancel fn (a WatchHandle); calling it twice is safe.
 
-       A watch is ASYNCHRONOUS: F runs on the store's own thread, so a write
-       that has returned does NOT guarantee F has run yet. A caller must poll
-       or await its own signal, never assert synchronously after a put-cas!.
+       A watch is ASYNCHRONOUS: F is not required to run before put-cas!
+       returns, so a caller must poll or await its own signal, never assert
+       synchronously after a write.
+
+       DELIVERY IS ORDERED: two writes to the same key are delivered in the
+       order the store accepted them, and F never sees an older revision
+       after a newer one. A store that dispatches F on its own thread must
+       serialise per key to keep this; a store that calls F on the writer
+       thread gets it for free only if it serialises the writes themselves.
+       The suite's :watch-delivers-in-write-order case pins it.
 
        Whether a watch armed on an EXISTING key delivers that key's current
        value before any write is store-defined: a JetStream KV watch does by
@@ -312,7 +394,12 @@
        entries back the Delta answers :truncated? true and its :cursor covers
        ONLY the delivered entries, so a follow-up delta-since from it delivers
        every remaining key exactly once. The reader carries the answered
-       :cursor into its next call.")))
+       :cursor into its next call.
+
+       PROGRESS: a bounded delta over a non-empty backlog ALWAYS delivers at
+       least one entry, even when that one entry alone exceeds :max-chars. A
+       follow-the-cursor drain therefore always advances and always
+       terminates; :truncated? never means 'nothing to deliver'.")))
 
 (defn delta-since*
   "Call delta-since on STORE with CURSOR and no size budget. The 2-arg call
@@ -398,6 +485,11 @@
   [e]
   (try (m/validate WorkingEntry e) (catch #?(:clj Exception :cljs :default :cljr Exception :default :default) _ false)))
 
+(m/=> entry-within-budget? [:=> [:cat :any] :boolean])
+(tc/ann-op entry-within-budget?)
 (m/=> delta-since* [:=> [:cat WorkingMemoryStore WorkspaceId [:maybe Cursor]] Delta])
+(tc/ann-op delta-since*)
 (m/=> refusal [:=> [:cat ErrorKeyword :string [:maybe :map]] [:fn {:error/message "must be an ex-info"} #(some? (ex-data %))]])
+(tc/ann-op refusal)
 (m/=> valid-entry? [:=> [:cat :any] :boolean])
+(tc/ann-op valid-entry?)

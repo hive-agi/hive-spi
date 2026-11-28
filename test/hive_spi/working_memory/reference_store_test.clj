@@ -56,6 +56,43 @@
                             :delta-re-delivers-an-edited-key))
     (is (seq @failures) "a store that never re-delivers an edited key fails the case")))
 
+;; A store with the EXACT hole the reviewer probed: its terminal gate is
+;; `supersedes?` instead of "CURRENT is terminal". Every other conformance case
+;; passes on it; only :self-supersession-refuses catches it. That is the point
+;; of the case, and this pins that the suite really does catch it.
+(defrecord SelfSupersedingStore [inner]
+  ports/IWorkingMemoryStore
+  (get-entry [_ w k] (ports/get-entry inner w k))
+  (put-cas! [_ e expected]
+    ;; The OLD gate, reproduced faithfully AND independently of the store we
+    ;; wrap: it judges by `supersedes?`, then writes straight into the state
+    ;; atom so the reference store's own (now correct) gate cannot save it.
+    (let [n (entry/normalize e)
+          ck (entry/workspace-key (:workspace-id n) (:key n))
+          cur (get @(:state inner) ck)]
+      (cond
+        (and (entry/terminal? cur) (not (entry/supersedes? n cur)))
+        {:ok? false :error :wm/terminal :current cur}
+
+        (entry/cas-ok? cur expected)
+        (let [stored (entry/stamp n cur)]
+          (swap! (:state inner) assoc ck stored)
+          {:ok? true :entry stored})
+
+        :else
+        {:ok? false :error :wm/revision-conflict :current cur})))
+  (watch! [_ w k f] (ports/watch! inner w k f))
+  (delta-since [_ w c o] (ports/delta-since inner w c o)))
+
+(deftest the-suite-catches-a-self-superseding-store
+  (let [failures (atom [])]
+    (with-redefs [clojure.test/do-report
+                  (fn [m] (when (#{:fail :error} (:type m)) (swap! failures conj m)))]
+      (conformance/run-case (fn [] (->SelfSupersedingStore (rs/make-store))) {}
+                            :self-supersession-refuses))
+    (is (seq @failures)
+        "a store that lets a terminal entry supersede itself fails the case")))
+
 (deftest reference-store-is-a-store
   (is (rs/store? (rs/make-store)))
   (is (satisfies? ports/IWorkingMemoryStore (rs/make-store))))
